@@ -1,0 +1,18 @@
+{
+    "id": "staruiframework",
+    "name": "StarUIFramework",
+    "author": "Starficz",
+    "utility": "false",
+    "library": "true",
+    "version": "0.1.0",
+    "description": "A modern UI framework for Starsector built with a Kotlin DSL.",
+    "gameVersion": "0.98a-RC7",
+    "jars":["jars/StarUIFramework.jar"],
+    "modPlugin":"org.starficz.staruiframework.internal.ModPlugin",
+    "dependencies": [
+        {
+            "id": "lw_lazylib",
+            "name": "LazyLib"
+        }
+    ]
+}
