@@ -8,8 +8,8 @@ import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
-import org.starficz.staruiframework.ReflectionUtils.getFieldsWithMethodsMatching
-import org.starficz.staruiframework.ReflectionUtils.invoke
+import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
+import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 
 object StarUIManager {
 

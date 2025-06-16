@@ -10,9 +10,9 @@ import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.ButtonAPI.UICheckboxSize
 import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
 import com.fs.starfarer.ui.impl.StandardTooltipV2Expandable
-import org.starficz.staruiframework.ReflectionUtils.getMethodsMatching
-import org.starficz.staruiframework.ReflectionUtils.invoke
-import org.starficz.staruiframework.ReflectionUtils.set
+import org.starficz.staruiframework.internal.ReflectionUtils.getMethodsMatching
+import org.starficz.staruiframework.internal.ReflectionUtils.invoke
+import org.starficz.staruiframework.internal.ReflectionUtils.set
 import java.awt.Color
 
 // UIComponentAPI extensions that expose UIComponent fields/methods

@@ -1,5 +1,6 @@
-package org.starficz.staruiframework
+package org.starficz.staruiframework.internal
 
+import org.starficz.staruiframework.BoxedUIElement
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
