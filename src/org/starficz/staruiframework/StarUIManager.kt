@@ -2,16 +2,22 @@ package org.starficz.staruiframework
 
 import com.fs.starfarer.api.campaign.CoreUIAPI
 import com.fs.starfarer.api.campaign.CoreUITabId
+import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
+import com.fs.starfarer.combat.entities.Ship
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
+import org.starficz.staruiframework.internal.ReflectionUtils.get
+import org.starficz.staruiframework.internal.ReflectionUtils.getConstructorsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
+import org.starficz.staruiframework.internal.ReflectionUtils.getMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 
 object StarUIManager {
+    var inited = false
 
     private val registeredPlugins = mutableListOf<StarUIPlugin>()
 
@@ -52,6 +58,8 @@ object StarUIManager {
 
         if (state is TitleScreenState) {
             val title = state.invoke("getScreenPanel") as? UIPanelAPI ?: return
+            cacheObfClassesIfNeeded(title)
+            if(!inited) return
             injectPanelsIntoTitleScreenIfNeeded(title)
             coreUI = null
             combatShipInfo = null
@@ -78,6 +86,32 @@ object StarUIManager {
             combatWarroom = null
         }
     }
+
+    private fun cacheObfClassesIfNeeded(title: UIPanelAPI) {
+        if (BoxedUIShipPreview.SHIP_PREVIEW_CLASS != null) return
+
+        val missionWidget = title.findChildWithMethod("getMissionList") as? UIPanelAPI ?: return
+        val holographicBG = missionWidget.getChildrenCopy()[1] // 2 of the same class in the tree here
+
+        val missionDetail = holographicBG.invoke("getCurr") as? UIPanelAPI ?: return
+
+        val missionShipPreview = missionDetail.findChildWithMethod("setVariant") as? UIPanelAPI ?: return
+
+        val shipPreview = missionShipPreview.findChildWithMethod("isSchematicMode") ?: return
+
+        BoxedUIShipPreview.SHIP_PREVIEW_CLASS = shipPreview.javaClass
+
+        val constructors = BoxedUIShipPreview.SHIP_PREVIEW_CLASS!!.getConstructorsMatching()
+
+        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR = constructors.find { constructor ->
+            constructor.parameterTypes.firstOrNull()?.let { FleetMemberAPI::class.java.isAssignableFrom(it) } ?: false
+        }
+        BoxedUIShipPreview.ENUM_CONSTRUCTOR = constructors.find { it.parameterTypes.size == 2 }
+        BoxedUIShipPreview.ENUM_ARRAY = BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.parameterTypes.first().enumConstants
+
+        inited = true
+    }
+
     private fun injectPanelsIntoTitleScreenIfNeeded(title: UIPanelAPI) {
         if (!hasFrameworkPanel(title)) {
             val newCustomPanel = title.CustomPanel(title.width, title.height) { plugin ->

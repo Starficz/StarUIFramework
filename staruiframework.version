@@ -2,7 +2,7 @@
     "directDownloadURL": "https://github.com/Starficz/temp/releases/latest/download/temp.zip",
     "changelogURL": "https://raw.githubusercontent.com/Starficz/temp/main/CHANGELOGS.md",
     "masterVersionFile": "https://raw.githubusercontent.com/Starficz/temp/main/staruiframework.version",
-    "modName": "Refit Filters",
+    "modName": "StarUIFramework",
     "modVersion":
         {
             "major": "0",

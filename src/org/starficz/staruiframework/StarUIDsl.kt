@@ -1,6 +1,7 @@
 package org.starficz.staruiframework
 
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.ButtonAPI.UICheckboxSize
 import org.lwjgl.input.Keyboard
@@ -100,6 +101,17 @@ fun UIPanelAPI.Image(
     builder: BoxedUIImage.() -> Unit = {}
 ): BoxedUIImage {
     return addImage(imageSpritePath, width, height).apply(builder)
+}
+
+fun UIPanelAPI.ShipDisplay(
+    width: Float,
+    height: Float,
+    fleetMember: FleetMemberAPI? = null,
+    style: BoxedUIShipPreview.Style = BoxedUIShipPreview.Style.NORMAL,
+    color: Color = Global.getSettings().getColor("textFriendColor"),
+    builder: BoxedUIShipPreview.() -> Unit = {}
+): BoxedUIShipPreview {
+    return addShipPreview(width, height, fleetMember, style, color).apply(builder)
 }
 
 fun UIPanelAPI.Button(

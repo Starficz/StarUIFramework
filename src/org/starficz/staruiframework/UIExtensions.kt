@@ -6,10 +6,16 @@ import com.fs.graphics.util.Fader
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
+import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.combat.ShipVariantAPI
+import com.fs.starfarer.api.fleet.FleetMemberAPI
+import com.fs.starfarer.api.fleet.FleetMemberStatusAPI
+import com.fs.starfarer.api.loading.FighterWingSpecAPI
 import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.ButtonAPI.UICheckboxSize
 import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
 import com.fs.starfarer.ui.impl.StandardTooltipV2Expandable
+import org.starficz.staruiframework.internal.ReflectionUtils
 import org.starficz.staruiframework.internal.ReflectionUtils.getMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 import org.starficz.staruiframework.internal.ReflectionUtils.set
@@ -257,8 +263,13 @@ fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
     return invoke("getChildrenNonCopy") as List<UIComponentAPI>
 }
 
-fun UIPanelAPI.findChildWithMethod(methodName: String): UIComponentAPI? {
-    return getChildrenCopy().find { it.getMethodsMatching(methodName).isNotEmpty() }
+fun UIPanelAPI.findChildWithMethod(
+    name: String? = null,
+    returnType: Class<*>? = null,
+    numOfParams: Int? = null,
+    parameterTypes: Array<Class<*>?>? = null
+): UIComponentAPI? {
+    return getChildrenCopy().find { it.getMethodsMatching(name, returnType, numOfParams, parameterTypes).isNotEmpty() }
 }
 
 fun UIPanelAPI.allChildsWithMethod(methodName: String): List<UIComponentAPI> {
@@ -308,8 +319,129 @@ class BoxedUIImage(val uiImage: UIComponentAPI): BoxedUIElement(uiImage), UIComp
     fun sizeToOriginalAspectRatioWithHeight(height: Float) { uiImage.invoke("autoSizeToHeight", height) }
 }
 
-class BoxedSliderBar(val uiBar: UIPanelAPI): BoxedUIElement(uiBar), UIPanelAPI by uiBar{
+class BoxedUISliderBar(val uiBar: UIPanelAPI): BoxedUIElement(uiBar), UIComponentAPI by uiBar {
+    var bonusColor = uiBar.invoke("getBonusColor") as Color
+        set(color) { uiBar.invoke("setBonusColor", color) }
 
+    var widgetColor = uiBar.invoke("getWidgetColor") as Color
+        set(color) { uiBar.invoke("setWidgetColor", color) }
+
+    var barColor = uiBar.invoke("getBarColor") as Color
+        set(color) { uiBar.invoke("setBarColor", color) }
+
+    var numSubivisions = uiBar.invoke("getNumSubivisions") as Int
+        set(amount) { uiBar.invoke("setNumSubivisions", amount) }
+
+    var roundingIncrement = uiBar.invoke("getRoundingIncrement") as Int
+        set(amount) { uiBar.invoke("setRoundingIncrement", amount) }
+
+    var rangeMax = uiBar.invoke("getRangeMax") as Float
+        set(amount) { uiBar.invoke("setRangeMax", amount) }
+
+    var rangeMin = uiBar.invoke("getRangeMin") as Float
+        set(amount) { uiBar.invoke("setRangeMin", amount) }
+
+    var bonusAmount = uiBar.invoke("getBonusAmount") as Float
+        set(amount) { uiBar.invoke("setBonusAmount", amount) }
+
+    var progress = uiBar.invoke("getProgress") as Float
+        set(amount) { uiBar.invoke("setProgress", amount) }
+
+    var showNotchOnIfBelowProgress = uiBar.invoke("getShowNotchOnIfBelowProgress") as Float
+        set(amount) { uiBar.invoke("setShowNotchOnIfBelowProgress", amount) }
+
+    val isShowNoText = uiBar.invoke("isShowNoText") as Boolean
+
+    val textLabel = BoxedUILabel(uiBar.invoke("getValue") as LabelAPI)
+}
+
+/**
+ * A Boxed representation of a vanilla UI Ship Preview. Generates ShipAPI's on use.
+ * For performance reasons, try and call cleanupShips when hidden.
+ */
+class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI): BoxedUIElement(uiShipPreview), UIComponentAPI by uiShipPreview {
+    internal companion object{
+        var SHIP_PREVIEW_CLASS: Class<*>? = null
+        var FLEETMEMBER_CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
+        var ENUM_CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
+        var ENUM_ARRAY: Array<*>? = null
+    }
+
+    enum class Style {
+        NONE,
+        NORMAL,
+        MINI
+    }
+
+    fun getShips(): Array<ShipAPI> {
+        uiShipPreview.invoke("prepareShip")
+        return uiShipPreview.invoke("getShips") as Array<ShipAPI>
+    }
+    fun cleanupShips(){ uiShipPreview.invoke("cleanup") }
+
+    var showFighters = uiShipPreview.invoke("isShowFighters") as Boolean
+        set(show) {uiShipPreview.invoke("setShowFighters", show) }
+
+    var showDestroyedFighters = uiShipPreview.invoke("isShowDestroyedFighters") as Boolean
+        set(show) {uiShipPreview.invoke("setShowDestroyedFighters", show) }
+
+    var highlightBrightness = uiShipPreview.invoke("getHighlightBrightness") as Float
+        set(brightness) {uiShipPreview.invoke("setHighlightBrightness", brightness) }
+
+    fun highlight(){ uiShipPreview.invoke("highlight") }
+    fun unhighlight(){ uiShipPreview.invoke("unhighlight") }
+    fun getHighlightFader(): Fader = uiShipPreview.invoke("getHighlight") as Fader
+
+    var borderColor = uiShipPreview.invoke("getBorderColor") as Color
+        set(show) {uiShipPreview.invoke("setBorderColor", show) }
+
+    fun setShowBorder(show: Boolean) { uiShipPreview.invoke("setShowBorder", show) }
+    fun setBorderNewStyle(newStyle: Boolean) { uiShipPreview.invoke("setShowNewBorder", newStyle) }
+
+    var variant = uiShipPreview.invoke("getVariant") as ShipVariantAPI?
+        set(variant) { uiShipPreview.invoke("setVariant", variant) }
+
+    fun setVariant(variant: ShipVariantAPI, title: String? = null, subtitle: String? = null) {
+        uiShipPreview.invoke("setVariant", variant, title, subtitle)
+    }
+    fun updateWithStatus(fleetMember: FleetMemberAPI, fleetStatus: FleetMemberStatusAPI) {
+        uiShipPreview.invoke("updateWithStatus", fleetMember, fleetStatus)
+    }
+    fun setWingSpec(fighterWingSpec: FighterWingSpecAPI) { uiShipPreview.invoke("setWingSpec", fighterWingSpec) }
+
+    fun setScaleDownSmallerShipsMagnitude(mag: Float) {
+        uiShipPreview.invoke("setScaleDownSmallerShipsMagnitude", mag)
+    }
+    fun adjustOverlay(scanlineAlpha: Float, tintAlpha: Float){
+        uiShipPreview.invoke("adjustOverlay", scanlineAlpha, tintAlpha)
+    }
+    fun makeLookDisabled(){ uiShipPreview.invoke("makeLookDisabled") }
+
+    fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
+    fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
+}
+
+fun UIPanelAPI.addShipPreview(
+    width: Float, height: Float,
+    fleetMember: FleetMemberAPI? = null,
+    style: BoxedUIShipPreview.Style = BoxedUIShipPreview.Style.NORMAL,
+    color: Color = Global.getSettings().getColor("textFriendColor")
+): BoxedUIShipPreview {
+    val enum = BoxedUIShipPreview.ENUM_ARRAY!!.find { it!!.invoke("name") == style.name }
+    val shipPreview = if(fleetMember != null) {
+        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR!!.newInstance(fleetMember)
+    } else{
+        BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.newInstance(enum, color)
+    } as UIPanelAPI
+    val boxedUIShipPreview = BoxedUIShipPreview(shipPreview)
+
+    shipPreview.setSize(width, height)
+    boxedUIShipPreview.setBorderNewStyle(true)
+    boxedUIShipPreview.setShowBorder(false)
+    boxedUIShipPreview.adjustOverlay(0f, 0f)
+    this.addComponent(shipPreview)
+
+    return boxedUIShipPreview
 }
 
 fun UIPanelAPI.addPara(text: String, font: Font? = null, color: Color? = null,

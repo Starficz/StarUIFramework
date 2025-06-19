@@ -13,6 +13,6 @@ internal class ModPlugin : BaseModPlugin() {
 
     // for testing only
     override fun onApplicationLoad() {
-        //StarUIManager.registerPlugin(ExampleUIPlugin.ExampleStarUIPlugin())
+        StarUIManager.registerPlugin(ExampleUIPlugin.ExampleStarUIPlugin())
     }
 }

@@ -1,6 +1,7 @@
 package org.starficz.staruisamples
 
 import com.fs.starfarer.api.BaseModPlugin
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -37,7 +38,7 @@ class ExampleUIPlugin : BaseModPlugin() {
                     GL11.glRectf(left, bottom, right, top)
                 }
             }
-            Text("This area is the 'addPanelToCampaignUI' injection point.", Font.INSIGNIA_25){
+            Text("This area is the 'addPanelToCampaignUI' injection point.", Font.INSIGNIA_25) {
                 anchorInTopLeftOfParent(5f,5f)
             }
         }
@@ -64,6 +65,13 @@ class ExampleUIPlugin : BaseModPlugin() {
             Text("This area is the 'addPanelToCharacterTab' injection point.", Font.INSIGNIA_25){
                 anchorInTopLeftOfParent(5f,5f)
             }
+            // StarUIFramework exposes vanilla Ship Displays! Use "this." to let intellj help you see what's exposed.
+            // These are used everywhere in vanilla whenever a ship is shown while not in the direct combat layer.
+            // ie: refit, codex, production, tips, even in combat warroom!
+            ShipDisplay(200f, 200f, Global.getSector().playerFleet.flagship) {
+                anchorBelowPreviousMatchingLeft()
+                // this. <- type this for intellisense!
+            }
 
             // DSL functions are implicitly this.Button(), ect, adding a button to "this"
             Button(200f, 50f, "Right Middle Button", Misc.getBasePlayerColor(), Misc.getDarkPlayerColor()){
@@ -84,22 +92,26 @@ class ExampleUIPlugin : BaseModPlugin() {
             }
 
             // a vertical stack layout where elements are anchored in the center, first element is at the top and grows downwards
-            VerticalStackLayout(5f, 5f, 5f, Alignment.TMID) { stackPlugin ->
+            VerticalStackLayout(5f, 5f, 5f, Alignment.TMID) { stackLayoutPlugin ->
                 // A stack layout itself is a CustomPanel, and thus it has its own StarUIPanelPlugin
                 // render a blue background
-                stackPlugin.renderBelow { alphaMult ->
+                stackLayoutPlugin.renderBelow { alphaMult ->
                     glColor(Color.blue, alphaMult*0.3f, false)
                     GL11.glRectf(left, bottom, right, top)
                 }
                 // consume events so things under it don't get clicked
-                stackPlugin.consumeEvents = true
+                stackLayoutPlugin.consumeEvents = true
 
                 // anchor to the Right Middle button, "anchorXPreviousMatchingX()" functions refer to the previously added component (in this case the button)
                 anchorBelowPreviousMatchingRight()
 
                 Text("First Element of VerticalStackLayout")
                 // second element of VerticalStackLayout
-                Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                // This is a BoxedUIImage! as opposed to vanilla UI Images many more fields are exposed like border, sprite, ect
+                // as mentioned above, use "this." to let intellj help you see what's exposed.
+                Image(100f, 100f, "graphics/ships/eagle/eagle_base.png"){
+                    // this. <- type this for intellisense!
+                }
                 AreaCheckbox(300f, 50f, "Third Element of VerticalStackLayout", Misc.getBasePlayerColor(), Misc.getDarkPlayerColor(), Misc.getBrightPlayerColor())
             }
         }
