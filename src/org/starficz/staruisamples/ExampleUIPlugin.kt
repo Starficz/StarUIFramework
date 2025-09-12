@@ -3,8 +3,8 @@ package org.starficz.staruisamples
 import com.fs.starfarer.api.BaseModPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
+import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.opengl.ColorUtils.glColor
 import org.lwjgl.opengl.GL11
@@ -19,32 +19,36 @@ class ExampleUIPlugin : BaseModPlugin() {
 
     // example StarUIPlugin with a simple opengl rectangle and text component
     class ExampleStarUIPlugin: StarUIPlugin {
-        override val addPanelToTitleScreen: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            with(plugin){
+        override val addPanelToTitleScreen: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
                     GL11.glRectf(left, bottom, right, top)
                 }
             }
-            Text("This area is the 'addPanelToTitleScreen' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToTitleScreen' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToCampaignUI: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            with(plugin){
+        override val addPanelToCampaignUI: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.blue, alphaMult*0.3f, false)
                     GL11.glRectf(left, bottom, right, top)
                 }
             }
-            Text("This area is the 'addPanelToCampaignUI' injection point.", Font.INSIGNIA_25) {
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToCampaignUI' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToCharacterTab: (UIPanelAPI.(StarUIPanelPlugin) -> Unit) = { plugin ->
-            with(plugin){
+        override val addPanelToCharacterTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
                     GL11.glRectf(left, bottom, right, top)
@@ -62,21 +66,58 @@ class ExampleUIPlugin : BaseModPlugin() {
                 */
             }
             // "this" is a CustomPanelAPI, so you can add any UI element as needed
-            Text("This area is the 'addPanelToCharacterTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToCharacterTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
+
+            ScrollPanel(
+                width = 300f, height = 150f,
+                anchor = Anchor.below.previousComponent.matchingLeftEdge(5f)
+            ) {
+                VerticalStackLayout(
+                    anchor = Anchor.inside.topLeft.ofParent(),
+                    xMargin = 5f, yMargin = 5f, spacing = 5f,
+                    alignment = Alignment.TMID
+                ) {
+                    // A stack layout itself is a CustomPanel, and thus you can put a StarUIPanelPlugin in it as well
+                    // render a yellow background
+                    Plugin {
+                        renderBelow { alphaMult ->
+                            glColor(Color.yellow, alphaMult*0.3f, false)
+                            GL11.glRectf(left, bottom, right, top)
+                        }
+                        // consume events so things under it don't get clicked
+                        consumeEvents = true
+                    }
+
+                    Text("This is a scroll panel.", Font.INSIGNIA_25)
+                    Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                    Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                }
+
+                setContentSize(width, contentContainer.lastComponent!!.height)
             }
+
             // StarUIFramework exposes vanilla Ship Displays! Use "this." to let intellj help you see what's exposed.
             // These are used everywhere in vanilla whenever a ship is shown while not in the direct combat layer.
             // ie: refit, codex, production, tips, even in combat warroom!
-            ShipDisplay(200f, 200f, Global.getSector().playerFleet.flagship) {
-                anchorBelowPreviousMatchingLeft()
+            ShipDisplay(
+                width = 200f, height = 200f,
+                anchor = Anchor.below.previousComponent.matchingLeftEdge(),
+                fleetMember = Global.getSector().playerFleet.flagship
+            ) {
                 // this. <- type this for intellisense!
             }
 
-            // DSL functions are implicitly this.Button(), ect, adding a button to "this"
-            Button(200f, 50f, "Right Middle Button", Misc.getBasePlayerColor(), Misc.getDarkPlayerColor()){
-                anchorInRightMiddleOfParent(5f)
-
+            Button(
+                width = 200f, height = 50f,
+                anchor = Anchor.inside.centerRight.ofParent(5f),
+                text = "Right Middle Button",
+                baseColor = Misc.getBasePlayerColor(),
+                bgColor = Misc.getDarkPlayerColor()
+            ) {
                 // add an onClick to the button
                 onClick {
                     // "this" being the ButtonAPI
@@ -92,18 +133,26 @@ class ExampleUIPlugin : BaseModPlugin() {
             }
 
             // a vertical stack layout where elements are anchored in the center, first element is at the top and grows downwards
-            VerticalStackLayout(5f, 5f, 5f, Alignment.TMID) { stackLayoutPlugin ->
+            VerticalStackLayout(
+                anchor = Anchor.below.previousComponent.matchingRightEdge(),
+                xMargin = 5f, yMargin = 5f, spacing = 5f,
+                alignment = Alignment.TMID
+            ) {
+                // anchor to the Right Middle button, "anchorXPreviousMatchingX()" functions refer to the previously added component (in this case the button)
+
+
                 // A stack layout itself is a CustomPanel, and thus it has its own StarUIPanelPlugin
                 // render a blue background
-                stackLayoutPlugin.renderBelow { alphaMult ->
-                    glColor(Color.blue, alphaMult*0.3f, false)
-                    GL11.glRectf(left, bottom, right, top)
+                Plugin {
+                    renderBelow { alphaMult ->
+                        glColor(Color.blue, alphaMult*0.3f, false)
+                        GL11.glRectf(left, bottom, right, top)
+                    }
+                    // consume events so things under it don't get clicked
+                    consumeEvents = true
                 }
-                // consume events so things under it don't get clicked
-                stackLayoutPlugin.consumeEvents = true
 
-                // anchor to the Right Middle button, "anchorXPreviousMatchingX()" functions refer to the previously added component (in this case the button)
-                anchorBelowPreviousMatchingRight()
+
 
                 Text("First Element of VerticalStackLayout")
                 // second element of VerticalStackLayout
@@ -113,87 +162,138 @@ class ExampleUIPlugin : BaseModPlugin() {
                     // this. <- type this for intellisense!
                 }
                 AreaCheckbox(300f, 50f, "Third Element of VerticalStackLayout", Misc.getBasePlayerColor(), Misc.getDarkPlayerColor(), Misc.getBrightPlayerColor())
+
+                HorizontalStackLayout(5f, 5f, 5f, Alignment.LMID) {
+                    // A stack layout itself is a CustomPanel, and thus it has its own StarUIPanelPlugin
+                    // render a magenta background
+                    Plugin {
+                        renderBelow { alphaMult ->
+                            glColor(Color.magenta, alphaMult*0.3f, false)
+                            GL11.glRectf(left, bottom, right, top)
+                        }
+                        // consume events so things under it don't get clicked
+                        consumeEvents = true
+                    }
+
+                    applyAnchor(Anchor.below.previousComponent.matchingRightEdge())
+
+                    Text("First Element of HorizontalStackLayout")
+                    Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                    Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                }
             }
         }
 
-        override val addPanelToFleetTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToFleetTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToFleetTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToFleetTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToRefitTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToRefitTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToRefitTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToRefitTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToCargoTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToCargoTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToCargoTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToCargoTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToMapTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToMapTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToMapTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToMapTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToIntelTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToIntelTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToIntelTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToIntelTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToOutpostsTab: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToOutpostsTab: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToOutpostsTab' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToOutpostsTab' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelAboveCombatShipInfo: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.red, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelAboveCombatShipInfo: (CustomPanelAPI.() -> Unit)  = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelAboveCombatShipInfo' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelAboveCombatShipInfo' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
 
-        override val addPanelToCombatWarroom: (UIPanelAPI.(plugin: StarUIPanelPlugin) -> Unit) = { plugin ->
-            plugin.renderBelow { alphaMult ->
-                glColor(Color.blue, alphaMult*0.3f, false)
-                GL11.glRectf(left, bottom, right, top)
+        override val addPanelToCombatWarroom: (CustomPanelAPI.() -> Unit) = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.red, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
             }
-            Text("This area is the 'addPanelToCombatWarroom' injection point.", Font.INSIGNIA_25){
-                anchorInTopLeftOfParent(5f,5f)
-            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToCombatWarroom' injection point.",
+                font = Font.INSIGNIA_25
+            )
         }
     }
 }

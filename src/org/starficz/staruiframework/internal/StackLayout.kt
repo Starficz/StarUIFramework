@@ -41,12 +41,12 @@ internal object VerticalStrategy : LayoutStrategy {
     override fun anchorFirst(component: UIComponentAPI, alignment: Alignment, primaryMargin: Float, secondaryMargin: Float): Float {
         // primaryMargin = yMargin, secondaryMargin = xMargin for Vertical
         return when (alignment) {
-            Alignment.TL -> { component.anchorInTopLeftOfParent(secondaryMargin, primaryMargin); component.top }
-            Alignment.TMID -> { component.anchorInTopMiddleOfParent(primaryMargin); component.top }
-            Alignment.TR -> { component.anchorInTopRightOfParent(secondaryMargin, primaryMargin); component.top }
-            Alignment.BL -> { component.anchorInBottomLeftOfParent(secondaryMargin, primaryMargin); component.bottom }
-            Alignment.BMID -> { component.anchorInBottomMiddleOfParent(primaryMargin); component.bottom }
-            Alignment.BR -> { component.anchorInBottomRightOfParent(secondaryMargin, primaryMargin); component.bottom }
+            Alignment.TL -> { component.position.inTL(secondaryMargin, primaryMargin); component.top }
+            Alignment.TMID -> { component.position.inTMid(primaryMargin); component.top }
+            Alignment.TR -> { component.position.inTR(secondaryMargin, primaryMargin); component.top }
+            Alignment.BL -> { component.position.inBL(secondaryMargin, primaryMargin); component.bottom }
+            Alignment.BMID -> { component.position.inBMid(primaryMargin); component.bottom }
+            Alignment.BR -> { component.position.inBR(secondaryMargin, primaryMargin); component.bottom }
             else -> throw IllegalArgumentException("Alignment $alignment not valid for Vertical Stack layout.")
         }
     }
@@ -84,12 +84,12 @@ internal object HorizontalStrategy : LayoutStrategy {
     override fun anchorFirst(component: UIComponentAPI, alignment: Alignment, primaryMargin: Float, secondaryMargin: Float): Float {
         // primaryMargin = xMargin, secondaryMargin = yMargin for Horizontal
         return when (alignment) {
-            Alignment.TL -> { component.anchorInTopLeftOfParent(primaryMargin, secondaryMargin); component.left }
-            Alignment.LMID -> { component.anchorInLeftMiddleOfParent(primaryMargin); component.left }
-            Alignment.BL -> { component.anchorInBottomLeftOfParent(primaryMargin, secondaryMargin); component.left }
-            Alignment.TR -> { component.anchorInTopRightOfParent(primaryMargin, secondaryMargin); component.right }
-            Alignment.RMID -> { component.anchorInRightMiddleOfParent(primaryMargin); component.right }
-            Alignment.BR -> { component.anchorInBottomRightOfParent(primaryMargin, secondaryMargin); component.right }
+            Alignment.TL -> { component.position.inTL(primaryMargin, secondaryMargin); component.left }
+            Alignment.LMID -> { component.position.inLMid(primaryMargin); component.left }
+            Alignment.BL -> { component.position.inBL(primaryMargin, secondaryMargin); component.left }
+            Alignment.TR -> { component.position.inTR(primaryMargin, secondaryMargin); component.right }
+            Alignment.RMID -> { component.position.inRMid(primaryMargin); component.right }
+            Alignment.BR -> { component.position.inBR(primaryMargin, secondaryMargin); component.right }
             else -> throw IllegalArgumentException("Alignment $alignment not valid for Horizontal Stack layout.")
         }
     }
@@ -122,15 +122,16 @@ internal object HorizontalStrategy : LayoutStrategy {
 
 internal fun UIPanelAPI.StackLayout(
     strategy: LayoutStrategy,
+    anchor: Anchor.AnchorData,
     alignment: Alignment,
     primaryMargin: Float = 0f,
     secondaryMargin: Float = 0f,
     spacing: Float = 0f,
-    builder: CustomPanelAPI.(plugin: StarUIPanelPlugin) -> Unit = {}
+    builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
     // Create the container panel
-    return CustomPanel(this.width, this.height) { plugin ->
-        builder(plugin)
+    return CustomPanel(this.width, this.height, anchor) {
+        builder()
 
         var previousElement: UIComponentAPI? = null
         var maxSecondaryDimension = 0f
