@@ -136,7 +136,6 @@ internal fun UIPanelAPI.StackLayout(
         var previousElement: UIComponentAPI? = null
         var maxSecondaryDimension = 0f
         var startingCoord = 0f
-        val children = getChildrenCopy()
 
         // Core layout loop
         children.forEachIndexed { index, component ->

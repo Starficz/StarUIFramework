@@ -1,6 +1,7 @@
 package org.starficz.staruiframework
 
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.SettingsAPI
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.*
@@ -15,7 +16,7 @@ import java.awt.Color
 fun UIPanelAPI.CustomPanel(
     width: Float,
     height: Float,
-    anchor: AnchorData,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
     val panel = Global.getSettings().createCustom(width, height, null)
@@ -35,13 +36,13 @@ fun CustomPanelAPI.Plugin(builder: StarUIPanelPlugin.() -> Unit): CustomUIPanelP
 fun UIPanelAPI.ScrollPanel(
     width: Float,
     height: Float,
-    anchor: AnchorData,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: BoxedScrollPanel.() -> Unit = {}
 ): BoxedScrollPanel {
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, true)
     tempPanel.addUIElement(tempTMAPI) // make and add a temp TMAPI to a custom panel to make a scroll panel
-    val scrollPanel = tempPanel.getChildrenCopy()[0] as ScrollPanelAPI // hijack the scroll panel
+    val scrollPanel = tempPanel.children[0] as ScrollPanelAPI // hijack the scroll panel
     scrollPanel.removeComponent(tempTMAPI) // remove the temp TMAPI we just added to it
     val boxedScrollPanel = BoxedScrollPanel(scrollPanel) // box and use the scroll panel as needed
     boxedScrollPanel.setSize(width, height)
@@ -52,22 +53,22 @@ fun UIPanelAPI.ScrollPanel(
 }
 
 fun UIPanelAPI.VerticalStackLayout(
-    anchor: AnchorData,
     xMargin: Float = 0f,
     yMargin: Float = 0f,
     spacing: Float = 0f,
     alignment: Alignment = Alignment.TMID,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
     return this.StackLayout(VerticalStrategy, anchor, alignment, yMargin, xMargin, spacing, builder)
 }
 
 fun UIPanelAPI.HorizontalStackLayout(
-    anchor: AnchorData,
     xMargin: Float = 0f,
     yMargin: Float = 0f,
     spacing: Float = 0f,
     alignment: Alignment = Alignment.LMID,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
     return this.StackLayout(HorizontalStrategy, anchor, alignment, xMargin, yMargin, spacing, builder)
@@ -76,8 +77,8 @@ fun UIPanelAPI.HorizontalStackLayout(
 fun CustomPanelAPI.TooltipMakerPanel(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     withScroller: Boolean = false,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: TooltipMakerAPI.() -> Unit = {}
 ): TooltipMakerAPI {
     val tooltipMakerPanel = createUIElement(width, height, withScroller)
@@ -98,12 +99,13 @@ fun UIComponentAPI.Tooltip(
 }
 
 fun UIPanelAPI.Text(
-    anchor: AnchorData,
     text: String,
     font: Font? = null,
     color: Color? = null,
     highlightedText: Collection<Pair<String, Color>>? = null,
-    widthOverride: Float? = null, xPad: Float = 0f, yPad: Float = 0f,
+    widthOverride: Float? = null,
+    xPad: Float = 0f, yPad: Float = 0f,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: BoxedUILabel.() -> Unit = {}
 ): BoxedUILabel {
     return this.addPara(text, font, color, highlightedText, widthOverride, xPad, yPad).apply {
@@ -114,11 +116,11 @@ fun UIPanelAPI.Text(
 
 fun UIPanelAPI.LabelledValue(
     width: Float,
-    anchor: AnchorData,
     label: String,
     value: String,
-    labelColor: Color,
-    valueColor: Color,
+    labelColor: Color = Global.getSettings().basePlayerColor,
+    valueColor: Color = Global.getSettings().basePlayerColor,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: UIComponentAPI.() -> Unit = {}
 ): UIComponentAPI {
     return this.addLabelledValue(label, value, labelColor, valueColor, width).apply {
@@ -130,8 +132,8 @@ fun UIPanelAPI.LabelledValue(
 fun UIPanelAPI.TextField(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     font: Font,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: TextFieldAPI.() -> Unit = {}
 ): TextFieldAPI {
     return this.addTextField(width, height, font).apply {
@@ -143,8 +145,8 @@ fun UIPanelAPI.TextField(
 fun UIPanelAPI.Image(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     imageSpritePath: String,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: BoxedUIImage.() -> Unit = {}
 ): BoxedUIImage {
     return addImage(imageSpritePath, width, height).apply {
@@ -156,10 +158,10 @@ fun UIPanelAPI.Image(
 fun UIPanelAPI.ShipDisplay(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     fleetMember: FleetMemberAPI? = null,
     style: BoxedUIShipPreview.Style = BoxedUIShipPreview.Style.NORMAL,
     color: Color = Global.getSettings().getColor("textFriendColor"),
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: BoxedUIShipPreview.() -> Unit = {}
 ): BoxedUIShipPreview {
     return addShipPreview(width, height, fleetMember, style, color).apply {
@@ -171,14 +173,14 @@ fun UIPanelAPI.ShipDisplay(
 fun UIPanelAPI.Button(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     text: String,
-    baseColor: Color,
-    bgColor: Color,
+    baseColor: Color = Global.getSettings().basePlayerColor,
+    bgColor: Color = Global.getSettings().darkPlayerColor,
     font: Font? = null,
     shortcut: Int? = null,
     align: Alignment = Alignment.MID,
     style: CutStyle = CutStyle.TL_BR,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: ButtonAPI.() -> Unit = {}
 ): ButtonAPI {
     return this.addButton(text, null, baseColor, bgColor, align, style, width, height, font, shortcut).apply {
@@ -190,15 +192,15 @@ fun UIPanelAPI.Button(
 fun UIPanelAPI.AreaCheckbox(
     width: Float,
     height: Float,
-    anchor: AnchorData,
     text: String,
-    baseColor: Color,
-    bgColor: Color,
-    brightColor: Color,
+    baseColor: Color = Global.getSettings().basePlayerColor,
+    bgColor: Color = Global.getSettings().darkPlayerColor,
+    brightColor: Color = Global.getSettings().brightPlayerColor,
     font: Font? = null,
     leftAlign: Boolean = false,
     flag: Flag? = null,
     buttonGroup: ButtonGroup? = null,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: ButtonAPI.() -> Unit = {}
 ): ButtonAPI {
     val validGroup = (buttonGroup != null && flag != null)
@@ -217,19 +219,16 @@ fun UIPanelAPI.AreaCheckbox(
 fun UIPanelAPI.Checkbox(
     width: Float,
     height: Float,
-    anchor: AnchorData,
-    text: String,
-    color: Color,
-    font: Font = Font.INSIGNIA_15,
     size: UICheckboxSize? = UICheckboxSize.SMALL,
     flag: Flag? = null,
     buttonGroup: ButtonGroup? = null,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: ButtonAPI.() -> Unit = {}
 ): ButtonAPI {
     val validGroup = (buttonGroup != null && flag != null)
 
-    val button = this.addCheckbox(width, height, text, null, font, color, size,
-        if (!validGroup) flag else null).apply {
+    val button = this.addCheckbox(width, height, size = size,
+        flag = if (!validGroup) flag else null).apply {
         applyAnchor(anchor)
         apply(builder)
     }

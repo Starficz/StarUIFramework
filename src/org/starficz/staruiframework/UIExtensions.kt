@@ -152,7 +152,7 @@ fun UIComponentAPI.applyAnchor(anchor: AnchorData){
     val anchorPosition = when(anchor.reference){
         is AnchorReference.Parent -> null
         is AnchorReference.Previous -> {
-            parent?.getChildrenCopy()?.dropLast(1)?.lastOrNull()?.position
+            parent?.children?.dropLast(1)?.lastOrNull()?.position
                 ?: throw Error("Previous Component does not exist!")
         }
         is AnchorReference.Sibling -> anchor.reference.component.position
@@ -164,7 +164,7 @@ fun UIComponentAPI.applyAnchor(anchor: AnchorData){
 }
 
 val UIPanelAPI.lastComponent
-    get() = getChildrenCopy().lastOrNull()
+    get() = children.lastOrNull()
 
 
 fun UIComponentAPI.addTooltip(
@@ -207,17 +207,19 @@ fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
     return invoke("getChildrenNonCopy") as List<UIComponentAPI>
 }
 
+val UIPanelAPI.children get() = this.getChildrenCopy()
+
 fun UIPanelAPI.findChildWithMethod(
     name: String? = null,
     returnType: Class<*>? = null,
     numOfParams: Int? = null,
     parameterTypes: Array<Class<*>?>? = null
 ): UIComponentAPI? {
-    return getChildrenCopy().find { it.getMethodsMatching(name, returnType, numOfParams, parameterTypes).isNotEmpty() }
+    return children.find { it.getMethodsMatching(name, returnType, numOfParams, parameterTypes).isNotEmpty() }
 }
 
-fun UIPanelAPI.allChildsWithMethod(methodName: String): List<UIComponentAPI> {
-    return getChildrenCopy().filter { it.getMethodsMatching(methodName).isNotEmpty() }
+fun UIPanelAPI.allChildrenWithMethod(methodName: String): List<UIComponentAPI> {
+    return children.filter { it.getMethodsMatching(methodName).isNotEmpty() }
 }
 
 fun UIPanelAPI.clearChildren() {
@@ -467,8 +469,8 @@ fun UIPanelAPI.addImage(imageSpritePath: String, width: Float, height: Float): B
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
     tempTMAPI.addImage(imageSpritePath, width, height, 0f)
-    val tempTMAPIsUIPanel = tempTMAPI.getChildrenCopy()[0] as UIPanelAPI
-    val image = tempTMAPIsUIPanel.getChildrenCopy()[0]
+    val tempTMAPIsUIPanel = tempTMAPI.children[0] as UIPanelAPI
+    val image = tempTMAPIsUIPanel.children[0]
 
     this.addComponent(image)
     return BoxedUIImage(image)
@@ -537,8 +539,9 @@ fun UIPanelAPI.addAreaCheckbox(
     return button
 }
 
-fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String, data: Any?, font: Font = Font.INSIGNIA_15,
-                                    color: Color, size: UICheckboxSize? = UICheckboxSize.SMALL, flag: Flag? = null): ButtonAPI {
+fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, data: Any? = null,
+                           font: Font = Font.INSIGNIA_15, color: Color = Global.getSettings().basePlayerColor,
+                           size: UICheckboxSize? = UICheckboxSize.SMALL, flag: Flag? = null): ButtonAPI {
     // make a button in a temp panel/element
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)

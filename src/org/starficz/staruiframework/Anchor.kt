@@ -261,5 +261,7 @@ sealed interface Anchor {
             override val bottomRight: MyTargetSelector
                 get() = MyTargetSelectorImpl(1.0f, 0.0f)
         }
+
+        val None = AnchorData(AnchorReference.Parent, 0f,0f,0f,0f)
     }
 }

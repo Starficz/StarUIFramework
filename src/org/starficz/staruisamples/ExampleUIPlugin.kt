@@ -5,7 +5,6 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
-import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.opengl.ColorUtils.glColor
 import org.lwjgl.opengl.GL11
 import org.starficz.staruiframework.*
@@ -73,8 +72,8 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
 
             ScrollPanel(
-                width = 300f, height = 150f,
-                anchor = Anchor.below.previousComponent.matchingLeftEdge(5f)
+                anchor = Anchor.below.previousComponent.matchingLeftEdge(5f),
+                width = 300f, height = 150f
             ) {
                 VerticalStackLayout(
                     anchor = Anchor.inside.topLeft.ofParent(),
@@ -97,26 +96,24 @@ class ExampleUIPlugin : BaseModPlugin() {
                     Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
                 }
 
-                setContentSize(width, contentContainer.lastComponent!!.height)
+                setContentSize(width, contentContainer.children.last().height)
             }
 
             // StarUIFramework exposes vanilla Ship Displays! Use "this." to let intellj help you see what's exposed.
             // These are used everywhere in vanilla whenever a ship is shown while not in the direct combat layer.
             // ie: refit, codex, production, tips, even in combat warroom!
             ShipDisplay(
-                width = 200f, height = 200f,
                 anchor = Anchor.below.previousComponent.matchingLeftEdge(),
+                width = 200f, height = 200f,
                 fleetMember = Global.getSector().playerFleet.flagship
             ) {
                 // this. <- type this for intellisense!
             }
 
             Button(
-                width = 200f, height = 50f,
                 anchor = Anchor.inside.centerRight.ofParent(5f),
-                text = "Right Middle Button",
-                baseColor = Misc.getBasePlayerColor(),
-                bgColor = Misc.getDarkPlayerColor()
+                width = 200f, height = 50f,
+                text = "Right Middle Button"
             ) {
                 // add an onClick to the button
                 onClick {
@@ -140,7 +137,6 @@ class ExampleUIPlugin : BaseModPlugin() {
             ) {
                 // anchor to the Right Middle button, "anchorXPreviousMatchingX()" functions refer to the previously added component (in this case the button)
 
-
                 // A stack layout itself is a CustomPanel, and thus it has its own StarUIPanelPlugin
                 // render a blue background
                 Plugin {
@@ -153,15 +149,14 @@ class ExampleUIPlugin : BaseModPlugin() {
                 }
 
 
-
                 Text("First Element of VerticalStackLayout")
                 // second element of VerticalStackLayout
                 // This is a BoxedUIImage! as opposed to vanilla UI Images many more fields are exposed like border, sprite, ect
                 // as mentioned above, use "this." to let intellj help you see what's exposed.
-                Image(100f, 100f, "graphics/ships/eagle/eagle_base.png"){
+                Image(100f, 100f, "graphics/ships/eagle/eagle_base.png") {
                     // this. <- type this for intellisense!
                 }
-                AreaCheckbox(300f, 50f, "Third Element of VerticalStackLayout", Misc.getBasePlayerColor(), Misc.getDarkPlayerColor(), Misc.getBrightPlayerColor())
+                AreaCheckbox(300f, 50f, "Third Element of VerticalStackLayout")
 
                 HorizontalStackLayout(5f, 5f, 5f, Alignment.LMID) {
                     // A stack layout itself is a CustomPanel, and thus it has its own StarUIPanelPlugin
@@ -180,7 +175,15 @@ class ExampleUIPlugin : BaseModPlugin() {
                     Text("First Element of HorizontalStackLayout")
                     Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
                     Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                    Checkbox(30f, 30f) {
+                        Tooltip(200f, TooltipMakerAPI.TooltipLocation.ABOVE){
+                            addPara("This is a Checkbox!", 0f)
+                        }
+                    }
                 }
+
+                LabelledValue(100f, "test", "hello")
+                TextField(100f, 30f, Font.INSIGNIA_16)
             }
         }
 

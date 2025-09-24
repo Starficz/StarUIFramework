@@ -47,7 +47,7 @@ object StarUIManager {
     }
 
     private fun hasFrameworkPanel(panel: UIPanelAPI): Boolean {
-        return panel.getChildrenCopy().any {
+        return panel.children.any {
             it is CustomPanelAPI &&
             it.plugin is StarUIPanelPlugin &&
             (it.plugin as StarUIPanelPlugin).customData == "StarUIFrameworkPanel"
