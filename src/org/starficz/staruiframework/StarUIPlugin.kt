@@ -37,6 +37,9 @@ interface StarUIPlugin {
     val addPanelBelowCombatShipInfo: (CustomPanelAPI.() -> Unit)?
         get() = null
 
+    val addPanelToCombatScreen: (CustomPanelAPI.() -> Unit)?
+        get() = null
+
     val addPanelToCombatWarroom: (CustomPanelAPI.() -> Unit)?
         get() = null
 }

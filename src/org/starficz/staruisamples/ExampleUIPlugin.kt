@@ -30,6 +30,44 @@ class ExampleUIPlugin : BaseModPlugin() {
                 text = "This area is the 'addPanelToTitleScreen' injection point.",
                 font = Font.INSIGNIA_25
             )
+
+            VerticalStackLayout(
+                anchor = Anchor.inside.centerLeft.ofParent(),
+                xMargin = 5f, yMargin = 5f, spacing = 5f,
+                alignment = Alignment.TMID
+            ) {
+                // A stack layout itself is a CustomPanel, and thus you can put a StarUIPanelPlugin in it as well
+                // render a yellow background
+                Plugin {
+                    renderBelow { alphaMult ->
+                        glColor(Color.yellow, alphaMult*0.3f, false)
+                        GL11.glRectf(left, bottom, right, top)
+                    }
+                    // consume events so things under it don't get clicked
+                    consumeEvents = true
+                }
+
+                Text("This is a stack layout panel.", Font.INSIGNIA_25)
+                Image(100f, 100f, "graphics/ships/eagle/eagle_base.png")
+                Button(
+                    width = 200f, height = 50f,
+                    text = "Im A Button!"
+                ) {
+                    // add an onClick to the button
+                    onClick {
+                        // "this" being the ButtonAPI
+                        this.text = "Button Clicked!"
+                    }
+
+                    // making a tooltip we have to use normal Starsector TooltipMakerAPI methods.
+                    // you could also use DSL, within VerticalStackLayout as the main element of the Tooltip is wanted,
+                    // but in that case you need to set the heightSoFar to be the height of the VerticalStackLayout.
+                    Tooltip(300f, TooltipMakerAPI.TooltipLocation.RIGHT) {
+                        addPara("This is a tooltip for the Button!", 0f)
+                    }
+                }
+            }
+
         }
 
         override val addPanelToCampaignUI: (CustomPanelAPI.() -> Unit) = {
@@ -281,6 +319,20 @@ class ExampleUIPlugin : BaseModPlugin() {
             Text(
                 anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
                 text = "This area is the 'addPanelAboveCombatShipInfo' injection point.",
+                font = Font.INSIGNIA_25
+            )
+        }
+
+        override val addPanelToCombatScreen: (CustomPanelAPI.() -> Unit)  = {
+            Plugin {
+                renderBelow { alphaMult ->
+                    glColor(Color.pink, alphaMult*0.3f, false)
+                    GL11.glRectf(left, bottom, right, top)
+                }
+            }
+            Text(
+                anchor = Anchor.inside.topLeft.ofParent(5f, 5f),
+                text = "This area is the 'addPanelToCombatScreen' injection point.",
                 font = Font.INSIGNIA_25
             )
         }

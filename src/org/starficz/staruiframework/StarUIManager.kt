@@ -7,13 +7,10 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
-import com.fs.starfarer.combat.entities.Ship
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
-import org.starficz.staruiframework.internal.ReflectionUtils.get
 import org.starficz.staruiframework.internal.ReflectionUtils.getConstructorsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
-import org.starficz.staruiframework.internal.ReflectionUtils.getMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 
 object StarUIManager {
@@ -32,6 +29,9 @@ object StarUIManager {
         get() = coreUI?.invoke("getCurrentTab") as UIPanelAPI?
 
     var combatShipInfo: UIPanelAPI? = null
+        internal set
+
+    var combatWidgetPanel: UIPanelAPI? = null
         internal set
 
     var combatWarroom: UIPanelAPI? = null
@@ -77,6 +77,9 @@ object StarUIManager {
             coreUI = null
             combatShipInfo = state.invoke("getShipInfo") as UIPanelAPI? ?: return
             injectShipInfoPanelsIntoCombatIfNeeded(combatShipInfo!!)
+
+            combatWidgetPanel = state.invoke("getWidgetPanel") as UIPanelAPI? ?: return
+            injectWidgetPanelsIntoCombatIfNeeded(combatWidgetPanel!!)
 
             combatWarroom = state.getFieldsWithMethodsMatching("getMapDisplay").firstOrNull()!!.get(state) as UIPanelAPI? ?: return
             injectWarroomPanelsIntoCombatIfNeeded(combatWarroom!!)
@@ -167,6 +170,23 @@ object StarUIManager {
                 }
             }
             shipInfoPanel.sendToBottom(belowPanel)
+        }
+    }
+
+    // warning! this will display over everything!
+    private fun injectWidgetPanelsIntoCombatIfNeeded(widgetPanel: UIPanelAPI) {
+
+        if (!hasFrameworkPanel(widgetPanel)) {
+            val combatPanel = widgetPanel.CustomPanel(widgetPanel.width, widgetPanel.height, anchorTL) {
+                Plugin { customData = "StarUIFrameworkPanel" }
+
+                registeredPlugins.forEach { starUIPlugin ->
+                    starUIPlugin.addPanelToCombatScreen?.let { builder ->
+                        CustomPanel(widgetPanel.width, widgetPanel.height, anchorTL) { builder() }
+                    }
+                }
+            }
+            widgetPanel.sendToBottom(combatPanel)
         }
     }
 
