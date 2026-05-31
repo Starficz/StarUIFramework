@@ -1,12 +1,12 @@
 package org.starficz.staruiframework
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.SettingsAPI
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.ButtonAPI.UICheckboxSize
 import org.lwjgl.input.Keyboard
+import org.lwjgl.opengl.GL11
 import org.starficz.staruiframework.internal.HorizontalStrategy
 import org.starficz.staruiframework.internal.StackLayout
 import org.starficz.staruiframework.internal.VerticalStrategy
@@ -133,11 +133,22 @@ fun UIPanelAPI.TextField(
     width: Float,
     height: Float,
     font: Font,
+    bind: UIState<String>? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: TextFieldAPI.() -> Unit = {}
 ): TextFieldAPI {
     return this.addTextField(width, height, font).apply {
         applyAnchor(anchor)
+
+        nearestFrameworkPlugin?.let{ plugin ->
+            if (bind != null) {
+                text = bind.value
+
+                bind.observe { newValue -> if (text != newValue) text = newValue }
+                plugin.advance { if (text != bind.value) bind.value = text }
+            }
+        }
+
         apply(builder)
     }
 }
@@ -170,6 +181,71 @@ fun UIPanelAPI.ShipDisplay(
     }
 }
 
+fun UIPanelAPI.FramedPanel(
+    width: Float,
+    height: Float,
+    backgroundColor: Color = Color(0, 0, 0, 240),
+    borderColor: Color = Color.DARK_GRAY,
+    borderWidth: Float = 2f,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
+    builder: CustomPanelAPI.() -> Unit = {}
+): CustomPanelAPI {
+    return CustomPanel(width, height, anchor) {
+        Plugin {
+            renderBelow { alphaMult ->
+                GL11.glDisable(GL11.GL_TEXTURE_2D)
+                GL11.glEnable(GL11.GL_BLEND)
+                GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
+
+                // Draw Background
+                org.lazywizard.lazylib.opengl.ColorUtils.glColor(backgroundColor, alphaMult, false)
+                GL11.glRectf(left, bottom, right, top)
+
+                // Draw Border
+                org.lazywizard.lazylib.opengl.ColorUtils.glColor(borderColor, alphaMult, false)
+                GL11.glLineWidth(borderWidth)
+                GL11.glBegin(GL11.GL_LINE_LOOP)
+                GL11.glVertex2f(left, bottom)
+                GL11.glVertex2f(right, bottom)
+                GL11.glVertex2f(right, top)
+                GL11.glVertex2f(left, top)
+                GL11.glEnd()
+
+                // CRITICAL: Always re-enable texture 2D after drawing raw shapes
+                GL11.glEnable(GL11.GL_TEXTURE_2D)
+            }
+        }
+        apply(builder)
+    }
+}
+
+fun UIPanelAPI.Spacer(
+    width: Float = 1f,
+    height: Float = 1f,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent()
+): CustomPanelAPI {
+    // An empty custom panel acts perfectly as invisible padding in Stack Layouts
+    return CustomPanel(width, height, anchor) {}
+}
+
+fun UIPanelAPI.Divider(
+    width: Float,
+    height: Float = 2f,
+    color: Color = Color.DARK_GRAY,
+    anchor: AnchorData = Anchor.inside.topLeft.ofParent()
+): CustomPanelAPI {
+    return CustomPanel(width, height, anchor) {
+        Plugin {
+            renderBelow { alphaMult ->
+                GL11.glDisable(GL11.GL_TEXTURE_2D)
+                org.lazywizard.lazylib.opengl.ColorUtils.glColor(color, alphaMult, false)
+                GL11.glRectf(left, bottom, right, top)
+                GL11.glEnable(GL11.GL_TEXTURE_2D)
+            }
+        }
+    }
+}
+
 fun UIPanelAPI.Button(
     width: Float,
     height: Float,
@@ -198,20 +274,20 @@ fun UIPanelAPI.AreaCheckbox(
     brightColor: Color = Global.getSettings().brightPlayerColor,
     font: Font? = null,
     leftAlign: Boolean = false,
-    flag: Flag? = null,
+    bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: ButtonAPI.() -> Unit = {}
 ): ButtonAPI {
-    val validGroup = (buttonGroup != null && flag != null)
+    val validGroup = (buttonGroup != null && bind != null)
 
     val button = this.addAreaCheckbox(text, null, baseColor, bgColor, brightColor, width, height, font,
-        leftAlign, if (!validGroup) flag else null).apply {
+        leftAlign, if (!validGroup) bind else null).apply {
         applyAnchor(anchor)
         apply(builder)
     }
 
-    if (validGroup) buttonGroup!!.addButtonToGroup(button, flag!!)
+    if (validGroup) buttonGroup.addButtonToGroup(button, bind)
 
     return button
 }
@@ -220,47 +296,46 @@ fun UIPanelAPI.Checkbox(
     width: Float,
     height: Float,
     size: UICheckboxSize? = UICheckboxSize.SMALL,
-    flag: Flag? = null,
+    bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     builder: ButtonAPI.() -> Unit = {}
 ): ButtonAPI {
-    val validGroup = (buttonGroup != null && flag != null)
+    val validGroup = (buttonGroup != null && bind != null)
 
-    val button = this.addCheckbox(width, height, size = size,
-        flag = if (!validGroup) flag else null).apply {
+    val button = this.addCheckbox(width, height, size = size, bind = if (!validGroup) bind else null).apply {
         applyAnchor(anchor)
         apply(builder)
     }
 
-    if (validGroup) buttonGroup!!.addButtonToGroup(button, flag!!)
+    if (validGroup) buttonGroup.addButtonToGroup(button, bind)
 
     return button
 }
 
 class ButtonGroup {
-    private val allFlags: MutableCollection<Flag> = mutableListOf()
+    private val allFlags: MutableCollection<UIState<Boolean>> = mutableListOf()
 
-    internal fun addButtonToGroup(button: ButtonAPI, flag: Flag){
-        allFlags.add(flag)
-        button.isChecked = flag.isChecked
+    internal fun addButtonToGroup(button: ButtonAPI, bind: UIState<Boolean>){
+        allFlags.add(bind)
+        button.isChecked = bind.value == true
         button.onClick {
-            if (allFlags.count { it.isChecked } == 1 && flag.isChecked) {
+            if (allFlags.count { it.value } == 1 && bind.value) {
                 // If the only active item is clicked, re-enable all items in the group.
-                allFlags.forEach { it.isChecked = true }
+                allFlags.forEach { it.value = true }
             } else {
                 // if multiselect key (Shift or Ctrl) is held, toggle the clicked filter
                 if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) ||
                     Keyboard.isKeyDown(Keyboard.KEY_RSHIFT) ||
                     Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) ||
                     Keyboard.isKeyDown(Keyboard.KEY_RCONTROL)) {
-                    flag.isChecked = !flag.isChecked
+                    bind.value = !bind.value
                 } else { // if no modifier key is held, only exclusively enable the clicked filter
-                    allFlags.forEach { it.isChecked = (it === flag) }
+                    allFlags.forEach { it.value = (it === bind) }
                 }
             }
             // sync the button to the flag
-            button.isChecked = flag.isChecked
+            button.isChecked = bind.value
         }
     }
 }

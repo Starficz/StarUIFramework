@@ -418,6 +418,18 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI): BoxedUIElement(uiShipPr
     fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
 }
 
+val UIComponentAPI.nearestFrameworkPlugin: StarUIPanelPlugin?
+    get() {
+        var current: UIComponentAPI? = this
+        while (current != null) {
+            if (current is CustomPanelAPI && current.plugin is StarUIPanelPlugin) {
+                return current.plugin as StarUIPanelPlugin
+            }
+            current = current.parent
+        }
+        return null
+    }
+
 fun UIPanelAPI.addShipPreview(
     width: Float, height: Float,
     fleetMember: FleetMemberAPI? = null,
@@ -520,7 +532,7 @@ fun UIPanelAPI.addButton(
 
 fun UIPanelAPI.addAreaCheckbox(
     text: String, data: Any?, baseColor: Color, bgColor: Color, brightColor: Color,
-    width: Float, height: Float, font: Font? = null, leftAlign: Boolean = false, flag: Flag? = null): ButtonAPI {
+    width: Float, height: Float, font: Font? = null, leftAlign: Boolean = false, bind: UIState<Boolean>? = null): ButtonAPI {
     // make a button in a temp panel/element
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
@@ -530,9 +542,9 @@ fun UIPanelAPI.addAreaCheckbox(
         text, data, baseColor, bgColor, brightColor, width, height, 0f, leftAlign)
 
     this.addComponent(button)
-    if (flag != null) {
-        button.isChecked = flag.isChecked
-        button.onClick { flag.isChecked = button.isChecked }
+    if (bind != null) {
+        button.isChecked = bind.value
+        button.onClick { bind.value = button.isChecked }
     }
     button.xAlignOffset = 0f
     button.yAlignOffset = 0f
@@ -541,7 +553,7 @@ fun UIPanelAPI.addAreaCheckbox(
 
 fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, data: Any? = null,
                            font: Font = Font.INSIGNIA_15, color: Color = Global.getSettings().basePlayerColor,
-                           size: UICheckboxSize? = UICheckboxSize.SMALL, flag: Flag? = null): ButtonAPI {
+                           size: UICheckboxSize? = UICheckboxSize.SMALL, bind: UIState<Boolean>? = null): ButtonAPI {
     // make a button in a temp panel/element
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
@@ -549,9 +561,9 @@ fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, da
     val checkbox = tempTMAPI.addCheckbox(width, height, text, data, getFontPath(font), color, size, 0f)
 
     this.addComponent(checkbox)
-    if (flag != null) {
-        checkbox.isChecked = flag.isChecked
-        checkbox.onClick { flag.isChecked = checkbox.isChecked }
+    if (bind != null) {
+        checkbox.isChecked = bind.value
+        checkbox.onClick { bind.value = checkbox.isChecked }
     }
     checkbox.xAlignOffset = 0f
     checkbox.yAlignOffset = 0f

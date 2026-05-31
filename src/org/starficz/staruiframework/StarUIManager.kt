@@ -4,6 +4,7 @@ import com.fs.starfarer.api.campaign.CoreUIAPI
 import com.fs.starfarer.api.campaign.CoreUITabId
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
+import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
@@ -13,20 +14,31 @@ import org.starficz.staruiframework.internal.ReflectionUtils.getConstructorsMatc
 import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 
+interface DynamicInjection {
+    val id: String
+    fun findTarget(): UIPanelAPI?
+    fun UIPanelAPI.injectUI()
+}
+
 object StarUIManager {
+    private val registeredPlugins = mutableListOf<StarUIPlugin>()
+    private val dynamicInjections = mutableListOf<DynamicInjection>()
+    private val dynamicInjectionElements = mutableMapOf<String, MutableList<UIComponentAPI>>()
+
     private val anchorTL = Anchor.inside.topLeft.ofParent()
     var inited = false
 
-    private val registeredPlugins = mutableListOf<StarUIPlugin>()
+    var tabOverride: UIPanelAPI? = null
+    var tabIDOverride: CoreUITabId? = null
 
     var coreUI: UIPanelAPI? = null
         internal set
 
     val currentCoreUITabID: CoreUITabId?
-        get() = coreUI?.invoke("getCurrentTabId") as CoreUITabId?
+        get() = tabIDOverride ?: coreUI?.invoke("getCurrentTabId") as CoreUITabId?
 
     val currentCoreUITabPanel: UIPanelAPI?
-        get() = coreUI?.invoke("getCurrentTab") as UIPanelAPI?
+        get() = tabOverride ?: coreUI?.invoke("getCurrentTab") as UIPanelAPI?
 
     var combatShipInfo: UIPanelAPI? = null
         internal set
@@ -40,6 +52,10 @@ object StarUIManager {
 
     fun registerPlugin(plugin: StarUIPlugin) {
         if (plugin !in registeredPlugins) registeredPlugins.add(plugin)
+    }
+
+    fun registerDynamicInjection(injection: DynamicInjection) {
+        if (injection !in dynamicInjections) dynamicInjections.add(injection)
     }
 
     fun unregisterPlugin(plugin: StarUIPlugin) {
@@ -56,6 +72,8 @@ object StarUIManager {
 
     internal fun advance(){
         val state = AppDriver.getInstance().currentState
+        tabOverride = null
+        tabIDOverride = null
 
         if (state is TitleScreenState) {
             val title = state.invoke("getScreenPanel") as? UIPanelAPI ?: return
@@ -63,6 +81,7 @@ object StarUIManager {
             if(!inited) return
             injectPanelsIntoTitleScreenIfNeeded(title)
             coreUI = null
+            injectPanelsIntoMissionUIIfNeeded(title)
             combatShipInfo = null
             combatWarroom = null
         }
@@ -82,12 +101,40 @@ object StarUIManager {
             injectWidgetPanelsIntoCombatIfNeeded(combatWidgetPanel!!)
 
             combatWarroom = state.getFieldsWithMethodsMatching("getMapDisplay").firstOrNull()!!.get(state) as UIPanelAPI? ?: return
-            injectWarroomPanelsIntoCombatIfNeeded(combatWarroom!!)
+            //injectWarroomPanelsIntoCombatIfNeeded(combatWarroom!!)
         }
         else{
             coreUI = null
             combatShipInfo = null
             combatWarroom = null
+        }
+
+        processDynamicInjections()
+    }
+
+    private fun processDynamicInjections() {
+        dynamicInjections.forEach { injection ->
+            val targetPanel = injection.findTarget() ?: return@forEach
+
+            // 1. Get the list of all tracked elements across all instances of this UI
+            val trackedList = dynamicInjectionElements.getOrPut(injection.id) { mutableListOf() }
+
+            // 2. Check if ANY of our tracked elements exist in this specific panel
+            val alreadyInjected = trackedList.any { targetPanel.children.contains(it) }
+
+            if (!alreadyInjected) {
+                // 3. Take a snapshot of the children BEFORE injection
+                val childrenBefore = targetPanel.children.toSet()
+
+                // 4. Run the modder's DSL!
+                with(injection) { targetPanel.injectUI() }
+
+                // 5. Take a snapshot AFTER, and find the difference
+                val newlyAdded = targetPanel.children.toSet() - childrenBefore
+
+                // 6. Track all newly added elements (handles single buttons, multiple elements, etc.)
+                trackedList.addAll(newlyAdded)
+            }
         }
     }
 
@@ -130,6 +177,21 @@ object StarUIManager {
             title.bringComponentToTop(newCustomPanel)
         }
     }
+
+    private fun injectPanelsIntoMissionUIIfNeeded(title: UIPanelAPI) {
+        val delegateChild = title.findChildWithMethod("dismiss") as? UIPanelAPI ?: return
+        val missionUI = delegateChild.findChildWithMethod("getMissionInstance") as? UIPanelAPI ?: return
+        val holographicBG = missionUI.findChildWithMethod("forceFoldIn") ?: return
+
+        val currentTabPanel = holographicBG.invoke("getCurr") as? UIPanelAPI ?: return
+
+        coreUI = missionUI
+        tabOverride = currentTabPanel
+        tabIDOverride = CoreUITabId.REFIT
+
+        injectPanelsIntoMainMenuRefitIfNeeded(currentTabPanel)
+    }
+
 
     private fun injectWarroomPanelsIntoCombatIfNeeded(warroomPanel: UIPanelAPI) {
         if (!hasFrameworkPanel(warroomPanel)) {
@@ -187,6 +249,20 @@ object StarUIManager {
                 }
             }
             widgetPanel.sendToBottom(combatPanel)
+        }
+    }
+
+    private fun injectPanelsIntoMainMenuRefitIfNeeded(tabPanel: UIPanelAPI){
+        if (!hasFrameworkPanel(tabPanel)) {
+            val newCustomPanel = tabPanel.CustomPanel(tabPanel.width, tabPanel.height, anchorTL) {
+                Plugin { customData = "StarUIFrameworkPanel" }
+                registeredPlugins.forEach { starUIPlugin ->
+                    starUIPlugin.addPanelToRefitTab?.let{ builder ->
+                        CustomPanel(tabPanel.width, tabPanel.height, anchorTL) { builder() }
+                    }
+                }
+            }
+            tabPanel.bringComponentToTop(newCustomPanel)
         }
     }
 
