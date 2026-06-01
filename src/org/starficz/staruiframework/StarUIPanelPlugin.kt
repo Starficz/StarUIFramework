@@ -17,6 +17,7 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
     private var onMouseButtonHeldFunctions: MutableList<(InputEventAPI) -> Unit> = mutableListOf()
     private var onKeyDownFunctions: MutableList<(InputEventAPI) -> Unit> = mutableListOf()
     private var onKeyUpFunctions: MutableList<(InputEventAPI) -> Unit> = mutableListOf()
+    private var onKeyHeldFunctions: MutableList<(InputEventAPI) -> Unit> = mutableListOf()
 
     private var renderBelowFunctions: MutableList<(Float) -> Unit> = mutableListOf()
     private var renderFunctions: MutableList<(Float) -> Unit> = mutableListOf()
@@ -108,6 +109,9 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
                 if (event.isMouseUpEvent){
                     hasClicked = false
                 }
+                if (!event.isConsumed && event.isRepeat) {
+                    onKeyHeldFunctions.forEach { it(event) }
+                }
             }
         }
 
@@ -125,7 +129,8 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
     fun onHover(function: (InputEventAPI) -> Unit) { onHoverFunctions.add(function) }
     fun onHoverEnter(function: (InputEventAPI) -> Unit) { onHoverEnterFunctions.add(function) }
     fun onHoverExit(function: (InputEventAPI) -> Unit) { onHoverExitFunctions.add(function) }
-    fun onHeld(function: (InputEventAPI) -> Unit) { onMouseButtonHeldFunctions.add(function) }
+    fun onMouseHeld(function: (InputEventAPI) -> Unit) { onMouseButtonHeldFunctions.add(function) }
     fun onKeyDown(function: (InputEventAPI) -> Unit) { onKeyDownFunctions.add(function) }
     fun onKeyUp(function: (InputEventAPI) -> Unit) { onKeyUpFunctions.add(function) }
+    fun onKeyHeld(function: (InputEventAPI) -> Unit) { onKeyHeldFunctions.add(function) }
 }
