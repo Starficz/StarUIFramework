@@ -135,7 +135,13 @@ internal fun UIPanelAPI.StackLayout(
     panel.builder()
 
     val children = panel.getChildrenCopy()
-    if (children.isEmpty()) return panel
+    if (children.isEmpty()) {
+        // Safe shrink-wrap fallback for empty layouts!
+        val finalPrimary = (if (strategy == HorizontalStrategy) minWidth else minHeight) ?: 0f
+        val finalSecondary = (if (strategy == HorizontalStrategy) minHeight else minWidth) ?: 0f
+        strategy.setPanelSize(panel, finalPrimary, finalSecondary)
+        return panel
+    }
 
     // --- MEASURE PASS (Negative Dimension Flexing) ---
     val targetPrimary = (if (strategy == HorizontalStrategy) minWidth else minHeight) ?: 0f

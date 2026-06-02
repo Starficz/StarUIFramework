@@ -511,6 +511,7 @@ fun UIPanelAPI.addButton(
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
     when(font){
+        Font.ORBITRON_12_CONDENSED -> tempTMAPI.setButtonFontDefault()
         Font.VICTOR_10 -> tempTMAPI.setButtonFontVictor10()
         Font.VICTOR_14 -> tempTMAPI.setButtonFontVictor14()
         Font.ORBITRON_20 -> tempTMAPI.setButtonFontOrbitron20()
