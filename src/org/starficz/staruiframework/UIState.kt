@@ -12,8 +12,11 @@ class UIState<T>(initialValue: T) {
 
     private val observers = mutableListOf<(T) -> Unit>()
 
-    // Used by the framework to listen for changes originating from code
-    internal fun observe(observer: (T) -> Unit) {
+    fun onChange(observer: (T) -> Unit) {
         observers.add(observer)
+    }
+
+    fun removeObserver(observer: (T) -> Unit) {
+        observers.remove(observer)
     }
 }

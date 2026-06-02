@@ -58,9 +58,11 @@ fun UIPanelAPI.VerticalStackLayout(
     spacing: Float = 0f,
     alignment: Alignment = Alignment.TMID,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
+    minWidth: Float? = null,
+    minHeight: Float? = null,
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
-    return this.StackLayout(VerticalStrategy, anchor, alignment, yMargin, xMargin, spacing, builder)
+    return this.StackLayout(VerticalStrategy, anchor, alignment, yMargin, xMargin, spacing, minWidth, minHeight, builder)
 }
 
 fun UIPanelAPI.HorizontalStackLayout(
@@ -69,9 +71,11 @@ fun UIPanelAPI.HorizontalStackLayout(
     spacing: Float = 0f,
     alignment: Alignment = Alignment.LMID,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
+    minWidth: Float? = null,
+    minHeight: Float? = null,
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
-    return this.StackLayout(HorizontalStrategy, anchor, alignment, xMargin, yMargin, spacing, builder)
+    return this.StackLayout(HorizontalStrategy, anchor, alignment, xMargin, yMargin, spacing, minWidth, minHeight, builder)
 }
 
 fun CustomPanelAPI.TooltipMakerPanel(
@@ -144,7 +148,7 @@ fun UIPanelAPI.TextField(
             if (bind != null) {
                 text = bind.value
 
-                bind.observe { newValue -> if (text != newValue) text = newValue }
+                bind.onChange { newValue -> if (text != newValue) text = newValue }
                 plugin.advance { if (text != bind.value) bind.value = text }
             }
         }

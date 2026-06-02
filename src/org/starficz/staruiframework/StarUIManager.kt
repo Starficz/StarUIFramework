@@ -116,23 +116,17 @@ object StarUIManager {
         dynamicInjections.forEach { injection ->
             val targetPanel = injection.findTarget() ?: return@forEach
 
-            // 1. Get the list of all tracked elements across all instances of this UI
             val trackedList = dynamicInjectionElements.getOrPut(injection.id) { mutableListOf() }
+            trackedList.retainAll { it.parent != null }
 
-            // 2. Check if ANY of our tracked elements exist in this specific panel
             val alreadyInjected = trackedList.any { targetPanel.children.contains(it) }
 
             if (!alreadyInjected) {
-                // 3. Take a snapshot of the children BEFORE injection
                 val childrenBefore = targetPanel.children.toSet()
 
-                // 4. Run the modder's DSL!
                 with(injection) { targetPanel.injectUI() }
 
-                // 5. Take a snapshot AFTER, and find the difference
                 val newlyAdded = targetPanel.children.toSet() - childrenBefore
-
-                // 6. Track all newly added elements (handles single buttons, multiple elements, etc.)
                 trackedList.addAll(newlyAdded)
             }
         }

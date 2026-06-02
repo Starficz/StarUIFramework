@@ -127,32 +127,63 @@ internal fun UIPanelAPI.StackLayout(
     primaryMargin: Float = 0f,
     secondaryMargin: Float = 0f,
     spacing: Float = 0f,
+    minWidth: Float? = null,
+    minHeight: Float? = null,
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
-    // Create the container panel
-    return CustomPanel(this.width, this.height, anchor) {
-        builder()
+    val panel = CustomPanel(width, height, anchor) {}
+    panel.builder()
 
-        var previousElement: UIComponentAPI? = null
-        var maxSecondaryDimension = 0f
-        var startingCoord = 0f
+    val children = panel.getChildrenCopy()
+    if (children.isEmpty()) return panel
 
-        // Core layout loop
-        children.forEachIndexed { index, component ->
-            maxSecondaryDimension = max(maxSecondaryDimension, strategy.getSecondaryAxisDimension(component))
+    // --- MEASURE PASS (Negative Dimension Flexing) ---
+    val targetPrimary = (if (strategy == HorizontalStrategy) minWidth else minHeight) ?: 0f
+    val targetSecondary = (if (strategy == HorizontalStrategy) minHeight else minWidth) ?: 0f
 
-            if (index == 0) startingCoord = strategy.anchorFirst(component, alignment, primaryMargin, secondaryMargin)
-            else previousElement?.let { prev -> strategy.positionNext(component, prev, alignment, spacing) }
-            previousElement = component
-        }
+    var fixedPrimarySize = 0f
+    var flexCount = 0
 
-        // Calculate final size
-        val totalPrimarySize = children.lastOrNull()?.let {
-            abs(strategy.getEndEdgeCoordinate(it, alignment) - startingCoord) + primaryMargin*2
-        } ?: (primaryMargin * 2) // Handle empty case
-
-        val totalSecondarySize = maxSecondaryDimension + secondaryMargin*2
-
-        strategy.setPanelSize(this, totalPrimarySize, totalSecondarySize)
+    children.forEach { child ->
+        val primary = strategy.getPrimaryAxisDimension(child)
+        if (primary < 0f) flexCount++
+        else fixedPrimarySize += primary
     }
+
+    val totalSpacing = maxOf(0, children.size - 1) * spacing
+    val availablePrimary = maxOf(0f, targetPrimary - fixedPrimarySize - totalSpacing - (primaryMargin * 2))
+    val flexPrimarySize = if (flexCount > 0) availablePrimary / flexCount else 0f
+
+    children.forEach { child ->
+        val primary = strategy.getPrimaryAxisDimension(child)
+        val secondary = strategy.getSecondaryAxisDimension(child)
+
+        // If primary is negative, flex it. If secondary is negative, match the layout's full cross-axis size!
+        val newPrimary = if (primary < 0f) flexPrimarySize else primary
+        val newSecondary = if (secondary < 0f) maxOf(0f, targetSecondary - (secondaryMargin * 2)) else secondary
+
+        if (primary < 0f || secondary < 0f) {
+            if (strategy == HorizontalStrategy) child.setSize(newPrimary, newSecondary)
+            else child.setSize(newSecondary, newPrimary)
+        }
+    }
+
+    // --- LAYOUT PASS ---
+    var previousElement: UIComponentAPI? = null
+    var maxSecondaryDimension = 0f
+    var startingCoord = 0f
+
+    children.forEachIndexed { index, component ->
+        maxSecondaryDimension = maxOf(maxSecondaryDimension, strategy.getSecondaryAxisDimension(component))
+        if (index == 0) startingCoord = strategy.anchorFirst(component, alignment, primaryMargin, secondaryMargin)
+        else previousElement?.let { prev -> strategy.positionNext(component, prev, alignment, spacing) }
+        previousElement = component
+    }
+
+    val totalPrimarySize = abs(strategy.getEndEdgeCoordinate(children.last(), alignment) - startingCoord) + primaryMargin * 2
+    val finalPrimary = maxOf(totalPrimarySize, targetPrimary)
+    val finalSecondary = maxOf(maxSecondaryDimension + secondaryMargin * 2, targetSecondary)
+
+    strategy.setPanelSize(panel, finalPrimary, finalSecondary)
+    return panel
 }

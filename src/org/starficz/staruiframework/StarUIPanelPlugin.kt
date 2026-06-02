@@ -23,6 +23,8 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
     private var renderFunctions: MutableList<(Float) -> Unit> = mutableListOf()
 
     private var advanceFunctions: MutableList<(Float) -> Unit> = mutableListOf()
+    private var onLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
+    private var hasLayoutRun = false
 
     var customData: Any? = null
 
@@ -54,6 +56,12 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
 
     fun renderBelow(function: (alphaMult: Float) -> Unit) { renderBelowFunctions.add(function) }
     override fun renderBelow(alphaMult: Float) {
+        if (!hasLayoutRun) {
+            onLayoutFunctions.forEach { it() }
+            onLayoutFunctions.clear()
+            hasLayoutRun = true
+        }
+
         renderBelowFunctions.forEach {
             GL11.glPushMatrix()
             GL11.glDisable(GL11.GL_TEXTURE_2D)
@@ -65,8 +73,15 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
         }
     }
 
+    fun onLayout(function: () -> Unit) { onLayoutFunctions.add(function) }
     fun render(function: (alphaMult: Float) -> Unit) { renderFunctions.add(function) }
     override fun render(alphaMult: Float) {
+        if (!hasLayoutRun) {
+            onLayoutFunctions.forEach { it() }
+            onLayoutFunctions.clear()
+            hasLayoutRun = true
+        }
+
         renderFunctions.forEach {
             GL11.glPushMatrix()
             GL11.glDisable(GL11.GL_TEXTURE_2D)
@@ -109,9 +124,6 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
                 if (event.isMouseUpEvent){
                     hasClicked = false
                 }
-                if (!event.isConsumed && event.isRepeat) {
-                    onKeyHeldFunctions.forEach { it(event) }
-                }
             }
         }
 
@@ -119,6 +131,7 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
             if (ignoreConsumedEvents && event.isConsumed) return@forEach
             if (event.isKeyDownEvent) onKeyDownFunctions.forEach { it(event) }
             if (event.isKeyUpEvent) onKeyUpFunctions.forEach { it(event) }
+            if (!event.isConsumed && event.isRepeat) onKeyHeldFunctions.forEach { it(event) }
             if(consumeEvents) event.consume()
         }
     }
