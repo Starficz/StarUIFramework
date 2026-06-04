@@ -19,8 +19,8 @@ import org.starficz.staruiframework.internal.ReflectionUtils
 import org.starficz.staruiframework.internal.ReflectionUtils.getMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
 import org.starficz.staruiframework.internal.ReflectionUtils.set
-import org.starficz.staruiframework.Anchor.AnchorData
-import org.starficz.staruiframework.Anchor.AnchorReference
+import org.starficz.staruiframework.interfaces.Anchor.AnchorData
+import org.starficz.staruiframework.interfaces.Anchor.AnchorReference
 import java.awt.Color
 
 // UIComponentAPI extensions that expose UIComponent fields/methods
@@ -229,6 +229,7 @@ fun UIPanelAPI.clearChildren() {
 // Abstract base class for Boxed vanilla elements to fix vanilla jank / things with no API's (like images)
 abstract class BoxedUIElement(val boxedElement: UIComponentAPI)
 
+@StarUIDsl
 class BoxedScrollPanel(val scrollPanel: ScrollPanelAPI): BoxedUIElement(scrollPanel as UIComponentAPI),
     ScrollPanelAPI by scrollPanel {
     var isLeftScrollbar
@@ -256,6 +257,7 @@ class BoxedScrollPanel(val scrollPanel: ScrollPanelAPI): BoxedUIElement(scrollPa
 
 }
 
+@StarUIDsl
 class BoxedUILabel(val uiLabel: LabelAPI): BoxedUIElement(uiLabel as UIComponentAPI),
     UIComponentAPI by (uiLabel as UIComponentAPI), LabelAPI by uiLabel {
     override fun advance(amount: Float) { uiLabel.advance(amount) }
@@ -265,6 +267,7 @@ class BoxedUILabel(val uiLabel: LabelAPI): BoxedUIElement(uiLabel as UIComponent
     override fun getPosition() = uiLabel.position
 }
 
+@StarUIDsl
 class BoxedUIImage(val uiImage: UIComponentAPI): BoxedUIElement(uiImage), UIComponentAPI by uiImage {
     var spriteName
         get() = uiImage.invoke("getSpriteName") as String
@@ -299,6 +302,7 @@ class BoxedUIImage(val uiImage: UIComponentAPI): BoxedUIElement(uiImage), UIComp
     fun sizeToOriginalAspectRatioWithHeight(height: Float) { uiImage.invoke("autoSizeToHeight", height) }
 }
 
+@StarUIDsl
 class BoxedUISliderBar(val uiBar: UIPanelAPI): BoxedUIElement(uiBar), UIComponentAPI by uiBar {
     var bonusColor
         get() = uiBar.invoke("getBonusColor") as Color
@@ -351,6 +355,7 @@ class BoxedUISliderBar(val uiBar: UIPanelAPI): BoxedUIElement(uiBar), UIComponen
  * A Boxed representation of a vanilla UI Ship Preview. Generates ShipAPI's on use.
  * For performance reasons, try and call cleanupShips when hidden.
  */
+@StarUIDsl
 class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI): BoxedUIElement(uiShipPreview), UIComponentAPI by uiShipPreview {
     internal companion object{
         var SHIP_PREVIEW_CLASS: Class<*>? = null
@@ -417,18 +422,6 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI): BoxedUIElement(uiShipPr
     fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
     fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
 }
-
-val UIComponentAPI.nearestFrameworkPlugin: StarUIPanelPlugin?
-    get() {
-        var current: UIComponentAPI? = this
-        while (current != null) {
-            if (current is CustomPanelAPI && current.plugin is StarUIPanelPlugin) {
-                return current.plugin as StarUIPanelPlugin
-            }
-            current = current.parent
-        }
-        return null
-    }
 
 fun UIPanelAPI.addShipPreview(
     width: Float, height: Float,

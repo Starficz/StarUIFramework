@@ -3,11 +3,13 @@ package org.starficz.staruisamples
 import com.fs.starfarer.api.BaseModPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
-import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lazywizard.lazylib.opengl.ColorUtils.glColor
 import org.lwjgl.opengl.GL11
 import org.starficz.staruiframework.*
+import org.starficz.staruiframework.interfaces.Anchor
+import org.starficz.staruiframework.interfaces.StarUIBuilder
+import org.starficz.staruiframework.interfaces.StarUIPlugin
 import java.awt.Color
 
 class ExampleUIPlugin : BaseModPlugin() {
@@ -18,7 +20,7 @@ class ExampleUIPlugin : BaseModPlugin() {
 
     // example StarUIPlugin with a simple opengl rectangle and text component
     class ExampleStarUIPlugin: StarUIPlugin {
-        override val addPanelToTitleScreen: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToTitleScreen: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -70,7 +72,7 @@ class ExampleUIPlugin : BaseModPlugin() {
 
         }
 
-        override val addPanelToCampaignUI: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToCampaignUI: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.blue, alphaMult*0.3f, false)
@@ -84,7 +86,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToCharacterTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToCharacterTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -225,7 +227,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             }
         }
 
-        override val addPanelToFleetTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToFleetTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -239,7 +241,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToRefitTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToRefitTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -253,7 +255,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToCargoTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToCargoTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -267,7 +269,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToMapTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToMapTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -281,7 +283,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToIntelTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToIntelTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -295,7 +297,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToOutpostsTab: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToOutpostsTab: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -309,7 +311,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelAboveCombatShipInfo: (CustomPanelAPI.() -> Unit)  = {
+        override val addPanelAboveCombatShipInfo: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)
@@ -323,7 +325,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToCombatScreen: (CustomPanelAPI.() -> Unit)  = {
+        override val addPanelToCombatScreen: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.pink, alphaMult*0.3f, false)
@@ -337,7 +339,7 @@ class ExampleUIPlugin : BaseModPlugin() {
             )
         }
 
-        override val addPanelToCombatWarroom: (CustomPanelAPI.() -> Unit) = {
+        override val addPanelToCombatWarroom: StarUIBuilder = {
             Plugin {
                 renderBelow { alphaMult ->
                     glColor(Color.red, alphaMult*0.3f, false)

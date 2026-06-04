@@ -10,20 +10,19 @@ import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
+import org.starficz.staruiframework.interfaces.Anchor
+import org.starficz.staruiframework.interfaces.DynamicInjection
+import org.starficz.staruiframework.interfaces.StarUIPlugin
 import org.starficz.staruiframework.internal.ReflectionUtils.getConstructorsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
 import org.starficz.staruiframework.internal.ReflectionUtils.invoke
+import java.lang.ref.WeakReference
 
-interface DynamicInjection {
-    val id: String
-    fun findTarget(): UIPanelAPI?
-    fun UIPanelAPI.injectUI()
-}
 
 object StarUIManager {
     private val registeredPlugins = mutableListOf<StarUIPlugin>()
     private val dynamicInjections = mutableListOf<DynamicInjection>()
-    private val dynamicInjectionElements = mutableMapOf<String, MutableList<UIComponentAPI>>()
+    private val dynamicInjectionElements = mutableMapOf<String, MutableList<WeakReference<UIComponentAPI>>>()
 
     private val anchorTL = Anchor.inside.topLeft.ofParent()
     var inited = false
@@ -117,9 +116,10 @@ object StarUIManager {
             val targetPanel = injection.findTarget() ?: return@forEach
 
             val trackedList = dynamicInjectionElements.getOrPut(injection.id) { mutableListOf() }
-            trackedList.retainAll { it.parent != null }
 
-            val alreadyInjected = trackedList.any { targetPanel.children.contains(it) }
+            trackedList.removeAll { it.get() == null }
+
+            val alreadyInjected = trackedList.any { targetPanel.children.contains(it.get()) }
 
             if (!alreadyInjected) {
                 val childrenBefore = targetPanel.children.toSet()
@@ -127,7 +127,8 @@ object StarUIManager {
                 with(injection) { targetPanel.injectUI() }
 
                 val newlyAdded = targetPanel.children.toSet() - childrenBefore
-                trackedList.addAll(newlyAdded)
+
+                newlyAdded.forEach { trackedList.add(WeakReference(it)) }
             }
         }
     }

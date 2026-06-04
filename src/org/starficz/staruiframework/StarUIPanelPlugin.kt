@@ -5,8 +5,13 @@ import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import org.lwjgl.input.Mouse
 import org.lwjgl.opengl.GL11
+import java.lang.ref.WeakReference
 
-class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlugin() {
+class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
+
+    lateinit var customPanel: CustomPanelAPI
+
+    private val activeBindings = mutableListOf<Any>()
 
     private var onClickFunctions: MutableList<(InputEventAPI) -> Unit> = ArrayList()
     private var onClickOutsideFunctions: MutableList<(InputEventAPI) -> Unit> = ArrayList()
@@ -45,6 +50,10 @@ class StarUIPanelPlugin(var customPanel: CustomPanelAPI) : BaseCustomUIPanelPlug
 
     var consumeEvents = false
     var ignoreConsumedEvents = false
+
+    internal fun registerBinding(binding: Any) {
+        activeBindings.add(binding)
+    }
 
     fun setMouseCapturePad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float){
         inputCaptureTopPad = topPad

@@ -7,28 +7,56 @@ import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.ButtonAPI.UICheckboxSize
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
+import org.starficz.staruiframework.interfaces.Anchor
 import org.starficz.staruiframework.internal.HorizontalStrategy
 import org.starficz.staruiframework.internal.StackLayout
 import org.starficz.staruiframework.internal.VerticalStrategy
-import org.starficz.staruiframework.Anchor.AnchorData
+import org.starficz.staruiframework.interfaces.Anchor.AnchorData
 import java.awt.Color
+
+@DslMarker
+@Target(AnnotationTarget.TYPE, AnnotationTarget.CLASS)
+annotation class StarUIDsl
+
+internal object StarUIContext {
+    private val threadLocalStack = ThreadLocal.withInitial { mutableListOf<StarUIPanelPlugin>() }
+
+    val pluginStack: MutableList<StarUIPanelPlugin>
+        get() = threadLocalStack.get()
+
+    val currentPlugin: StarUIPanelPlugin?
+        get() = pluginStack.lastOrNull()
+}
 
 fun UIPanelAPI.CustomPanel(
     width: Float,
     height: Float,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: CustomPanelAPI.() -> Unit = {}
+    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
-    val panel = Global.getSettings().createCustom(width, height, null)
+    val defaultPlugin = StarUIPanelPlugin()
+    val panel = Global.getSettings().createCustom(width, height, defaultPlugin)
+    defaultPlugin.customPanel = panel
+
     this.addComponent(panel)
-    panel.applyAnchor(anchor) // by default anchor in TL
-    panel.builder()
+    panel.applyAnchor(anchor)
+
+    StarUIContext.pluginStack.add(defaultPlugin)
+    try {
+        panel.builder()
+    } finally {
+        StarUIContext.pluginStack.removeLast()
+    }
+
     return panel
 }
 
-fun CustomPanelAPI.Plugin(builder: StarUIPanelPlugin.() -> Unit): CustomUIPanelPlugin {
-    val plugin = StarUIPanelPlugin(this)
-    this.setPlugin(plugin)
+fun CustomPanelAPI.Plugin(builder: (@StarUIDsl StarUIPanelPlugin).() -> Unit): CustomUIPanelPlugin {
+    val plugin = this.plugin as? StarUIPanelPlugin ?: StarUIPanelPlugin().also {
+        it.customPanel = this
+        this.setPlugin(it)
+    }
+
     plugin.builder()
     return plugin
 }
@@ -60,7 +88,7 @@ fun UIPanelAPI.VerticalStackLayout(
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     minWidth: Float? = null,
     minHeight: Float? = null,
-    builder: CustomPanelAPI.() -> Unit = {}
+    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     return this.StackLayout(VerticalStrategy, anchor, alignment, yMargin, xMargin, spacing, minWidth, minHeight, builder)
 }
@@ -73,7 +101,7 @@ fun UIPanelAPI.HorizontalStackLayout(
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
     minWidth: Float? = null,
     minHeight: Float? = null,
-    builder: CustomPanelAPI.() -> Unit = {}
+    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     return this.StackLayout(HorizontalStrategy, anchor, alignment, xMargin, yMargin, spacing, minWidth, minHeight, builder)
 }
@@ -83,7 +111,7 @@ fun CustomPanelAPI.TooltipMakerPanel(
     height: Float,
     withScroller: Boolean = false,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: TooltipMakerAPI.() -> Unit = {}
+    builder: (@StarUIDsl TooltipMakerAPI).() -> Unit = {}
 ): TooltipMakerAPI {
     val tooltipMakerPanel = createUIElement(width, height, withScroller)
     addUIElement(tooltipMakerPanel)
@@ -97,7 +125,7 @@ fun UIComponentAPI.Tooltip(
     width: Float,
     location: TooltipMakerAPI.TooltipLocation,
     margin: Float? = null,
-    builder: TooltipMakerAPI.() -> Unit = {}
+    builder: (@StarUIDsl TooltipMakerAPI).() -> Unit = {}
 ) {
     this.addTooltip(location, width, margin, builder)
 }
@@ -125,7 +153,7 @@ fun UIPanelAPI.LabelledValue(
     labelColor: Color = Global.getSettings().basePlayerColor,
     valueColor: Color = Global.getSettings().basePlayerColor,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: UIComponentAPI.() -> Unit = {}
+    builder: (@StarUIDsl UIComponentAPI).() -> Unit = {}
 ): UIComponentAPI {
     return this.addLabelledValue(label, value, labelColor, valueColor, width).apply {
         applyAnchor(anchor)
@@ -139,17 +167,20 @@ fun UIPanelAPI.TextField(
     font: Font,
     bind: UIState<String>? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: TextFieldAPI.() -> Unit = {}
+    builder: (@StarUIDsl TextFieldAPI).() -> Unit = {}
 ): TextFieldAPI {
     return this.addTextField(width, height, font).apply {
         applyAnchor(anchor)
 
-        nearestFrameworkPlugin?.let{ plugin ->
-            if (bind != null) {
-                text = bind.value
+        if (bind != null) {
+            text = bind.value
 
-                bind.onChange { newValue -> if (text != newValue) text = newValue }
-                plugin.advance { if (text != bind.value) bind.value = text }
+            bind.onChange { newValue ->
+                if (text != newValue) text = newValue
+            }
+
+            StarUIContext.currentPlugin?.advance {
+                if (text != bind.value) bind.value = text
             }
         }
 
@@ -192,7 +223,7 @@ fun UIPanelAPI.FramedPanel(
     borderColor: Color = Color.DARK_GRAY,
     borderWidth: Float = 2f,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: CustomPanelAPI.() -> Unit = {}
+    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     return CustomPanel(width, height, anchor) {
         Plugin {
@@ -261,7 +292,7 @@ fun UIPanelAPI.Button(
     align: Alignment = Alignment.MID,
     style: CutStyle = CutStyle.TL_BR,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: ButtonAPI.() -> Unit = {}
+    builder: (@StarUIDsl ButtonAPI).() -> Unit = {}
 ): ButtonAPI {
     return this.addButton(text, null, baseColor, bgColor, align, style, width, height, font, shortcut).apply {
         applyAnchor(anchor)
@@ -281,7 +312,7 @@ fun UIPanelAPI.AreaCheckbox(
     bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: ButtonAPI.() -> Unit = {}
+    builder: (@StarUIDsl ButtonAPI).() -> Unit = {}
 ): ButtonAPI {
     val validGroup = (buttonGroup != null && bind != null)
 
@@ -293,6 +324,8 @@ fun UIPanelAPI.AreaCheckbox(
 
     if (validGroup) buttonGroup.addButtonToGroup(button, bind)
 
+    bind?.onChange { newValue -> button.isChecked = newValue }
+
     return button
 }
 
@@ -303,7 +336,7 @@ fun UIPanelAPI.Checkbox(
     bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null,
     anchor: AnchorData = Anchor.inside.topLeft.ofParent(),
-    builder: ButtonAPI.() -> Unit = {}
+    builder: (@StarUIDsl ButtonAPI).() -> Unit = {}
 ): ButtonAPI {
     val validGroup = (buttonGroup != null && bind != null)
 
@@ -313,6 +346,8 @@ fun UIPanelAPI.Checkbox(
     }
 
     if (validGroup) buttonGroup.addButtonToGroup(button, bind)
+
+    bind?.onChange { newValue -> button.isChecked = newValue }
 
     return button
 }

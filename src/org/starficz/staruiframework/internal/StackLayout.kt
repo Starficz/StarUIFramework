@@ -5,8 +5,8 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.staruiframework.*
+import org.starficz.staruiframework.interfaces.Anchor
 import kotlin.math.abs
-import kotlin.math.max
 
 internal interface LayoutStrategy {
     // Anchors the very first element in the layout
@@ -131,8 +131,7 @@ internal fun UIPanelAPI.StackLayout(
     minHeight: Float? = null,
     builder: CustomPanelAPI.() -> Unit = {}
 ): CustomPanelAPI {
-    val panel = CustomPanel(width, height, anchor) {}
-    panel.builder()
+    val panel = CustomPanel(width, height, anchor, builder)
 
     val children = panel.getChildrenCopy()
     if (children.isEmpty()) {
