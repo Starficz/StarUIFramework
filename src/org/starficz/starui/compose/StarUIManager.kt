@@ -1,4 +1,4 @@
-package org.starficz.staruiframework
+package org.starficz.starui.compose
 
 import com.fs.starfarer.api.campaign.CoreUIAPI
 import com.fs.starfarer.api.campaign.CoreUITabId
@@ -10,14 +10,17 @@ import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
-import org.starficz.staruiframework.interfaces.Anchor
-import org.starficz.staruiframework.interfaces.DynamicInjection
-import org.starficz.staruiframework.interfaces.StarUIPlugin
-import org.starficz.staruiframework.internal.ReflectionUtils.getConstructorsMatching
-import org.starficz.staruiframework.internal.ReflectionUtils.getFieldsWithMethodsMatching
-import org.starficz.staruiframework.internal.ReflectionUtils.invoke
+import org.starficz.starui.core.Anchor
+import org.starficz.starui.core.BoxedUIShipPreview
+import org.starficz.starui.core.ReflectionUtils.getConstructorsMatching
+import org.starficz.starui.core.ReflectionUtils.getFieldsWithMethodsMatching
+import org.starficz.starui.core.ReflectionUtils.invoke
+import org.starficz.starui.core.children
+import org.starficz.starui.core.findChildWithMethod
+import org.starficz.starui.core.getChildrenCopy
+import org.starficz.starui.core.height
+import org.starficz.starui.core.width
 import java.lang.ref.WeakReference
-
 
 object StarUIManager {
     private val registeredPlugins = mutableListOf<StarUIPlugin>()
@@ -64,8 +67,8 @@ object StarUIManager {
     private fun hasFrameworkPanel(panel: UIPanelAPI): Boolean {
         return panel.children.any {
             it is CustomPanelAPI &&
-            it.plugin is StarUIPanelPlugin &&
-            (it.plugin as StarUIPanelPlugin).customData == "StarUIFrameworkPanel"
+                    it.plugin is StarUIPanelPlugin &&
+                    (it.plugin as StarUIPanelPlugin).customData == "StarUIFrameworkPanel"
         }
     }
 
@@ -85,7 +88,8 @@ object StarUIManager {
             combatWarroom = null
         }
         else if (state is CampaignState){
-            val core = (state.invoke("getEncounterDialog")?.invoke("getCoreUI") ?: state.invoke("getCore")) as? CoreUIAPI ?: return
+            val core = (state.invoke("getEncounterDialog")?.invoke("getCoreUI") ?: state.invoke("getCore")) as? CoreUIAPI
+                ?: return
             coreUI = core as UIPanelAPI
             injectPanelsIntoCoreUIIfNeeded(core)
             combatShipInfo = null
@@ -160,12 +164,12 @@ object StarUIManager {
 
     private fun injectPanelsIntoTitleScreenIfNeeded(title: UIPanelAPI) {
         if (!hasFrameworkPanel(title)) {
-            val newCustomPanel = title.CustomPanel(title.width, title.height, anchorTL) {
+            val newCustomPanel = title.CustomPanel(PanelSize.exact(title.width, title.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToTitleScreen?.let { builder ->
-                        CustomPanel(title.width, title.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(title.width, title.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -190,12 +194,12 @@ object StarUIManager {
 
     private fun injectWarroomPanelsIntoCombatIfNeeded(warroomPanel: UIPanelAPI) {
         if (!hasFrameworkPanel(warroomPanel)) {
-            val newCustomPanel = warroomPanel.CustomPanel(warroomPanel.width, warroomPanel.height, anchorTL) {
+            val newCustomPanel = warroomPanel.CustomPanel(PanelSize.exact(warroomPanel.width, warroomPanel.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatWarroom?.let { builder ->
-                        CustomPanel(warroomPanel.width, warroomPanel.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(warroomPanel.width, warroomPanel.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -206,23 +210,23 @@ object StarUIManager {
     private fun injectShipInfoPanelsIntoCombatIfNeeded(shipInfoPanel: UIPanelAPI) {
 
         if (!hasFrameworkPanel(shipInfoPanel)) {
-            val abovePanel = shipInfoPanel.CustomPanel(shipInfoPanel.width, shipInfoPanel.height, anchorTL) {
+            val abovePanel = shipInfoPanel.CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelAboveCombatShipInfo?.let { builder ->
-                        CustomPanel(shipInfoPanel.width, shipInfoPanel.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
             shipInfoPanel.bringComponentToTop(abovePanel)
 
-            val belowPanel = shipInfoPanel.CustomPanel(shipInfoPanel.width, shipInfoPanel.height, anchorTL) {
+            val belowPanel = shipInfoPanel.CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelBelowCombatShipInfo?.let { builder ->
-                        CustomPanel(shipInfoPanel.width, shipInfoPanel.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -234,12 +238,12 @@ object StarUIManager {
     private fun injectWidgetPanelsIntoCombatIfNeeded(widgetPanel: UIPanelAPI) {
 
         if (!hasFrameworkPanel(widgetPanel)) {
-            val combatPanel = widgetPanel.CustomPanel(widgetPanel.width, widgetPanel.height, anchorTL) {
+            val combatPanel = widgetPanel.CustomPanel(PanelSize.exact(widgetPanel.width, widgetPanel.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatScreen?.let { builder ->
-                        CustomPanel(widgetPanel.width, widgetPanel.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(widgetPanel.width, widgetPanel.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -249,11 +253,11 @@ object StarUIManager {
 
     private fun injectPanelsIntoMainMenuRefitIfNeeded(tabPanel: UIPanelAPI){
         if (!hasFrameworkPanel(tabPanel)) {
-            val newCustomPanel = tabPanel.CustomPanel(tabPanel.width, tabPanel.height, anchorTL) {
+            val newCustomPanel = tabPanel.CustomPanel(PanelSize.exact(tabPanel.width, tabPanel.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToRefitTab?.let{ builder ->
-                        CustomPanel(tabPanel.width, tabPanel.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(tabPanel.width, tabPanel.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -265,12 +269,12 @@ object StarUIManager {
         // inject coreUI if needed
 
         if (!hasFrameworkPanel(coreUI)) {
-            val newCustomPanel = coreUI.CustomPanel(coreUI.width, coreUI.height, anchorTL) {
+            val newCustomPanel = coreUI.CustomPanel(PanelSize.exact(coreUI.width, coreUI.height), Modifier.anchor(anchorTL)) {
                 Plugin { customData = "StarUIFrameworkPanel" }
 
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCampaignUI?.let { builder ->
-                        CustomPanel(coreUI.width, coreUI.height, anchorTL) { builder() }
+                        CustomPanel(PanelSize.exact(coreUI.width, coreUI.height), Modifier.anchor(anchorTL)) { builder() }
                     }
                 }
             }
@@ -280,7 +284,7 @@ object StarUIManager {
         // inject into current tab if needed
         currentCoreUITabPanel?.let { parent ->
             if (!hasFrameworkPanel(parent)) {
-                val newCustomPanel = parent.CustomPanel(parent.width, parent.height, anchorTL) {
+                val newCustomPanel = parent.CustomPanel(PanelSize.exact(parent.width, parent.height), Modifier.anchor(anchorTL)) {
                     Plugin { customData = "StarUIFrameworkPanel" }
 
                     registeredPlugins.forEach { starUIPlugin ->
@@ -294,7 +298,7 @@ object StarUIManager {
                             CoreUITabId.OUTPOSTS -> starUIPlugin.addPanelToOutpostsTab
                             null -> null
                         }?.let { builder ->
-                            CustomPanel(parent.width, parent.height, anchorTL) { builder() }
+                            CustomPanel(PanelSize.exact(parent.width, parent.height), Modifier.anchor(anchorTL)) { builder() }
                         }
                     }
                 }

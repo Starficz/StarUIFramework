@@ -1,7 +1,6 @@
-package org.starficz.staruiframework.interfaces
+package org.starficz.starui.compose
 
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import org.starficz.staruiframework.StarUIDsl
 
 typealias StarUIBuilder = (@StarUIDsl CustomPanelAPI).() -> Unit
 

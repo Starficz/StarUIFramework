@@ -1,4 +1,4 @@
-package org.starficz.staruiframework
+package org.starficz.starui
 
 import com.fs.starfarer.api.Global
 import org.lwjgl.opengl.GL11

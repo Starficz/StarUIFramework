@@ -1,4 +1,4 @@
-package org.starficz.staruiframework
+package org.starficz.starui.core
 
 /**
  * A comprehensive enum of every font used in Starsector

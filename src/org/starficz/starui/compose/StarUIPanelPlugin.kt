@@ -1,17 +1,38 @@
-package org.starficz.staruiframework
+package org.starficz.starui.compose
 
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
+import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Mouse
 import org.lwjgl.opengl.GL11
-import java.lang.ref.WeakReference
+import org.starficz.starui.core.bottom
+import org.starficz.starui.core.height
+import org.starficz.starui.core.left
+import org.starficz.starui.core.parent
+import org.starficz.starui.core.right
+import org.starficz.starui.core.setMouseOverPad
+import org.starficz.starui.core.top
+import org.starficz.starui.core.width
+
+internal interface LayoutEngine {
+    fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float>
+    fun layout(assignedWidth: Float, assignedHeight: Float)
+}
 
 class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     lateinit var customPanel: CustomPanelAPI
 
     private val activeBindings = mutableListOf<Any>()
+
+    internal val childMargins = mutableMapOf<UIComponentAPI, Margin>()
+    internal val childSizing = mutableMapOf<UIComponentAPI, StarUISizing>()
+    internal val childMeasurables = mutableMapOf<UIComponentAPI, (maxWidth: Float, maxHeight: Float) -> Pair<Float, Float>>()
+
+    internal var isStackLayout: Boolean = false
+    internal var layoutEngine: LayoutEngine? = null
+    private var hasLayoutRun = false
 
     private var onClickFunctions: MutableList<(InputEventAPI) -> Unit> = ArrayList()
     private var onClickOutsideFunctions: MutableList<(InputEventAPI) -> Unit> = ArrayList()
@@ -29,7 +50,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     private var advanceFunctions: MutableList<(Float) -> Unit> = mutableListOf()
     private var onLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
-    private var hasLayoutRun = false
 
     var customData: Any? = null
 
@@ -51,6 +71,28 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     var consumeEvents = false
     var ignoreConsumedEvents = false
 
+    private fun runLayout(){
+        if (!hasLayoutRun) {
+            layoutEngine?.let {
+                val p = customPanel.parent
+                val rootMaxWidth = if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
+                val rootMaxHeight = if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
+
+                val (w, h) = it.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)
+                it.layout(w, h)
+            }
+
+            onLayoutFunctions.forEach { it() }
+            onLayoutFunctions.clear()
+            hasLayoutRun = true
+        }
+    }
+
+
+    internal fun markLayoutResolved() {
+        hasLayoutRun = true
+    }
+
     internal fun registerBinding(binding: Any) {
         activeBindings.add(binding)
     }
@@ -65,11 +107,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     fun renderBelow(function: (alphaMult: Float) -> Unit) { renderBelowFunctions.add(function) }
     override fun renderBelow(alphaMult: Float) {
-        if (!hasLayoutRun) {
-            onLayoutFunctions.forEach { it() }
-            onLayoutFunctions.clear()
-            hasLayoutRun = true
-        }
+        runLayout()
 
         renderBelowFunctions.forEach {
             GL11.glPushMatrix()
@@ -85,11 +123,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     fun onLayout(function: () -> Unit) { onLayoutFunctions.add(function) }
     fun render(function: (alphaMult: Float) -> Unit) { renderFunctions.add(function) }
     override fun render(alphaMult: Float) {
-        if (!hasLayoutRun) {
-            onLayoutFunctions.forEach { it() }
-            onLayoutFunctions.clear()
-            hasLayoutRun = true
-        }
+        runLayout()
 
         renderFunctions.forEach {
             GL11.glPushMatrix()
@@ -108,8 +142,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     override fun processInput(events: MutableList<InputEventAPI>) {
         events.filter { it.isMouseEvent }.forEach { event ->
             if (ignoreConsumedEvents && event.isConsumed) return@forEach
-            val inElement = event.x.toFloat() in (left-inputCaptureLeftPad)..(right+inputCaptureRightPad) &&
-                    event.y.toFloat() in (bottom-inputCaptureBottomPad)..(top+inputCaptureTopPad)
+            val inElement = event.x.toFloat() in (left -inputCaptureLeftPad)..(right +inputCaptureRightPad) &&
+                    event.y.toFloat() in (bottom -inputCaptureBottomPad)..(top +inputCaptureTopPad)
             if (inElement) {
                 onHoverFunctions.forEach { it(event) }
                 if (!isHovering) onHoverEnterFunctions.forEach { it(event) }

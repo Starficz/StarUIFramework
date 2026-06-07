@@ -1,4 +1,4 @@
-package org.starficz.staruiframework.interfaces
+package org.starficz.starui.compose
 
 import com.fs.starfarer.api.ui.UIPanelAPI
 

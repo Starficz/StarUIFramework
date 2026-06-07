@@ -1,4 +1,4 @@
-package org.starficz.staruiframework
+package org.starficz.starui.compose
 
 import java.lang.ref.WeakReference
 
@@ -8,11 +8,11 @@ class UIState<T>(initialValue: T) {
             if (field != newValue) {
                 field = newValue
 
-                observers.retainAll { weakRef ->
-                    val observer = weakRef.get()
-                    observer?.invoke(newValue)
-                    observer != null
+                val observersSnapshot = observers.toList()
+                observersSnapshot.forEach { weakRef ->
+                    weakRef.get()?.invoke(newValue)
                 }
+                observers.retainAll { it.get() != null }
 
                 strongObservers.forEach { it.invoke(newValue) }
             }
@@ -26,6 +26,8 @@ class UIState<T>(initialValue: T) {
      * Must be called inside a UI Builder block (e.g., CustomPanel {}, HorizontalStackLayout {}).
      */
     fun onChange(action: (T) -> Unit) {
+        observers.retainAll { it.get() != null }
+
         val activePlugin = StarUIContext.currentPlugin
 
         if (activePlugin != null) {
@@ -50,5 +52,34 @@ class UIState<T>(initialValue: T) {
 
     fun removeObserver(action: (T) -> Unit) {
         strongObservers.remove(action)
+    }
+}
+
+
+data class Margin(val left: Float = 0f, val right: Float = 0f, val top: Float = 0f, val bottom: Float = 0f)
+
+internal object StarUIContext {
+    private val threadLocalStack = ThreadLocal.withInitial { mutableListOf<StarUIPanelPlugin>() }
+
+    private val pluginStack: MutableList<StarUIPanelPlugin>
+        get() = threadLocalStack.get()
+
+    val isTopLevel: Boolean
+        get() = pluginStack.isEmpty()
+
+    val currentPlugin: StarUIPanelPlugin
+        get() = pluginStack.lastOrNull() ?: throw IllegalStateException(
+            "DSL Called on non-DSL Context! " +
+            "This component or state binding must be inside a CustomPanel or StackLayout builder block."
+        )
+
+    inline fun <R> withPlugin(plugin: StarUIPanelPlugin, block: () -> R): R {
+        val stack = pluginStack
+        stack.add(plugin)
+        try {
+            return block()
+        } finally {
+            stack.removeLast()
+        }
     }
 }

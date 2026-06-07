@@ -1,4 +1,4 @@
-package org.starficz.staruiframework.interfaces
+package org.starficz.starui.core
 
 import com.fs.starfarer.api.ui.UIComponentAPI
 
@@ -26,44 +26,44 @@ sealed interface Anchor {
     )
 
     sealed interface VerticalAligner {
-        fun matchingLeftEdge(yMargin: Float = 0f): AnchorData
-        fun matchingCenter(yMargin: Float = 0f): AnchorData
-        fun matchingRightEdge(yMargin: Float = 0f): AnchorData
+        fun matchingLeftEdge(ySpacing: Float = 0f): AnchorData
+        fun matchingCenter(ySpacing: Float = 0f): AnchorData
+        fun matchingRightEdge(ySpacing: Float = 0f): AnchorData
     }
 
     sealed interface HorizontalAligner {
-        fun matchingTopEdge(xMargin: Float = 0f): AnchorData
-        fun matchingCenter(xMargin: Float = 0f): AnchorData
-        fun matchingBottomEdge(xMargin: Float = 0f): AnchorData
+        fun matchingTopEdge(xSpacing: Float = 0f): AnchorData
+        fun matchingCenter(xSpacing: Float = 0f): AnchorData
+        fun matchingBottomEdge(xSpacing: Float = 0f): AnchorData
     }
 
     sealed interface InPositioner // Common marker interface
 
     /** A positioner for "In" alignments that take both X and Y margins. */
     sealed interface InBiMarginPositioner : InPositioner {
-        fun ofParent(xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
-        fun ofPreviousComponent(xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
-        fun ofSibling(c: UIComponentAPI, xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
+        fun ofParent(xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
+        fun ofPreviousComponent(xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
+        fun ofSibling(c: UIComponentAPI, xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
     }
 
     /** A positioner for "In" alignments that only take a Y margin. */
     sealed interface InYMarginPositioner : InPositioner {
-        fun ofParent(yMargin: Float = 0f): AnchorData
-        fun ofPreviousComponent(yMargin: Float = 0f): AnchorData
-        fun ofSibling(c: UIComponentAPI, yMargin: Float = 0f): AnchorData
+        fun ofParent(ySpacing: Float = 0f): AnchorData
+        fun ofPreviousComponent(ySpacing: Float = 0f): AnchorData
+        fun ofSibling(c: UIComponentAPI, ySpacing: Float = 0f): AnchorData
     }
 
     /** A positioner for "In" alignments that only take an X margin. */
     sealed interface InXMarginPositioner : InPositioner {
-        fun ofParent(xMargin: Float = 0f): AnchorData
-        fun ofPreviousComponent(xMargin: Float = 0f): AnchorData
-        fun ofSibling(c: UIComponentAPI, xMargin: Float = 0f): AnchorData
+        fun ofParent(xSpacing: Float = 0f): AnchorData
+        fun ofPreviousComponent(xSpacing: Float = 0f): AnchorData
+        fun ofSibling(c: UIComponentAPI, xSpacing: Float = 0f): AnchorData
     }
 
     sealed interface MyPositioner {
-        fun ofParent(xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
-        fun ofPreviousComponent(xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
-        fun ofSibling(c: UIComponentAPI, xMargin: Float = 0f, yMargin: Float = 0f): AnchorData
+        fun ofParent(xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
+        fun ofPreviousComponent(xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
+        fun ofSibling(c: UIComponentAPI, xSpacing: Float = 0f, ySpacing: Float = 0f): AnchorData
     }
 
     sealed interface MyTargetSelector {
@@ -83,18 +83,18 @@ sealed interface Anchor {
         private val ref: AnchorReference, private val refY: Float,
         private val targetY: Float, private val ySign: Float
     ) : VerticalAligner {
-        override fun matchingLeftEdge(yMargin: Float) = AnchorData(ref, 0.0f, refY, 0.0f, targetY, 0f, yMargin * ySign)
-        override fun matchingCenter(yMargin: Float) = AnchorData(ref, 0.5f, refY, -0.5f, targetY, 0f, yMargin * ySign)
-        override fun matchingRightEdge(yMargin: Float) = AnchorData(ref, 1.0f, refY, -1.0f, targetY, 0f, yMargin * ySign)
+        override fun matchingLeftEdge(ySpacing: Float) = AnchorData(ref, 0.0f, refY, 0.0f, targetY, 0f, ySpacing * ySign)
+        override fun matchingCenter(ySpacing: Float) = AnchorData(ref, 0.5f, refY, -0.5f, targetY, 0f, ySpacing * ySign)
+        override fun matchingRightEdge(ySpacing: Float) = AnchorData(ref, 1.0f, refY, -1.0f, targetY, 0f, ySpacing * ySign)
     }
 
     private class HorizontalAlignerImpl(
         private val ref: AnchorReference, private val refX: Float,
         private val targetX: Float, private val xSign: Float
     ) : HorizontalAligner {
-        override fun matchingTopEdge(xMargin: Float) = AnchorData(ref, refX, 1.0f, targetX, -1.0f, xMargin * xSign, 0f)
-        override fun matchingCenter(xMargin: Float) = AnchorData(ref, refX, 0.5f, targetX, -0.5f, xMargin * xSign, 0f)
-        override fun matchingBottomEdge(xMargin: Float) = AnchorData(ref, refX, 0.0f, targetX, 0.0f, xMargin * xSign, 0f)
+        override fun matchingTopEdge(xSpacing: Float) = AnchorData(ref, refX, 1.0f, targetX, -1.0f, xSpacing * xSign, 0f)
+        override fun matchingCenter(xSpacing: Float) = AnchorData(ref, refX, 0.5f, targetX, -0.5f, xSpacing * xSign, 0f)
+        override fun matchingBottomEdge(xSpacing: Float) = AnchorData(ref, refX, 0.0f, targetX, 0.0f, xSpacing * xSign, 0f)
     }
 
     private class InBiMarginPositionerImpl(
@@ -102,34 +102,34 @@ sealed interface Anchor {
         private val xSign: Float, private val ySign: Float
     ) : InBiMarginPositioner {
         private fun create(ref: AnchorReference, x: Float, y: Float) = AnchorData(ref, refX, refY, targetX, targetY, x * xSign, y * ySign)
-        override fun ofParent(xMargin: Float, yMargin: Float) = create(AnchorReference.Parent, xMargin, yMargin)
-        override fun ofPreviousComponent(xMargin: Float, yMargin: Float) = create(AnchorReference.Previous, xMargin, yMargin)
-        override fun ofSibling(c: UIComponentAPI, xMargin: Float, yMargin: Float) = create(AnchorReference.Sibling(c), xMargin, yMargin)
+        override fun ofParent(xSpacing: Float, ySpacing: Float) = create(AnchorReference.Parent, xSpacing, ySpacing)
+        override fun ofPreviousComponent(xSpacing: Float, ySpacing: Float) = create(AnchorReference.Previous, xSpacing, ySpacing)
+        override fun ofSibling(c: UIComponentAPI, xSpacing: Float, ySpacing: Float) = create(AnchorReference.Sibling(c), xSpacing, ySpacing)
     }
 
     private class InYMarginPositionerImpl(
         private val refX: Float, private val refY: Float, private val targetX: Float, private val targetY: Float, private val ySign: Float
     ) : InYMarginPositioner {
         private fun create(ref: AnchorReference, y: Float) = AnchorData(ref, refX, refY, targetX, targetY, 0f, y * ySign)
-        override fun ofParent(yMargin: Float) = create(AnchorReference.Parent, yMargin)
-        override fun ofPreviousComponent(yMargin: Float) = create(AnchorReference.Previous, yMargin)
-        override fun ofSibling(c: UIComponentAPI, yMargin: Float) = create(AnchorReference.Sibling(c), yMargin)
+        override fun ofParent(ySpacing: Float) = create(AnchorReference.Parent, ySpacing)
+        override fun ofPreviousComponent(ySpacing: Float) = create(AnchorReference.Previous, ySpacing)
+        override fun ofSibling(c: UIComponentAPI, ySpacing: Float) = create(AnchorReference.Sibling(c), ySpacing)
     }
 
     private class InXMarginPositionerImpl(
         private val refX: Float, private val refY: Float, private val targetX: Float, private val targetY: Float, private val xSign: Float
     ) : InXMarginPositioner {
         private fun create(ref: AnchorReference, x: Float) = AnchorData(ref, refX, refY, targetX, targetY, x * xSign, 0f)
-        override fun ofParent(xMargin: Float) = create(AnchorReference.Parent, xMargin)
-        override fun ofPreviousComponent(xMargin: Float) = create(AnchorReference.Previous, xMargin)
-        override fun ofSibling(c: UIComponentAPI, xMargin: Float) = create(AnchorReference.Sibling(c), xMargin)
+        override fun ofParent(xSpacing: Float) = create(AnchorReference.Parent, xSpacing)
+        override fun ofPreviousComponent(xSpacing: Float) = create(AnchorReference.Previous, xSpacing)
+        override fun ofSibling(c: UIComponentAPI, xSpacing: Float) = create(AnchorReference.Sibling(c), xSpacing)
     }
 
     private class MyPositionerImpl(private val myX: Float, private val myY: Float, private val refX: Float, private val refY: Float) : MyPositioner {
-        private fun create(ref: AnchorReference, xMargin: Float, yMargin: Float) = AnchorData(ref, refX, refY, -myX, -myY, xMargin, yMargin)
-        override fun ofParent(xMargin: Float, yMargin: Float) = create(AnchorReference.Parent, xMargin, yMargin)
-        override fun ofPreviousComponent(xMargin: Float, yMargin: Float) = create(AnchorReference.Previous, xMargin, yMargin)
-        override fun ofSibling(c: UIComponentAPI, xMargin: Float, yMargin: Float) = create(AnchorReference.Sibling(c), xMargin, yMargin)
+        private fun create(ref: AnchorReference, xSpacing: Float, ySpacing: Float) = AnchorData(ref, refX, refY, -myX, -myY, xSpacing, ySpacing)
+        override fun ofParent(xSpacing: Float, ySpacing: Float) = create(AnchorReference.Parent, xSpacing, ySpacing)
+        override fun ofPreviousComponent(xSpacing: Float, ySpacing: Float) = create(AnchorReference.Previous, xSpacing, ySpacing)
+        override fun ofSibling(c: UIComponentAPI, xSpacing: Float, ySpacing: Float) = create(AnchorReference.Sibling(c), xSpacing, ySpacing)
     }
 
     private class MyTargetSelectorImpl(private val myX: Float, private val myY: Float) : MyTargetSelector {

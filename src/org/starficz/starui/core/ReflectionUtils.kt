@@ -1,16 +1,20 @@
-package org.starficz.staruiframework.internal
+package org.starficz.starui.core
 
-import org.starficz.staruiframework.BoxedUIElement
+import java.lang.Byte
+import java.lang.Double
+import java.lang.Float
+import java.lang.Long
+import java.lang.Short
 import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandles
 import java.lang.invoke.MethodType
 import java.util.concurrent.ConcurrentHashMap
-
 // Copyright Starficz, Licensed under LGPL-3.0-only
 // Credits to Lukas04 for his ReflectionUtils, Lyravega, Float, and Andylizi for the original idea.
 
+
 /**
- * An internal reflection utility designed specifically for Starsector modding.
+ * A reflection utility designed specifically for Starsector modding.
  *
  * This object provides functions to find and interact with fields, methods, and constructors
  * in potentially obfuscated code. It circumvents classloader restrictions on using `java.lang.reflect`
@@ -41,7 +45,8 @@ import java.util.concurrent.ConcurrentHashMap
  * @see ReflectedMethod
  * @see ReflectedConstructor
  */
-internal object ReflectionUtils {
+
+object ReflectionUtils {
     private val fieldClass =
         Class.forName("java.lang.reflect.Field", false, Class::class.java.classLoader)
     private val setFieldHandle =
@@ -162,7 +167,8 @@ internal object ReflectionUtils {
             return result
         }
     }
-    private val reflectedFieldsWithMethodCache = ConcurrentHashMap<ReflectedFieldWithMethodCacheKey, List<ReflectedField>>()
+    private val reflectedFieldsWithMethodCache =
+        ConcurrentHashMap<ReflectedFieldWithMethodCacheKey, List<ReflectedField>>()
 
     private data class ReflectedConstructorsCacheKey(
         val targetClass: Class<*>,
@@ -191,7 +197,8 @@ internal object ReflectionUtils {
             return result
         }
     }
-    private val ReflectedConstructorsCache = ConcurrentHashMap<ReflectedConstructorsCacheKey, List<ReflectedConstructor>>()
+    private val ReflectedConstructorsCache =
+        ConcurrentHashMap<ReflectedConstructorsCacheKey, List<ReflectedConstructor>>()
 
     /**
      * Finds a unique field matching the name and/or type on the provided `instance`'s class (or optionally, superclass's) and returns its value.
@@ -732,14 +739,14 @@ internal object ReflectionUtils {
     // Map primitives to their corresponding wrapper types
     private val primitiveToWrapper = mapOf<Class<*>, Class<*>>(
         java.lang.Boolean.TYPE to java.lang.Boolean::class.java,
-        java.lang.Byte.TYPE to java.lang.Byte::class.java,
-        java.lang.Character.TYPE to java.lang.Character::class.java,
-        java.lang.Short.TYPE to java.lang.Short::class.java,
-        java.lang.Integer.TYPE to java.lang.Integer::class.java,
-        java.lang.Long.TYPE to java.lang.Long::class.java,
-        java.lang.Float.TYPE to java.lang.Float::class.java,
-        java.lang.Double.TYPE to java.lang.Double::class.java,
-        java.lang.Void.TYPE to java.lang.Void::class.java
+        Byte.TYPE to Byte::class.java,
+        Character.TYPE to Character::class.java,
+        Short.TYPE to Short::class.java,
+        Integer.TYPE to Integer::class.java,
+        Long.TYPE to Long::class.java,
+        Float.TYPE to Float::class.java,
+        Double.TYPE to Double::class.java,
+        Void.TYPE to Void::class.java
     )
 
     // Map wrapper types back to their primitives
@@ -749,13 +756,13 @@ internal object ReflectionUtils {
     // (Key: method parameter type, Value: Set of types that can be passed as arguments)
     private val primitiveWidensFrom = mapOf<Class<*>, Set<Class<*>>>(
         // Primitive Widening the integer types
-        java.lang.Short.TYPE to setOf(java.lang.Byte.TYPE),
-        java.lang.Integer.TYPE to setOf(java.lang.Byte.TYPE, java.lang.Short.TYPE, java.lang.Character.TYPE),
-        java.lang.Long.TYPE to setOf(java.lang.Byte.TYPE, java.lang.Short.TYPE, java.lang.Character.TYPE, java.lang.Integer.TYPE),
+        Short.TYPE to setOf(Byte.TYPE),
+        Integer.TYPE to setOf(Byte.TYPE, Short.TYPE, Character.TYPE),
+        Long.TYPE to setOf(Byte.TYPE, Short.TYPE, Character.TYPE, Integer.TYPE),
 
         // Primitive Widening the float types
-        java.lang.Float.TYPE to setOf(java.lang.Byte.TYPE, java.lang.Short.TYPE, java.lang.Character.TYPE, java.lang.Integer.TYPE, java.lang.Long.TYPE),
-        java.lang.Double.TYPE to setOf(java.lang.Byte.TYPE, java.lang.Short.TYPE, java.lang.Character.TYPE, java.lang.Integer.TYPE, java.lang.Long.TYPE, java.lang.Float.TYPE)
+        Float.TYPE to setOf(Byte.TYPE, Short.TYPE, Character.TYPE, Integer.TYPE, Long.TYPE),
+        Double.TYPE to setOf(Byte.TYPE, Short.TYPE, Character.TYPE, Integer.TYPE, Long.TYPE, Float.TYPE)
     )
 
     /**
