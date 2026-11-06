@@ -13,7 +13,6 @@ import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.ui.impl.StandardTooltipV2Expandable
 import org.starficz.starui.core.ReflectionUtils.invoke
-import org.starficz.starui.compose.UIState
 import java.awt.Color
 
 fun UIComponentAPI.addTooltip(
@@ -45,6 +44,21 @@ fun UIComponentAPI.addTooltip(
             TooltipMakerAPI.TooltipLocation.BELOW -> tooltipClass.invoke("addTooltipBelow", this, tooltip, margin)
         }
     }
+}
+
+fun UIPanelAPI.addImage(
+    imageSpritePath: String,
+    width: Float = 100f,
+    height: Float = 100f
+): BoxedUIImage {
+    val tempPanel = Global.getSettings().createCustom(width, height, null)
+    val tempTMAPI = tempPanel.createUIElement(width, height, false)
+    tempTMAPI.addImage(imageSpritePath, width, height, 0f)
+
+    val innerImg = (tempTMAPI.children[0] as UIPanelAPI).children[0]
+    this.addComponent(innerImg)
+
+    return BoxedUIImage(innerImg)
 }
 
 fun UIPanelAPI.addShipPreview(
@@ -101,17 +115,6 @@ fun UIPanelAPI.addPara(
     return BoxedUILabel(para)
 }
 
-fun UIPanelAPI.addImage(imageSpritePath: String, width: Float, height: Float): BoxedUIImage {
-    val tempPanel = Global.getSettings().createCustom(width, height, null)
-    val tempTMAPI = tempPanel.createUIElement(width, height, false)
-    tempTMAPI.addImage(imageSpritePath, width, height, 0f)
-    val tempTMAPIsUIPanel = tempTMAPI.children[0] as UIPanelAPI
-    val image = tempTMAPIsUIPanel.children[0]
-
-    this.addComponent(image)
-    return BoxedUIImage(image)
-}
-
 fun UIPanelAPI.addTextField(width: Float, height: Float, font: Font): TextFieldAPI {
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
@@ -149,7 +152,7 @@ fun UIPanelAPI.addButton(
 
 fun UIPanelAPI.addAreaCheckbox(
     text: String, data: Any?, baseColor: Color, bgColor: Color, brightColor: Color,
-    width: Float, height: Float, font: Font? = null, leftAlign: Boolean = false, bind: UIState<Boolean>? = null): ButtonAPI {
+    width: Float, height: Float, font: Font? = null, leftAlign: Boolean = false): ButtonAPI {
     // make a button in a temp panel/element
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
@@ -159,10 +162,6 @@ fun UIPanelAPI.addAreaCheckbox(
         text, data, baseColor, bgColor, brightColor, width, height, 0f, leftAlign)
 
     this.addComponent(button)
-    if (bind != null) {
-        button.isChecked = bind.value
-        button.onClick { bind.value = button.isChecked }
-    }
     button.xAlignOffset = 0f
     button.yAlignOffset = 0f
     return button
@@ -170,7 +169,7 @@ fun UIPanelAPI.addAreaCheckbox(
 
 fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, data: Any? = null,
                            font: Font = Font.INSIGNIA_15, color: Color = Global.getSettings().basePlayerColor,
-                           size: ButtonAPI.UICheckboxSize? = ButtonAPI.UICheckboxSize.SMALL, bind: UIState<Boolean>? = null): ButtonAPI {
+                           size: ButtonAPI.UICheckboxSize? = ButtonAPI.UICheckboxSize.SMALL): ButtonAPI {
     // make a button in a temp panel/element
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)
@@ -178,15 +177,10 @@ fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, da
     val checkbox = tempTMAPI.addCheckbox(width, height, text, data, getFontPath(font), color, size, 0f)
 
     this.addComponent(checkbox)
-    if (bind != null) {
-        checkbox.isChecked = bind.value
-        checkbox.onClick { bind.value = checkbox.isChecked }
-    }
     checkbox.xAlignOffset = 0f
     checkbox.yAlignOffset = 0f
     return checkbox
 }
-
 
 // CustomPanelAPI implements the same Listener that a ButtonAPI requires,
 // A CustomPanel then happens to trigger its CustomUIPanelPlugin buttonPressed() method

@@ -8,7 +8,7 @@ import com.fs.starfarer.api.ui.*
 import org.starficz.starui.core.ReflectionUtils.getMethodsMatching
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.ReflectionUtils.set
-import org.starficz.starui.compose.StarUIPanelPlugin
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.Anchor.AnchorData
 import org.starficz.starui.core.Anchor.AnchorReference
 
@@ -200,42 +200,42 @@ fun measureTextSize(text: String, font: Font? = null): Pair<Float, Float> {
     return Pair(dummyLabel.computeTextWidth(text), dummyLabel.computeTextHeight(text))
 }
 
-// Custom CustomUIPanelPlugin extensions that map the plugin position to the panel
-val StarUIPanelPlugin.width
-    get() = customPanel.width
+// Custom CustomUIPanelPlugin extensions that map the plugin position to the panel or component
+val StarUIPanelPlugin.width: Float
+    get() = slotBounds?.width ?: component.width
 
-val StarUIPanelPlugin.height
-    get() = customPanel.height
+val StarUIPanelPlugin.height: Float
+    get() = slotBounds?.height ?: component.height
 
-val StarUIPanelPlugin.x
-    get() = customPanel.x
+val StarUIPanelPlugin.x: Float
+    get() = component.x + (slotBounds?.offsetX ?: 0f)
 
-val StarUIPanelPlugin.y
-    get() = customPanel.y
+val StarUIPanelPlugin.y: Float
+    get() = component.y + (slotBounds?.offsetY ?: 0f)
 
-val StarUIPanelPlugin.left
+val StarUIPanelPlugin.left: Float
     get() = x
 
-val StarUIPanelPlugin.bottom
+val StarUIPanelPlugin.bottom: Float
     get() = y
 
-val StarUIPanelPlugin.top
+val StarUIPanelPlugin.top: Float
     get() = y + height
 
-val StarUIPanelPlugin.right
+val StarUIPanelPlugin.right: Float
     get() = x + width
 
-val StarUIPanelPlugin.centerX
-    get() = customPanel.centerX
+val StarUIPanelPlugin.centerX: Float
+    get() = x + width / 2f
 
-val StarUIPanelPlugin.centerY
-    get() = customPanel.centerY
+val StarUIPanelPlugin.centerY: Float
+    get() = y + height / 2f
 
-val StarUIPanelPlugin.xAlignOffset
-    get() = customPanel.xAlignOffset
+val StarUIPanelPlugin.xAlignOffset: Float
+    get() = component.xAlignOffset
 
-val StarUIPanelPlugin.yAlignOffset
-    get() = customPanel.yAlignOffset
+val StarUIPanelPlugin.yAlignOffset: Float
+    get() = component.yAlignOffset
 
 fun CustomPanelAPI.setPlugin(plugin: CustomUIPanelPlugin) {
     set(value=plugin)

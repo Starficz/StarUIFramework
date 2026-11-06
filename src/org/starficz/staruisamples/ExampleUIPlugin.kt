@@ -1,34 +1,66 @@
 package org.starficz.staruisamples
 
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
+import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.lwjgl.opengl.GL11
 import org.starficz.starui.compose.*
+import org.starficz.starui.compose.components.Button
+import org.starficz.starui.compose.components.Checkbox
+import org.starficz.starui.compose.components.Divider
+import org.starficz.starui.compose.components.FlexSpacer
+import org.starficz.starui.compose.components.HorizontalStackLayout
+import org.starficz.starui.compose.components.Image
+import org.starficz.starui.compose.components.ScrollPanel
+import org.starficz.starui.compose.components.ShipDisplay
+import org.starficz.starui.compose.components.Spacer
+import org.starficz.starui.compose.components.StarUIScrollPanel
+import org.starficz.starui.compose.components.Text
+import org.starficz.starui.compose.components.TextAlign
+import org.starficz.starui.compose.components.Theme
+import org.starficz.starui.compose.components.VerticalStackLayout
+import org.starficz.starui.compose.layout.XAlign
+import org.starficz.starui.compose.layout.YAlign
+import org.starficz.starui.compose.modifier.Modifier
+import org.starficz.starui.compose.modifier.anchor
+import org.starficz.starui.compose.modifier.background
+import org.starficz.starui.compose.modifier.border
+import org.starficz.starui.compose.modifier.hitBoxPadding
+import org.starficz.starui.compose.modifier.margin
+import org.starficz.starui.compose.modifier.onHoverEnter
+import org.starficz.starui.compose.modifier.onRender
+import org.starficz.starui.compose.runtime.StarUIBuilder
+import org.starficz.starui.compose.runtime.StarUIPlugin
+import org.starficz.starui.compose.runtime.StarUITheme
+import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.*
 import org.starficz.starui.drawBorder
 import java.awt.Color
-
-
 
 object ExampleUIPlugin {
 
     // Helper: Recursively draws debug borders around all UI Components in the tree
     fun drawDebugBorders(panel: UIPanelAPI) {
         panel.getChildrenCopy().forEach { child ->
-
-            // Determine border color based on the vanilla UI component type
             when (child) {
-                is com.fs.starfarer.api.ui.CustomPanelAPI -> GL11.glColor4f(0.2f, 0.5f, 1f, 1f) // Blue for Layouts/Spacers
-                is com.fs.starfarer.api.ui.UIPanelAPI -> GL11.glColor4f(0f, 1f, 1f, 1f)         // Cyan for generic Panels
-                is com.fs.starfarer.api.ui.LabelAPI -> GL11.glColor4f(0.2f, 1f, 0.2f, 1f)       // Green for Text
-                is com.fs.starfarer.api.ui.ButtonAPI -> GL11.glColor4f(1f, 0.8f, 0f, 1f)        // Yellow/Orange for Buttons & Checkboxes
-                is com.fs.starfarer.api.ui.TextFieldAPI -> GL11.glColor4f(1f, 0f, 1f, 1f)       // Magenta for Text Inputs
-                else -> GL11.glColor4f(1f, 0f, 0f, 1f)                                          // Red for Images and unknown types
+                is CustomPanelAPI -> GL11.glColor4f(0.2f, 0.5f, 1f, 1f) // Blue for Layouts/Spacers
+                is UIPanelAPI -> GL11.glColor4f(0f, 1f, 1f, 1f)         // Cyan for generic Panels
+                is LabelAPI -> GL11.glColor4f(0.2f, 1f, 0.2f, 1f)       // Green for Text
+                is ButtonAPI -> GL11.glColor4f(1f, 0.8f, 0f, 1f)        // Yellow/Orange for Buttons & Checkboxes
+                is TextFieldAPI -> GL11.glColor4f(1f, 0f, 1f, 1f)       // Magenta for Text Inputs
+                else -> GL11.glColor4f(1f, 0f, 0f, 1f)                  // Red for Images and unknown types
             }
 
-            drawBorder(child.position.x, child.position.y, child.position.x + child.width, child.position.y + child.height)
+            drawBorder(
+                child.position.x,
+                child.position.y,
+                child.position.x + child.width,
+                child.position.y + child.height
+            )
 
             if (child is UIPanelAPI) {
                 drawDebugBorders(child)
@@ -39,153 +71,182 @@ object ExampleUIPlugin {
     class ExampleStarUIPlugin : StarUIPlugin {
         override val addPanelToTitleScreen: StarUIBuilder = {
 
-            // Global Debug Renderer
-            Plugin { render { drawDebugBorders(customPanel) } }
+            val showDebug = UIState(false)
 
-            // ROOT WINDOW
-            VerticalStackLayout(
-                size = StackSize.exact(1000f, 700f),
-                modifier = Modifier.anchor(Anchor.inside.center.ofParent()),
-                align = XAlign.Center,
-                xPadding = 15f,
-                yPadding = 15f,
-                spacing = 10f
-            ) {
-                Plugin {
-                    renderBelow { alphaMult ->
-                        GL11.glColor4f(0.05f, 0.05f, 0.05f, 0.95f * alphaMult)
-                        GL11.glRectf(left, bottom, right, top)
-                    }
-                }
+            // We will capture these references to test the ScrollPanelStateAPI later!
+            var myScroller: StarUIScrollPanel? = null
+            var targetListItem: UIComponentAPI? = null
 
-                // --- HEADER ---
-                Text("StarUI Framework Exhaustive Test Matrix", font = Font.ORBITRON_24_BOLD, color = Color.CYAN)
-                Divider(thickness = 2f, color = Color.CYAN)
+            // --- THEME OVERRIDE ---
+            // We create a custom theme to prove context-passing works!
+            val myCyberTheme = StarUITheme.Default.copy(
+                button = StarUITheme.Default.button.copy(
+                    size = Size.wrap(xPadding = 15f, yPadding = 8f), // Fat buttons
+                    font = Font.ORBITRON_12_CONDENSED
+                ),
+                scrollPanel = StarUITheme.Default.scrollPanel.copy(
+                    shadowColor = Color(0, 50, 100, 200) // Cool blue gradient shadows!
+                ),
+                divider = StarUITheme.Default.divider.copy(
+                    color = Color.CYAN,
+                    thickness = 1f
+                )
+            )
 
-                // --- BODY MULTI-COLUMN ---
-                HorizontalStackLayout(size = StackSize.flex(1f), align = YAlign.Top, spacing = 20f) {
+            // ROOT CONTAINER
+            Theme(myCyberTheme) {
+                VerticalStackLayout(
+                    size = LayoutSize.exact(1200f, 800f),
+                    modifier = Modifier
+                        .anchor(Anchor.inside.center.ofParent())
+                        .background(Color(10, 10, 15, 240))
+                        .border(Color(80, 80, 100, 255), 2f)
+                        .onRender { if (showDebug.value) drawDebugBorders(customPanel) },
+                    align = XAlign.Center,
+                    xPadding = 20f, yPadding = 20f, spacing = 15f
+                ) {
 
                     // ==========================================
-                    // COLUMN 1: LAYOUT & FLEX MATRIX
+                    // HEADER
                     // ==========================================
-                    VerticalStackLayout(size = StackSize.flex(1f), align = XAlign.Left, spacing = 15f) {
-                        Text("1. Layout Distributions", font = Font.INSIGNIA_21, color = Color.YELLOW)
-                        Divider()
-
-                        // Test: Proportional Flex Math
-                        Text("Horizontal Flex (1:2:1 Ratio)", color = Color.GRAY)
-                        HorizontalStackLayout(size = StackSize.fillCross(40f), spacing = 5f) {
-                            Button("W: 1x", size = ContentSize.flex(1f))
-                            Button("W: 2x", size = ContentSize.flex(2f))
-                            Button("W: 1x", size = ContentSize.flex(1f))
-                        }
-
-                        // Test: Cross-Axis Alignment inside a Wrap Layout
-                        Text("YAlign Test (Top/Center/Bottom)", color = Color.GRAY)
-                        HorizontalStackLayout(size = StackSize.wrap(), spacing = 5f, align = YAlign.Center) {
-                            Button("Top", size = ContentSize.exact(60f, 30f), modifier = Modifier.margin(bottom = 30f))
-                            Button("Center", size = ContentSize.exact(60f, 60f))
-                            Button("Bottom", size = ContentSize.exact(60f, 30f), modifier = Modifier.margin(top = 30f))
-                        }
-
-                        // Test: XAlign Test
-                        Text("XAlign Test (Left/Center/Right)", color = Color.GRAY)
-                        VerticalStackLayout(size = StackSize.flex(1f), spacing = 5f, align = XAlign.Center) {
-                            Button("Left", modifier = Modifier.margin(right = 100f))
-                            Button("Center")
-                            Button("Right", modifier = Modifier.margin(left = 100f))
-                        }
+                    HorizontalStackLayout(size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), align = YAlign.Center) {
+                        Text("StarUI Unified Architecture Test", font = Font.ORBITRON_24_BOLD, color = Color.CYAN)
+                        FlexSpacer(1f)
+                        Checkbox("Draw Debug Outlines", bind = showDebug, color = Color.YELLOW)
                     }
 
-                    Divider(color = Color.DARK_GRAY)
+                    Divider()
 
                     // ==========================================
-                    // COLUMN 2: SIZING & ELEMENTS
+                    // MAIN BODY (Two Columns)
                     // ==========================================
-                    VerticalStackLayout(size = StackSize.flex(1.2f), align = XAlign.Left, spacing = 15f) {
-                        Text("2. Sizing & Data Bindings", font = Font.INSIGNIA_21, color = Color.YELLOW)
-                        Divider()
+                    HorizontalStackLayout(size = LayoutSize.fill(1f), spacing = 20f, align = YAlign.Top) {
 
-                        // Test: TextField & FillCross Directive
-                        Text("FillCross TextField (H:30, W:Fill)", color = Color.GRAY)
-                        TextField(bind = UIState("Editable Text Box"), size = ContentSize.fillCross(30f))
+                        // ---------------------------------------------------------
+                        // COLUMN A: ADVANCED CONTROLLERS & SCROLL COMMANDS
+                        // ---------------------------------------------------------
+                        VerticalStackLayout(size = LayoutSize.mixed(Axis.Exact(350f), Axis.Fill()), spacing = 15f) {
 
-                        // Test: Exact vs Wrap
-                        Text("Exact vs Wrap Size", color = Color.GRAY)
-                        HorizontalStackLayout(size = StackSize.wrap(), spacing = 10f) {
-                            Button("Exact 100x40", size = ContentSize.exact(100f, 40f))
-                            Button("Wrapped Content", size = ContentSize.wrap(xPad = 15f, yPad = 10f))
-                        }
+                            // TEXT WRAPPER TEST
+                            Text("1. Text Wrapper Features", font = Font.INSIGNIA_21, color = Color.WHITE)
 
-                        // Test: State Bindings & Groups
-                        Text("State Bindings & Radio Groups", color = Color.GRAY)
-                        val rGroup = ButtonGroup()
-                        HorizontalStackLayout(size = StackSize.wrap(), spacing = 10f) {
-                            Checkbox("Radio A", bind = UIState(true), buttonGroup = rGroup)
-                            Checkbox("Radio B", bind = UIState(false), buttonGroup = rGroup)
-                        }
+                            // This text proves that the outer wrapper stretches, takes background colors,
+                            // and the inner text centers perfectly within it!
+                            Text(
+                                "I am a Full-Width Centered Banner!",
+                                size = Size.fillX(),
+                                textAlign = TextAlign.Center,
+                                color = Color.WHITE,
+                                modifier = Modifier.background(Color(100, 0, 0, 200)).border(Color.RED).margin(bottom = 10f)
+                            )
 
-                        AreaCheckbox("Standalone Area Checkbox", bind = UIState(false), size = ContentSize.fillCross(30f))
-
-                        // Test: Image Aspect Ratio Dynamic Flex Scaling
-                        Text("Dynamic Flex Image (Pass-3 Scaling)", color = Color.GRAY)
-                        CustomPanel(size = PanelSize.flex(1f)) {
-                            val img = Image("graphics/ships/eagle/eagle_base.png", size = ImageSize.exact(1f, 1f))
-                            Plugin {
-                                onLayout {
-                                    img.sizeToOriginalAspectRatioWithWidth(width)
-                                    img.setAbsoluteLocation(centerX - (img.width / 2f), centerY - (img.height / 2f))
+                            // IMAGE WRAPPER TEST
+                            Text("2. Image API Features", font = Font.INSIGNIA_21, color = Color.WHITE)
+                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 10f, align = YAlign.Bottom) {
+                                // Outline Test
+                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                    Image("graphics/icons/cargo/supplies.png", withOutline = true)
+                                    Text("Outline", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
-                                renderBelow { alphaMult ->
-                                    GL11.glColor4f(0.1f, 0.1f, 0.1f, 0.8f * alphaMult)
-                                    GL11.glRectf(left, bottom, right, top)
+                                // Schematic Test
+                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                    Image("graphics/icons/cargo/supplies.png", renderSchematic = true)
+                                    Text("Schematic", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
-                            }
-                        }
-                    }
-
-                    Divider(color = Color.DARK_GRAY)
-
-                    // ==========================================
-                    // COLUMN 3: MODIFIERS & ANCHORING
-                    // ==========================================
-                    VerticalStackLayout(size = StackSize.flex(1f), align = XAlign.Left, spacing = 15f) {
-                        Text("3. Modifiers & CustomPanel", font = Font.INSIGNIA_21, color = Color.YELLOW)
-                        Divider()
-
-                        // Test: Tooltips & Hitbox Padding
-                        Button(
-                            text = "Hover For Large Tooltip",
-                            size = ContentSize.fillCross(40f),
-                            modifier = Modifier
-                                .tooltip("This tooltip is chained with modifiers!")
-                                .hitBoxPadding(10f)
-                        )
-
-                        Text("Margin Test", color = Color.GRAY, modifier = Modifier.margin(top = 10f, bottom = 10f, left = 20f))
-
-                        // Test: Complex CustomPanel Anchoring
-                        Text("Absolute Anchor Directives", color = Color.GRAY)
-                        CustomPanel(size = PanelSize.flex(1f)) {
-                            Plugin {
-                                renderBelow { alphaMult ->
-                                    GL11.glColor4f(0.1f, 0.3f, 0.1f, 0.3f * alphaMult)
-                                    GL11.glRectf(left, bottom, right, top)
+                                // Border Test
+                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                    Image("graphics/icons/cargo/supplies.png", showBorder = true, borderColor = Color.GREEN)
+                                    Text("Border", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                             }
 
-                            // Using exhaustive anchor corners and margins
-                            Text("TL", modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(5f, 5f)))
-                            Text("TR", modifier = Modifier.anchor(Anchor.inside.topRight.ofParent(5f, 5f)))
+                            Spacer(PanelSize.exact(1f, 10f))
 
-                            Button("Center", size = ContentSize.exact(80f, 30f), modifier = Modifier.anchor(Anchor.inside.center.ofParent()))
+                            // SHIP DISPLAY TEST
+                            Text("3. Ship Display API", font = Font.INSIGNIA_21, color = Color.WHITE)
+                            ShipDisplay(
+                                size = PanelSize.fill(1f), // Fills the remaining vertical space of Column A
+                                showFighters = true,
+                                scaleSmallerShips = 0.5f,
+                                showBorder = true,
+                                modifier = Modifier.background(Color(0, 0, 20, 100))
+                            )
 
-                            Text("BL", modifier = Modifier.anchor(Anchor.inside.bottomLeft.ofParent(5f, 5f)))
-                            Text("BR", modifier = Modifier.anchor(Anchor.inside.bottomRight.ofParent(5f, 5f)))
+                            Spacer(PanelSize.exact(1f, 10f))
+
+                            // SCROLL API COMMANDS
+                            Text("4. Scroll API Interaction", font = Font.INSIGNIA_21, color = Color.WHITE)
+                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f) {
+                                Button("Jump to Item #75", baseColor = Color.GREEN) {
+                                    // Notice how we don't need to cast or unwrap manually!
+                                    // ensureVisible automatically passes the Kotlin Proxy into the vanilla method!
+                                    if (myScroller != null && targetListItem != null) {
+                                        myScroller!!.ensureVisible(targetListItem!!)
+                                    }
+                                }
+                                Button("Scroll to Top", baseColor = Color.YELLOW) {
+                                    myScroller?.scrollToY(0f)
+                                }
+                            }
+                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f) {
+                                Button("Save State") { myScroller?.saveVerticalScrollState() }
+                                Button("Restore State") { myScroller?.restoreVerticalScrollState() }
+                            }
                         }
-                    }
+
+
+                        // ---------------------------------------------------------
+                        // COLUMN B: THE SCROLL PANEL (LazyColumn)
+                        // ---------------------------------------------------------
+
+                        // We capture the returned StarUIScrollPanel controller directly!
+                        myScroller = ScrollPanel(
+                            size = PanelSize.fill(1f), // Fills the rest of the HorizontalStack width
+                            spacing = 10f,
+                            xPadding = 10f,
+                            yPadding = 10f,
+                            // Notice we don't pass shadowColor here, it inherently gets the Blue color from our Theme!
+                            modifier = Modifier.background(Color(5, 5, 5, 200)).border(Color.DARK_GRAY)
+                        ) {
+
+                            Text("Massive Scrollable List", font = Font.ORBITRON_20_BOLD, color = Color.WHITE)
+                            Text("Try clicking 'Save State', scrolling, and clicking 'Restore'.", font = Font.INSIGNIA_15, color = Color.GRAY)
+                            Spacer(PanelSize.exact(1f, 10f))
+
+                            for (i in 1..100) {
+                                // Create the row
+                                val row = HorizontalStackLayout(
+                                    size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()),
+                                    align = YAlign.Center,
+                                    spacing = 15f,
+                                    modifier = Modifier
+                                        .background(if (i == 75) Color(0, 50, 0, 200) else Color(20, 20, 20, 255))
+                                        .border(if (i == 75) Color.GREEN else Color.DARK_GRAY)
+                                        .margin(bottom = 5f)
+                                        .hitBoxPadding(5f)
+                                        .onHoverEnter { Global.getSoundPlayer().playUISound("ui_button_mouseover", 1f, 1f) }
+                                ) {
+                                    Text("#$i", font = Font.ORBITRON_12_CONDENSED, color = if (i == 75) Color.GREEN else Color.CYAN)
+                                    Image("graphics/ships/hound/hound_base.png", size = ImageSize.exact(40f, 40f))
+
+                                    VerticalStackLayout(LayoutSize.fill(1f), align = XAlign.Left) {
+                                        Text(if (i == 75) "TARGET ACQUIRED" else "Standard Hound Variant", font = Font.INSIGNIA_15, color = Color.WHITE)
+                                        Text("A cheap, readily available frigate.", font = Font.SMALL_FONTS_8, color = Color.GRAY)
+                                    }
+
+                                    Button("Examine") // Uses Fat Button Theme!
+                                }
+
+                                // If this is item 75, we capture its layout controller to use in the ensureVisible test!
+                                if (i == 75) {
+                                    targetListItem = row
+                                }
+                            }
+                        } // End ScrollPanel
+
+                    } // End Columns
                 }
-            }
+            } // End Theme
         }
     }
 }

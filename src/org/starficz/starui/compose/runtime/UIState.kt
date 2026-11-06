@@ -1,5 +1,8 @@
-package org.starficz.starui.compose
+package org.starficz.starui.compose.runtime
 
+import com.fs.starfarer.api.ui.ButtonAPI
+import org.lwjgl.input.Keyboard
+import org.starficz.starui.core.onClick
 import java.lang.ref.WeakReference
 
 class UIState<T>(initialValue: T) {
@@ -23,12 +26,11 @@ class UIState<T>(initialValue: T) {
 
     /**
      * Binds a listener to the UI.
-     * Must be called inside a UI Builder block (e.g., CustomPanel {}, HorizontalStackLayout {}).
      */
-    fun onChange(action: (T) -> Unit) {
+    fun onChange(ownerPlugin: StarUIPanelPlugin? = null, action: (T) -> Unit) {
         observers.retainAll { it.get() != null }
 
-        val activePlugin = StarUIContext.currentPlugin
+        val activePlugin = ownerPlugin ?: if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else null
 
         if (activePlugin != null) {
             activePlugin.registerBinding(action)
@@ -55,31 +57,26 @@ class UIState<T>(initialValue: T) {
     }
 }
 
+class ButtonGroup {
+    private val allFlags: MutableCollection<UIState<Boolean>> = mutableListOf()
 
-data class Margin(val left: Float = 0f, val right: Float = 0f, val top: Float = 0f, val bottom: Float = 0f)
-
-internal object StarUIContext {
-    private val threadLocalStack = ThreadLocal.withInitial { mutableListOf<StarUIPanelPlugin>() }
-
-    private val pluginStack: MutableList<StarUIPanelPlugin>
-        get() = threadLocalStack.get()
-
-    val isTopLevel: Boolean
-        get() = pluginStack.isEmpty()
-
-    val currentPlugin: StarUIPanelPlugin
-        get() = pluginStack.lastOrNull() ?: throw IllegalStateException(
-            "DSL Called on non-DSL Context! " +
-            "This component or state binding must be inside a CustomPanel or StackLayout builder block."
-        )
-
-    inline fun <R> withPlugin(plugin: StarUIPanelPlugin, block: () -> R): R {
-        val stack = pluginStack
-        stack.add(plugin)
-        try {
-            return block()
-        } finally {
-            stack.removeLast()
+    internal fun addButtonToGroup(button: ButtonAPI, bind: UIState<Boolean>) {
+        allFlags.add(bind)
+        button.isChecked = bind.value == true
+        button.onClick {
+            if (allFlags.count { it.value } == 1 && bind.value) {
+                allFlags.forEach { it.value = true }
+            } else {
+                if (Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) ||
+                    Keyboard.isKeyDown(Keyboard.KEY_RSHIFT) ||
+                    Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) ||
+                    Keyboard.isKeyDown(Keyboard.KEY_RCONTROL)) {
+                    bind.value = !bind.value
+                } else {
+                    allFlags.forEach { it.value = (it === bind) }
+                }
+            }
+            button.isChecked = bind.value
         }
     }
 }

@@ -2,7 +2,7 @@ package org.starficz.starui.internal
 
 import com.fs.starfarer.api.BaseModPlugin
 import com.fs.starfarer.api.Global
-import org.starficz.starui.compose.StarUIManager
+import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.staruisamples.ExampleUIPlugin
 
 
@@ -14,6 +14,7 @@ internal class ModPlugin : BaseModPlugin() {
 
     // for testing only
     override fun onApplicationLoad() {
+        StarUIManager.initAtApplicationLoad()
         StarUIManager.registerPlugin(ExampleUIPlugin.ExampleStarUIPlugin())
     }
 }

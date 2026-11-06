@@ -13,6 +13,10 @@
         {
             "id": "lw_lazylib",
             "name": "LazyLib"
+        },
+        {
+            "id": "patchlib",
+            "name": "! PatchLib !"
         }
     ]
 }

@@ -1,4 +1,4 @@
-package org.starficz.starui.compose
+package org.starficz.starui.compose.runtime
 
 import com.fs.starfarer.api.ui.UIPanelAPI
 

@@ -1,4 +1,4 @@
-package org.starficz.starui.compose
+package org.starficz.starui.compose.runtime
 
 import com.fs.starfarer.api.campaign.CoreUIAPI
 import com.fs.starfarer.api.campaign.CoreUITabId
@@ -10,6 +10,14 @@ import com.fs.starfarer.campaign.CampaignState
 import com.fs.starfarer.combat.CombatState
 import com.fs.starfarer.title.TitleScreenState
 import com.fs.state.AppDriver
+import patchlib.api.PatchLib
+import patchlib.api.query.ClassQuery
+import patchlib.api.query.MethodQuery
+import org.starficz.starui.compose.components.CustomPanel
+import org.starficz.starui.compose.modifier.Modifier
+import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.modifier.anchor
+import org.starficz.starui.compose.modifier.plugin
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.ReflectionUtils.getConstructorsMatching
@@ -137,6 +145,33 @@ object StarUIManager {
         }
     }
 
+    internal fun initAtApplicationLoad() {
+        if (BoxedUIShipPreview.SHIP_PREVIEW_CLASS != null) return
+
+        // 0.98a-RC8 Windows: matches com.fs.starfarer.title.Object.do (Holo / ShipPreview)
+        val shipPreviewQuery = ClassQuery.create()
+            .subtype(UIPanelAPI::class.java)
+            .hasMethod(MethodQuery.create().methodName("isSchematicMode").parameterCount(0))
+            .build()
+
+        val foundClass = PatchLib.scan(shipPreviewQuery).firstOrNull()?.type ?: return
+        populateShipPreviewReflection(foundClass)
+    }
+
+    private fun populateShipPreviewReflection(clazz: Class<*>) {
+        BoxedUIShipPreview.SHIP_PREVIEW_CLASS = clazz
+
+        val constructors = clazz.getConstructorsMatching()
+
+        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR = constructors.find { constructor ->
+            constructor.parameterTypes.firstOrNull()?.let { FleetMemberAPI::class.java.isAssignableFrom(it) } ?: false
+        }
+        BoxedUIShipPreview.ENUM_CONSTRUCTOR = constructors.find { it.parameterTypes.size == 2 }
+        BoxedUIShipPreview.ENUM_ARRAY = BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.parameterTypes.first().enumConstants
+
+        inited = true
+    }
+
     private fun cacheObfClassesIfNeeded(title: UIPanelAPI) {
         if (BoxedUIShipPreview.SHIP_PREVIEW_CLASS != null) return
 
@@ -149,24 +184,15 @@ object StarUIManager {
 
         val shipPreview = missionShipPreview.findChildWithMethod("isSchematicMode") ?: return
 
-        BoxedUIShipPreview.SHIP_PREVIEW_CLASS = shipPreview.javaClass
-
-        val constructors = BoxedUIShipPreview.SHIP_PREVIEW_CLASS!!.getConstructorsMatching()
-
-        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR = constructors.find { constructor ->
-            constructor.parameterTypes.firstOrNull()?.let { FleetMemberAPI::class.java.isAssignableFrom(it) } ?: false
-        }
-        BoxedUIShipPreview.ENUM_CONSTRUCTOR = constructors.find { it.parameterTypes.size == 2 }
-        BoxedUIShipPreview.ENUM_ARRAY = BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.parameterTypes.first().enumConstants
-
-        inited = true
+        populateShipPreviewReflection(shipPreview.javaClass)
     }
 
     private fun injectPanelsIntoTitleScreenIfNeeded(title: UIPanelAPI) {
         if (!hasFrameworkPanel(title)) {
-            val newCustomPanel = title.CustomPanel(PanelSize.exact(title.width, title.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val newCustomPanel = title.CustomPanel(
+                PanelSize.exact(title.width, title.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToTitleScreen?.let { builder ->
                         CustomPanel(PanelSize.exact(title.width, title.height), Modifier.anchor(anchorTL)) { builder() }
@@ -194,9 +220,10 @@ object StarUIManager {
 
     private fun injectWarroomPanelsIntoCombatIfNeeded(warroomPanel: UIPanelAPI) {
         if (!hasFrameworkPanel(warroomPanel)) {
-            val newCustomPanel = warroomPanel.CustomPanel(PanelSize.exact(warroomPanel.width, warroomPanel.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val newCustomPanel = warroomPanel.CustomPanel(
+                PanelSize.exact(warroomPanel.width, warroomPanel.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatWarroom?.let { builder ->
                         CustomPanel(PanelSize.exact(warroomPanel.width, warroomPanel.height), Modifier.anchor(anchorTL)) { builder() }
@@ -210,9 +237,10 @@ object StarUIManager {
     private fun injectShipInfoPanelsIntoCombatIfNeeded(shipInfoPanel: UIPanelAPI) {
 
         if (!hasFrameworkPanel(shipInfoPanel)) {
-            val abovePanel = shipInfoPanel.CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val abovePanel = shipInfoPanel.CustomPanel(
+                PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelAboveCombatShipInfo?.let { builder ->
                         CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) { builder() }
@@ -221,9 +249,10 @@ object StarUIManager {
             }
             shipInfoPanel.bringComponentToTop(abovePanel)
 
-            val belowPanel = shipInfoPanel.CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val belowPanel = shipInfoPanel.CustomPanel(
+                PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelBelowCombatShipInfo?.let { builder ->
                         CustomPanel(PanelSize.exact(shipInfoPanel.width, shipInfoPanel.height), Modifier.anchor(anchorTL)) { builder() }
@@ -238,9 +267,10 @@ object StarUIManager {
     private fun injectWidgetPanelsIntoCombatIfNeeded(widgetPanel: UIPanelAPI) {
 
         if (!hasFrameworkPanel(widgetPanel)) {
-            val combatPanel = widgetPanel.CustomPanel(PanelSize.exact(widgetPanel.width, widgetPanel.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val combatPanel = widgetPanel.CustomPanel(
+                PanelSize.exact(widgetPanel.width, widgetPanel.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatScreen?.let { builder ->
                         CustomPanel(PanelSize.exact(widgetPanel.width, widgetPanel.height), Modifier.anchor(anchorTL)) { builder() }
@@ -253,8 +283,10 @@ object StarUIManager {
 
     private fun injectPanelsIntoMainMenuRefitIfNeeded(tabPanel: UIPanelAPI){
         if (!hasFrameworkPanel(tabPanel)) {
-            val newCustomPanel = tabPanel.CustomPanel(PanelSize.exact(tabPanel.width, tabPanel.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
+            val newCustomPanel = tabPanel.CustomPanel(
+                PanelSize.exact(tabPanel.width, tabPanel.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToRefitTab?.let{ builder ->
                         CustomPanel(PanelSize.exact(tabPanel.width, tabPanel.height), Modifier.anchor(anchorTL)) { builder() }
@@ -269,9 +301,10 @@ object StarUIManager {
         // inject coreUI if needed
 
         if (!hasFrameworkPanel(coreUI)) {
-            val newCustomPanel = coreUI.CustomPanel(PanelSize.exact(coreUI.width, coreUI.height), Modifier.anchor(anchorTL)) {
-                Plugin { customData = "StarUIFrameworkPanel" }
-
+            val newCustomPanel = coreUI.CustomPanel(
+                PanelSize.exact(coreUI.width, coreUI.height),
+                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+            ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCampaignUI?.let { builder ->
                         CustomPanel(PanelSize.exact(coreUI.width, coreUI.height), Modifier.anchor(anchorTL)) { builder() }
@@ -284,9 +317,10 @@ object StarUIManager {
         // inject into current tab if needed
         currentCoreUITabPanel?.let { parent ->
             if (!hasFrameworkPanel(parent)) {
-                val newCustomPanel = parent.CustomPanel(PanelSize.exact(parent.width, parent.height), Modifier.anchor(anchorTL)) {
-                    Plugin { customData = "StarUIFrameworkPanel" }
-
+                val newCustomPanel = parent.CustomPanel(
+                    PanelSize.exact(parent.width, parent.height),
+                    Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                ) {
                     registeredPlugins.forEach { starUIPlugin ->
                         when(currentCoreUITabID){
                             CoreUITabId.CHARACTER -> starUIPlugin.addPanelToCharacterTab

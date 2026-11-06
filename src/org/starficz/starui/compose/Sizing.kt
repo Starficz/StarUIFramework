@@ -1,81 +1,119 @@
 package org.starficz.starui.compose
 
+import org.starficz.starui.compose.layout.Dimension
+import org.starficz.starui.compose.layout.NodeSize
 
 sealed interface StarUISizing
 
-sealed interface CrossAxis {
+// ==========================================
+// AXIS PRIMITIVES
+// ==========================================
+sealed interface Axis {
+    /** Wraps the content's natural, intrinsic size. */
+    data class Wrap(val padding: Float = 0f) : Axis
+
+    /** Fills available space. Replaces flex. Shares space proportionally based on weight. */
+    data class Fill(val weight: Float = 1f) : Axis
+
+    /** Exactly locks the axis to the specified pixels. */
+    data class Exact(val pixels: Float) : Axis
+}
+
+// ==========================================
+// STRICT DOMAIN SIZES
+// ==========================================
+
+sealed interface Size : StarUISizing {
     companion object {
-        fun wrap(): CrossAxis = CrossWrapImpl
-        fun fill(): CrossAxis = CrossFillImpl
-        fun exact(size: Float): CrossAxis = CrossExactImpl(size)
+        fun wrap(padding: Float = 0f): Size = Mixed(Axis.Wrap(padding), Axis.Wrap(padding))
+        fun wrap(xPadding: Float, yPadding: Float): Size = Mixed(Axis.Wrap(xPadding), Axis.Wrap(yPadding))
+        fun fill(weight: Float = 1f): Size = Mixed(Axis.Fill(weight), Axis.Fill(weight))
+        fun flex(weight: Float = 1f): Size = fill(weight)
+        fun fillX(weight: Float = 1f, yPadding: Float = 0f): Size = Mixed(Axis.Fill(weight), Axis.Wrap(yPadding))
+        fun fillY(weight: Float = 1f, xPadding: Float = 0f): Size = Mixed(Axis.Wrap(xPadding), Axis.Fill(weight))
+        fun fillCross(crossSize: Float, weight: Float = 1f): Size = Mixed(Axis.Fill(weight), Axis.Exact(crossSize))
+        fun exact(width: Float, height: Float): Size = ExactSize(width, height)
+        fun mixed(xAxis: Axis, yAxis: Axis): Size = Mixed(xAxis, yAxis)
     }
 }
 
-sealed interface ImageCrossAxis {
+sealed interface LayoutSize : StarUISizing {
     companion object {
-        fun fill(): ImageCrossAxis = CrossFillImpl
-        fun exact(size: Float): ImageCrossAxis = CrossExactImpl(size)
-        fun maintainAspectRatio(): ImageCrossAxis = CrossAspectRatioImpl
-    }
-}
-
-internal sealed interface CrossAxisDirective
-
-sealed interface ContentSize : StarUISizing {
-    companion object {
-        fun exact(width: Float, height: Float): ContentSize = ExactImpl(width, height)
-        fun wrap(xPad: Float = 4f, yPad: Float = 4f): ContentSize = WrapContentImpl(xPad, yPad)
-        fun flex(weight: Float = 1f, crossAxis: CrossAxis = CrossAxis.wrap()): ContentSize = FlexImpl(weight, crossAxis as CrossAxisDirective)
-        fun fillCross(primarySize: Float): ContentSize = FillCrossImpl(primarySize)
-    }
-}
-
-sealed interface ImageSize : StarUISizing {
-    companion object {
-        fun exact(width: Float, height: Float): ImageSize = ExactImpl(width, height)
-        fun native(scale: Float = 1f): ImageSize = NativeImageImpl(scale)
-        fun scaledToWidth(width: Float): ImageSize = ScaledWidthImpl(width)
-        fun scaledToHeight(height: Float): ImageSize = ScaledHeightImpl(height)
-        fun flex(weight: Float = 1f, crossAxis: ImageCrossAxis = ImageCrossAxis.maintainAspectRatio()): ImageSize = FlexImpl(weight, crossAxis as CrossAxisDirective)
-    }
-}
-
-sealed interface LabelSize : StarUISizing {
-    companion object {
-        fun wrap(): LabelSize = WrapLabelImpl(null)
-        fun wrapAt(maxWidth: Float): LabelSize = WrapLabelImpl(maxWidth)
+        fun wrap(padding: Float = 0f): LayoutSize = Mixed(Axis.Wrap(padding), Axis.Wrap(padding))
+        fun wrap(xPadding: Float, yPadding: Float): LayoutSize = Mixed(Axis.Wrap(xPadding), Axis.Wrap(yPadding))
+        fun fill(weight: Float = 1f): LayoutSize = Mixed(Axis.Fill(weight), Axis.Fill(weight))
+        fun flex(weight: Float = 1f): LayoutSize = fill(weight)
+        fun fillX(weight: Float = 1f, yPadding: Float = 0f): LayoutSize = Mixed(Axis.Fill(weight), Axis.Wrap(yPadding))
+        fun fillY(weight: Float = 1f, xPadding: Float = 0f): LayoutSize = Mixed(Axis.Wrap(xPadding), Axis.Fill(weight))
+        fun exact(width: Float, height: Float): LayoutSize = ExactSize(width, height)
+        fun mixed(xAxis: Axis, yAxis: Axis): LayoutSize = Mixed(xAxis, yAxis)
     }
 }
 
 sealed interface PanelSize : StarUISizing {
     companion object {
-        fun exact(width: Float, height: Float): PanelSize = ExactImpl(width, height)
-        fun flex(weight: Float = 1f, crossAxis: CrossAxis = CrossAxis.fill()): PanelSize = FlexImpl(weight, crossAxis as CrossAxisDirective)
-        fun fillCross(primarySize: Float): PanelSize = FillCrossImpl(primarySize)
+        fun wrap(padding: Float = 0f): PanelSize = Mixed(Axis.Wrap(padding), Axis.Wrap(padding))
+        fun wrap(xPadding: Float, yPadding: Float): PanelSize = Mixed(Axis.Wrap(xPadding), Axis.Wrap(yPadding))
+        fun fill(weight: Float = 1f): PanelSize = Mixed(Axis.Fill(weight), Axis.Fill(weight))
+        fun flex(weight: Float = 1f): PanelSize = fill(weight)
+        fun fillX(weight: Float = 1f, yPadding: Float = 0f): PanelSize = Mixed(Axis.Fill(weight), Axis.Wrap(yPadding))
+        fun fillY(weight: Float = 1f, xPadding: Float = 0f): PanelSize = Mixed(Axis.Wrap(xPadding), Axis.Fill(weight))
+        fun exact(width: Float, height: Float): PanelSize = ExactSize(width, height)
+        fun mixed(xAxis: Axis, yAxis: Axis): PanelSize = Mixed(xAxis, yAxis)
     }
 }
 
-sealed interface StackSize : StarUISizing {
+sealed interface ImageSize : StarUISizing {
     companion object {
-        fun exact(width: Float, height: Float): StackSize = ExactImpl(width, height)
-        fun wrap(): StackSize = WrapStackImpl
-        fun flex(weight: Float = 1f, crossAxis: CrossAxis = CrossAxis.fill()): StackSize = FlexImpl(weight, crossAxis as CrossAxisDirective)
-        fun fillCross(primarySize: Float): StackSize = FillCrossImpl(primarySize)
+        /** Uses intrinsic size, optionally scaled or clamped by max bounds. */
+        fun native(scale: Float = 1f, maxWidth: Float? = null, maxHeight: Float? = null): ImageSize = NativeImage(scale, maxWidth, maxHeight)
+
+        /** Exact physical box constraints. Rendering behavior depends on ContentScale. */
+        fun exact(width: Float, height: Float): ImageSize = ExactSize(width, height)
+
+        /** Fills physically on both axes. Rendering behavior depends on ContentScale. */
+        fun fill(weight: Float = 1f): ImageSize = Mixed(Axis.Fill(weight), Axis.Fill(weight))
+        fun fillX(weight: Float = 1f, yPadding: Float = 0f): ImageSize = Mixed(Axis.Fill(weight), Axis.Wrap(yPadding))
+        fun fillY(weight: Float = 1f, xPadding: Float = 0f): ImageSize = Mixed(Axis.Wrap(xPadding), Axis.Fill(weight))
+        fun mixed(xAxis: Axis, yAxis: Axis): ImageSize = Mixed(xAxis, yAxis)
+
+        /** Derives an exact Box based on the Texture's Aspect Ratio. No Letterboxing! */
+        fun aspectWrap(): ImageSize = AspectWrapImage()
     }
 }
 
-internal data object CrossWrapImpl : CrossAxis, ImageCrossAxis, CrossAxisDirective
-internal data object CrossFillImpl : CrossAxis, ImageCrossAxis, CrossAxisDirective
-internal data class CrossExactImpl(val size: Float) : CrossAxis, ImageCrossAxis, CrossAxisDirective
-internal data object CrossAspectRatioImpl : ImageCrossAxis, CrossAxisDirective
+typealias ContentSize = Size
+typealias StackSize = LayoutSize
+typealias LabelSize = Size
 
-internal data class ExactImpl(val width: Float, val height: Float) : ContentSize, ImageSize, PanelSize, StackSize
-internal data class FlexImpl(val weight: Float, val crossAxis: CrossAxisDirective) : ContentSize, ImageSize, PanelSize, StackSize
+// ==========================================
+// INTERNAL IMPLEMENTATIONS
+// ==========================================
+internal data class Mixed(val x: Axis, val y: Axis) : Size, PanelSize, LayoutSize, ImageSize
+internal data class ExactSize(val width: Float, val height: Float) : Size, PanelSize, LayoutSize, ImageSize
+internal data class NativeImage(val scale: Float, val maxWidth: Float?, val maxHeight: Float?) : ImageSize
+internal class AspectWrapImage : ImageSize
 
-internal data class FillCrossImpl(val primarySize: Float) : ContentSize, PanelSize, StackSize
-internal data class WrapLabelImpl(val maxWidth: Float?) : LabelSize
-internal data class WrapContentImpl(val xPad: Float, val yPad: Float) : ContentSize
-internal data object WrapStackImpl : StackSize
-internal data class NativeImageImpl(val scale: Float) : ImageSize
-internal data class ScaledWidthImpl(val width: Float) : ImageSize
-internal data class ScaledHeightImpl(val height: Float) : ImageSize
+internal fun Axis.toDimension(): Dimension = when (this) {
+    is Axis.Wrap -> Dimension.WrapContent
+    is Axis.Fill -> Dimension.FillMax(weight)
+    is Axis.Exact -> Dimension.Exact(pixels)
+}
+
+internal fun StarUISizing.toNodeSize(): NodeSize = when (this) {
+    is ExactSize -> NodeSize(Dimension.Exact(width), Dimension.Exact(height))
+    is Mixed -> NodeSize(x.toDimension(), y.toDimension())
+    is NativeImage -> NodeSize(
+        maxWidth?.let { Dimension.Exact(it) } ?: Dimension.WrapContent,
+        maxHeight?.let { Dimension.Exact(it) } ?: Dimension.WrapContent
+    )
+    is AspectWrapImage -> NodeSize(Dimension.AspectRatio, Dimension.AspectRatio)
+}
+
+internal fun StarUISizing.wrapPadding(): Pair<Float, Float> = when (this) {
+    is Mixed -> Pair(
+        (x as? Axis.Wrap)?.padding ?: 0f,
+        (y as? Axis.Wrap)?.padding ?: 0f
+    )
+    else -> Pair(0f, 0f)
+}
