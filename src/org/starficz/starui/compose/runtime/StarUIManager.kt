@@ -152,6 +152,7 @@ object StarUIManager {
         val shipPreviewQuery = ClassQuery.create()
             .subtype(UIPanelAPI::class.java)
             .hasMethod(MethodQuery.create().methodName("isSchematicMode").parameterCount(0))
+            .hasMethod(MethodQuery.create().methodName("setScaleDownSmallerShipsMagnitude").parameterCount(1))
             .build()
 
         val foundClass = PatchLib.scan(shipPreviewQuery).firstOrNull()?.type ?: return

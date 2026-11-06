@@ -266,13 +266,7 @@ fun UIPanelAPI.ShipDisplay(
         }
 
         parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
-            val pad = parentPlugin.childPadding[actual] ?: PaddingValues()
-            val contentW = maxOf(1f, assignedW - pad.horizontal)
-            val contentH = maxOf(1f, assignedH - pad.vertical)
             rawShip.setSize(assignedW, assignedH)
-            rawShip.scaleDownToFitWidth = contentW
-            rawShip.scaleDownToFitHeight = contentH
-            rawShip.overwriteScale = null
         }
     }
 

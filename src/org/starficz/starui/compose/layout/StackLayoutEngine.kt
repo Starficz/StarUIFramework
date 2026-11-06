@@ -443,10 +443,10 @@ internal class StackLayoutEngine(
 
         debugLog("  [$debugId] Child[$childIndex] anchored to ${if (isFirst) "Parent" else "Previous"} | Offset X: $offsetX, Y: $offsetY")
 
-        // Apply via Vanilla Reflection
+        // Apply via Vanilla Reflection (null targetPos anchors relative to parent)
         val floatType = Float::class.javaPrimitiveType!!
         val paramTypes = arrayOf<Class<*>?>(child.position::class.java, floatType, floatType, floatType, floatType, floatType, floatType)
         child.position.getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
-            .invoke(child.position, prev?.position ?: parent.position, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
+            .invoke(child.position, prev?.position, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }

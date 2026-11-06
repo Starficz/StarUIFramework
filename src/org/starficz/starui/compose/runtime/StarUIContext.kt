@@ -7,6 +7,9 @@ internal object StarUIContext {
     val isTopLevel: Boolean
         get() = pluginStack.get().isEmpty()
 
+    val isManagedByParent: Boolean
+        get() = pluginStack.get().lastOrNull()?.layoutEngine != null
+
     val currentPlugin: StarUIPanelPlugin
         get() = pluginStack.get().lastOrNull() ?: throw IllegalStateException(
             "DSL Called on non-DSL Context! " +
@@ -22,7 +25,7 @@ internal object StarUIContext {
         try {
             return block()
         } finally {
-            stack.removeLast()
+            stack.removeAt(stack.lastIndex)
         }
     }
 
@@ -32,7 +35,7 @@ internal object StarUIContext {
         try {
             return block()
         } finally {
-            stack.removeLast()
+            stack.removeAt(stack.lastIndex)
         }
     }
 }

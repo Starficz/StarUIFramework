@@ -166,6 +166,7 @@ object ExampleUIPlugin {
                             Text("3. Ship Display API", font = Font.INSIGNIA_21, color = Color.WHITE)
                             ShipDisplay(
                                 size = PanelSize.fill(1f), // Fills the remaining vertical space of Column A
+                                variant = Global.getSettings().getVariant("hammerhead_Balanced"),
                                 showFighters = true,
                                 scaleSmallerShips = 0.5f,
                                 showBorder = true,

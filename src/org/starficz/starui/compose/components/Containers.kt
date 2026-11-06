@@ -88,9 +88,11 @@ internal fun registerComponentSizing(
     val nodeSize = size.toNodeSize()
     val (wrapPadX, wrapPadY) = size.wrapPadding()
 
+    val isManagedByParent = !StarUIContext.isTopLevel && StarUIContext.currentPlugin.layoutEngine != null
+
     if (isContainer && containerPlugin != null) {
         containerPlugin.myNodeSize = nodeSize
-        containerPlugin.isTopLevelNode = StarUIContext.isTopLevel
+        containerPlugin.isTopLevelNode = !isManagedByParent
         if (wrapPadX != 0f || wrapPadY != 0f) {
             val existing = containerPlugin.myPadding
             containerPlugin.myPadding = PaddingValues(
@@ -102,7 +104,7 @@ internal fun registerComponentSizing(
         }
     }
 
-    if (!StarUIContext.isTopLevel) {
+    if (isManagedByParent) {
         val parentPlugin = StarUIContext.currentPlugin
         parentPlugin.childSizing[actual] = nodeSize
         if (!isContainer && (wrapPadX != 0f || wrapPadY != 0f)) {

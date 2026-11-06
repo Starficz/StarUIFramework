@@ -17,11 +17,15 @@ import org.starficz.starui.core.parent
 
 private fun UIComponentAPI.applySizeConfig(action: (NodeSize) -> NodeSize) {
     val actualComponent = this.actual
-    if (!StarUIContext.isTopLevel) {
+    val attached = StarUIPanelPlugin.getAttached(actualComponent)
+    if (attached != null) {
+        attached.myNodeSize = action(attached.myNodeSize)
+    }
+    if (StarUIContext.isManagedByParent) {
         val plugin = StarUIContext.currentPlugin
-        val currentSize = plugin.childSizing[actualComponent] ?: NodeSize()
+        val currentSize = plugin.childSizing[actualComponent] ?: attached?.myNodeSize ?: NodeSize()
         plugin.childSizing[actualComponent] = action(currentSize)
-    } else {
+    } else if (attached == null) {
         val plugin = StarUIPanelPlugin.getOrCreate(actualComponent)
         plugin.myNodeSize = action(plugin.myNodeSize)
     }
@@ -150,5 +154,6 @@ fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
         offsetX = anchor.offsetX + myPadX + targetPadX,
         offsetY = anchor.offsetY + myPadY + targetPadY
     )
+    StarUIPanelPlugin.getAttached(component.actual)?.myAnchor = bakedAnchor
     component.actual.applyAnchor(bakedAnchor)
 }

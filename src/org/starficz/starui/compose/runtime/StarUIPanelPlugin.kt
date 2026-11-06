@@ -17,6 +17,7 @@ import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIElement
+import org.starficz.starui.core.applyAnchor
 import org.starficz.starui.core.bottom
 import org.starficz.starui.core.height
 import org.starficz.starui.core.left
@@ -101,6 +102,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     // Used exclusively if this panel is the Absolute Root of the UI tree.
     internal var myNodeSize: NodeSize = NodeSize(Dimension.WrapContent, Dimension.WrapContent)
     internal var myPadding: PaddingValues = PaddingValues()
+    internal var myAnchor: Anchor.AnchorData? = null
 
     // ==========================================
     // CHILD LAYOUT TRACKING MAPS
@@ -183,6 +185,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
                         else -> if (component.height > 1f) component.height else rootMaxHeight
                     }
                     component.setSize(finalW, finalH)
+                    myAnchor?.let { component.applyAnchor(it) }
                 }
 
                 // 3. Layout the children within our finalized boundaries

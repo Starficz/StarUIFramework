@@ -205,13 +205,12 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         val myAnchorX = -alignX
         val myAnchorY = -alignY
 
-        val parentPosition = plugin.panel.position
         val floatType = Float::class.javaPrimitiveType!!
         val paramTypes = arrayOf<Class<*>?>(
             child.position::class.java, floatType, floatType, floatType, floatType, floatType, floatType
         )
 
         child.position.getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
-            .invoke(child.position, parentPosition, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
+            .invoke(child.position, null, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }
