@@ -42,7 +42,7 @@ fun UIPanelAPI.TextField(
     val textField = this.addTextField(initW, initH, font)
     if (hint != null) textField.invoke("setHint", hint)
 
-    registerComponentSizing(textField, size, isContainer = false)
+    registerComponentSizing(textField, size, isContainer = false, kind = "TextField")
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[textField] = { _, _ -> calcIntrinsic() }
     }
@@ -84,7 +84,7 @@ fun UIPanelAPI.Button(
     val (initW, initH) = getInitialBounds(size, calcIntrinsic())
     val btn = this.addButton(text, null, baseColor, bgColor, align, cutStyle, initW, initH, font, shortcut)
 
-    registerComponentSizing(btn, size, isContainer = false)
+    registerComponentSizing(btn, size, isContainer = false, kind = "Button")
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[btn] = { _, _ -> calcIntrinsic() }
     }
@@ -120,7 +120,7 @@ fun UIPanelAPI.AreaCheckbox(
         text, null, baseColor, bgColor, brightColor, initW, initH, font, leftAlign
     )
 
-    registerComponentSizing(button, size, isContainer = false)
+    registerComponentSizing(button, size, isContainer = false, kind = "AreaCheckbox")
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }
@@ -163,7 +163,7 @@ fun UIPanelAPI.Checkbox(
 
     val button = this.addCheckbox(initW, initH, text, null, font, color, checkboxSize)
 
-    registerComponentSizing(button, size, isContainer = false)
+    registerComponentSizing(button, size, isContainer = false, kind = "Checkbox")
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }

@@ -100,9 +100,12 @@ internal fun registerComponentSizing(
     component: UIComponentAPI,
     size: StarUISizing,
     isContainer: Boolean,
-    containerPlugin: StarUIPanelPlugin? = null
+    containerPlugin: StarUIPanelPlugin? = null,
+    kind: String? = null
 ) {
     val actual = component.actual
+    // What the component is, for layout dumps and for matching old children when a builder runs again.
+    if (kind != null) StarUIContext.currentPluginOrNull?.childKinds?.set(actual, kind)
     val nodeSize = size.toNodeSize()
     val (wrapPadX, wrapPadY) = size.wrapPadding()
 
@@ -138,6 +141,7 @@ internal fun registerComponentSizing(
         val selfPlugin = StarUIPanelPlugin.getOrCreate(actual)
         selfPlugin.myNodeSize = nodeSize
         selfPlugin.isTopLevelNode = true
+        if (kind != null) selfPlugin.kind = kind
     }
 }
 
@@ -424,6 +428,7 @@ fun UIPanelAPI.ScrollPanel(
 
     // 4. Attach StarUIPanelPlugin directly to the outer ScrollPanel to handle outer modifiers & layout cascade
     val outerPlugin = StarUIPanelPlugin.getOrCreate(vanillaScroll)
+    outerPlugin.kind = "ScrollPanel"
     val nodeSize = size.toNodeSize()
     outerPlugin.layoutEngine = object : LayoutEngine {
         override fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {

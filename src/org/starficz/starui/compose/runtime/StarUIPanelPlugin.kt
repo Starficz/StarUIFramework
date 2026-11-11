@@ -100,6 +100,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     /** The builder block that fills this container, kept so it can run again when a state it read changes. */
     internal var scope: Scope? = null
 
+    /** The StarUI component this is ("Column", "Spacer", ...), for layout dumps and for matching on rebuild. */
+    internal var kind: String? = null
+
     /** A scope at or below this node is waiting to be rebuilt. */
     internal var dirtyScopeBelow = false
 
@@ -150,6 +153,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal val childPadding = mutableMapOf<UIComponentAPI, PaddingValues>()
     internal val childMargins = mutableMapOf<UIComponentAPI, Margin>()
     internal val childInnerOffset = mutableMapOf<UIComponentAPI, Pair<Float, Float>>()
+    internal val childKinds = mutableMapOf<UIComponentAPI, String>()
 
     // Positioning maps (Box uses Alignments, Absolute uses Anchors)
     internal val childAlignments = mutableMapOf<UIComponentAPI, Alignment>()
@@ -321,6 +325,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * builder lambda) are only used to name the scope in error messages.
      */
     internal fun attachScope(kind: String, source: Any, builder: () -> Unit) {
+        if (this.kind == null) this.kind = kind
         val created = Scope(this, StarUIContext.currentTheme, kind, source.javaClass.name.substringBefore("$$"), builder)
         scope = created
         created.build()
@@ -354,6 +359,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal fun clearChildLayoutData() {
         childSizing.clear(); childPadding.clear(); childMargins.clear(); childInnerOffset.clear()
         childAlignments.clear(); childAnchors.clear(); childMeasurables.clear(); childLayoutDelegates.clear()
+        childKinds.clear()
     }
 
     /** Disposes this plugin only; [dispose] also handles everything below it. */
@@ -377,6 +383,17 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      */
     fun dispose() {
         if (::component.isInitialized) Scope.disposeTree(component) else disposeSelf()
+    }
+
+    /** The non-empty handler lists by name, e.g. "onClick, renderBelow x2". */
+    internal fun describeHandlers(): String {
+        val names = listOf(
+            "onPositionChanged", "onClick", "onClickOutside", "onClickRelease", "onHover", "onHoverEnter", "onHoverExit",
+            "onMouseHeld", "onKeyDown", "onKeyUp", "onKeyHeld", "renderBelow", "render", "advance", "onLayout", "onFirstLayout"
+        )
+        return handlerLists().mapIndexedNotNull { i, list ->
+            when (list.size) { 0 -> null; 1 -> names[i]; else -> names[i] + " x" + list.size }
+        }.joinToString(", ")
     }
 
     private fun handlerLists(): List<MutableList<*>> = listOf(

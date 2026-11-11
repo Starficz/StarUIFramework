@@ -7,8 +7,18 @@
 # Usage (from anywhere):
 #   powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\run-test-suite.ps1 [-Filter input,stack] [-OutDir D:\x\run-01]
 # Exit code: the runner's (0 = every check passed). Results: <OutDir>\launcher.log (NATIVE_SMOKE lines), PNGs in <OutDir>.
+#
+# Preview mode (look at one piece of UI without running the suite):
+#   ... run-test-suite.ps1 -Preview <name> [-PreviewSource my\Previews.kt] [-ExtraSources dirOrFile,dirOrFile]
+# renders the preview registered under <name> (StarUITestSuite.preview("<name>") { ... }) and writes
+# <OutDir>\<name>.png (screenshot) and <OutDir>\<name>.layout.txt (dumpLayout() text: kinds, sizes, positions).
+# -PreviewSource replaces native-smoke\kotlin\Previews.kt (the file must define `fun registerPreviews()`);
+# -ExtraSources adds more Kotlin files or folders to the build (your own UI code, if it only needs StarUI + the game).
 param(
     [string]$Filter = '',
+    [string]$Preview = '',
+    [string]$PreviewSource = '',
+    [string]$ExtraSources = '',
     [string]$OutDir = '',
     [string]$GameRoot = '',
     [string]$Resolution = '1280x800',
@@ -71,6 +81,17 @@ if ($LASTEXITCODE) { Fail 'javac failed for support helpers' }
 
 Write-Host "[2/3] kotlinc src + native-smoke/kotlin -> test-only StarUIFramework.jar"
 $ktSources = @(Get-ChildItem -LiteralPath (Join-Path $Project 'src'), (Join-Path $Here 'kotlin') -Recurse -Filter *.kt -File | ForEach-Object { $_.FullName })
+if ($PreviewSource) {
+    if (-not (Test-Path -LiteralPath $PreviewSource -PathType Leaf)) { Fail "Preview source not found: $PreviewSource" }
+    $ktSources = @($ktSources | Where-Object { (Split-Path -Leaf $_) -ne 'Previews.kt' }) + (Resolve-Path -LiteralPath $PreviewSource).Path
+}
+foreach ($extra in ($ExtraSources -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })) {
+    if (Test-Path -LiteralPath $extra -PathType Container) {
+        $ktSources += @(Get-ChildItem -LiteralPath $extra -Recurse -Filter *.kt -File | ForEach-Object { $_.FullName })
+    } elseif (Test-Path -LiteralPath $extra -PathType Leaf) {
+        $ktSources += (Resolve-Path -LiteralPath $extra).Path
+    } else { Fail "Extra source not found: $extra" }
+}
 $argFile = Join-Path $Work 'kotlinc.args'
 $cp = (@("$Work\support") + $GameJars + $LibJars) -join ';'
 $ktArgs = @('-no-stdlib', '-no-reflect', '-jvm-target', '1.8', '-api-version', '2.1', '-language-version', '2.2',
@@ -85,7 +106,7 @@ if ($LASTEXITCODE) { Fail 'jar failed' }
 
 Write-Host "[3/3] native run -> $OutDir"
 $saved = @{}
-foreach ($n in 'SMOKE_MOD_JAR', 'SMOKE_SUPPORT_SOURCES', 'SMOKE_RESOLUTION', 'SMOKE_JAVAC_DIR', 'SMOKE_TIMEOUT', 'STARUI_TEST_FILTER') {
+foreach ($n in 'SMOKE_MOD_JAR', 'SMOKE_SUPPORT_SOURCES', 'SMOKE_RESOLUTION', 'SMOKE_JAVAC_DIR', 'SMOKE_TIMEOUT', 'STARUI_TEST_FILTER', 'STARUI_PREVIEW') {
     $saved[$n] = [Environment]::GetEnvironmentVariable($n)
 }
 try {
@@ -95,6 +116,7 @@ try {
     $env:SMOKE_JAVAC_DIR = $JdkBin
     $env:SMOKE_TIMEOUT = "$Timeout"
     $env:STARUI_TEST_FILTER = $Filter
+    $env:STARUI_PREVIEW = $Preview
     & powershell -NoProfile -ExecutionPolicy Bypass -File $Runner $GameRoot $Project (Join-Path $Here 'StarUITestSuiteProbe.java') $OutDir
     $code = $LASTEXITCODE
 } finally {
@@ -104,7 +126,17 @@ try {
 $log = Join-Path $OutDir 'launcher.log'
 if (Test-Path -LiteralPath $log) {
     Write-Host ''
-    Select-String -LiteralPath $log -Pattern 'NATIVE_SMOKE (FAIL|=== GROUP|SUITE SUMMARY|support:)' | ForEach-Object { Write-Host $_.Line }
+    Select-String -LiteralPath $log -Pattern 'NATIVE_SMOKE (FAIL|=== GROUP|=== PREVIEW|SUITE SUMMARY|support:)' | ForEach-Object { Write-Host $_.Line }
     Write-Host "PNGs: $OutDir"
+}
+if ($Preview) {
+    $png = Join-Path $OutDir "$Preview.png"
+    $layout = Join-Path $OutDir "$Preview.layout.txt"
+    if (Test-Path -LiteralPath $layout) {
+        Write-Host ''
+        Write-Host "Screenshot: $png"
+        Write-Host "Layout:     $layout"
+        Get-Content -LiteralPath $layout | ForEach-Object { Write-Host $_ }
+    }
 }
 exit $code

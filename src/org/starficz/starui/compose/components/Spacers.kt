@@ -35,7 +35,7 @@ fun UIPanelAPI.Spacer(
     plugin.customPanel = panel
     this.addComponent(panel)
 
-    registerComponentSizing(panel, size, isContainer = false)
+    registerComponentSizing(panel, size, isContainer = false, kind = "Spacer")
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[panel] = { _, _ -> Pair(initW, initH) }
     }

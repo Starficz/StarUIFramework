@@ -79,7 +79,7 @@ fun UIPanelAPI.Text(
     val (initW, initH) = getInitialBounds(size, measureTextSize(text, font))
     rawLabel.setSize(initW, initH)
 
-    registerComponentSizing(rawLabel, size, isContainer = false)
+    registerComponentSizing(rawLabel, size, isContainer = false, kind = "Text")
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
@@ -193,7 +193,7 @@ fun UIPanelAPI.Image(
     val (initW, initH) = getInitialBounds(size, calcIntrinsic())
     rawImage.setSize(initW, initH)
 
-    registerComponentSizing(rawImage, size, isContainer = false)
+    registerComponentSizing(rawImage, size, isContainer = false, kind = "Image")
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
@@ -256,7 +256,7 @@ fun UIPanelAPI.ShipDisplay(
     if (hideLabels) rawShip.hideLabels()
     labelColor?.let { rawShip.setLabelColor(it) }
 
-    registerComponentSizing(rawShip, size, isContainer = false)
+    registerComponentSizing(rawShip, size, isContainer = false, kind = "ShipDisplay")
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin

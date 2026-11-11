@@ -7,6 +7,7 @@ import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.input.InputEventType
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
+import org.starficz.starui.compose.runtime.dumpLayout
 import java.lang.reflect.InvocationTargetException
 import kotlin.math.abs
 
@@ -45,6 +46,13 @@ class TestContext(val group: String) {
     }
 
     fun screenshot(tag: String) = NativeSmokeSupport.screenshot("$group-$tag")
+
+    /** Writes the layout below [component] to `<group>-<tag>.layout.txt` in the output directory and returns it. */
+    fun dumpLayout(tag: String, component: UIComponentAPI = root): String {
+        val text = component.dumpLayout()
+        StarUITestSupport.writeText("$group-$tag.layout.txt", text)
+        return text
+    }
 
     /** Runs [block] and returns the (unwrapped) throwable, or null when it completed. */
     fun thrown(block: () -> Unit): Throwable? = try {
@@ -125,9 +133,33 @@ fun fraction(x: Float, y: Float, w: Float, h: Float, match: (Rgb) -> Boolean): F
 
 object StarUITestSuite {
     private val groups = mutableListOf<TestGroup>()
+    private val previews = linkedMapOf<String, TestContext.() -> Unit>()
 
     fun group(name: String, body: TestContext.() -> Unit) {
         groups += TestGroup(name, body)
+    }
+
+    /**
+     * Registers a piece of UI to look at with `run-test-suite.ps1 -Preview <name>`: [body] builds it on `root`
+     * (a full-screen panel), the runner renders two frames and writes `<name>.png` and `<name>.layout.txt`.
+     */
+    fun preview(name: String, body: TestContext.() -> Unit) {
+        previews[name] = body
+    }
+
+    private fun runPreview(name: String) {
+        registerPreviews()
+        val body = previews[name]
+        NativeSmokeSupport.check(body != null, "preview '$name' is registered (available: ${previews.keys.joinToString()})")
+        NativeSmokeSupport.log("=== PREVIEW $name")
+        val ctx = TestContext(name)
+        ctx.(body!!)()
+        ctx.frame()
+        ctx.frame()   // a second frame lets reactive rebuilds and re-layouts from the first one settle
+        NativeSmokeSupport.screenshot(name)
+        val layout = ctx.root.dumpLayout()
+        StarUITestSupport.writeText("$name.layout.txt", layout)
+        layout.lineSequence().filter { it.isNotBlank() }.forEach { NativeSmokeSupport.log("LAYOUT $it") }
     }
 
     /**
@@ -147,6 +179,11 @@ object StarUITestSuite {
     /** Runs every registered group. A group that throws is recorded as a failure and the next group still runs. */
     @JvmStatic
     fun runAll() {
+        val previewName = System.getenv("STARUI_PREVIEW")?.takeIf { it.isNotBlank() }
+        if (previewName != null) {
+            runPreview(previewName)
+            return
+        }
         registerAll()
         val filter = System.getenv("STARUI_TEST_FILTER")?.takeIf { it.isNotBlank() }?.split(',')?.map { it.trim() }
         var totalChecks = 0
@@ -182,6 +219,7 @@ object StarUITestSuite {
         registerRelayoutTests()
         registerScopeTests()
         registerReactiveTests()
+        registerToolingTests()
         registerGuardTests()
         registerInputTests()
         registerInteropTests()

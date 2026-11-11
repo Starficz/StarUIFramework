@@ -35,6 +35,16 @@ public final class StarUITestSupport {
     private StarUITestSupport() {
     }
 
+    /**
+     * Writes a UTF-8 text file into the run's output directory (mod code may not do file I/O itself). The name is
+     * reduced to letters, digits, '.', '-' and '_' so it cannot leave that directory.
+     */
+    public static void writeText(String fileName, String text) throws Exception {
+        String safe = fileName.replaceAll("[^A-Za-z0-9._-]", "_");
+        java.nio.file.Path dir = java.nio.file.Paths.get(System.getProperty("native.smoke.output"));
+        java.nio.file.Files.write(dir.resolve(safe), text.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
     private static synchronized void resolve() throws Exception {
         if (eventConstructor != null) return;
         CustomPanelAPI probe = Global.getSettings().createCustom(1f, 1f, null);
