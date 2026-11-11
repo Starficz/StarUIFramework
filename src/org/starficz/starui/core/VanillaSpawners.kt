@@ -184,14 +184,24 @@ fun UIPanelAPI.addCheckbox(width: Float, height: Float, text: String? = null, da
 
 // CustomPanelAPI implements the same Listener that a ButtonAPI requires,
 // A CustomPanel then happens to trigger its CustomUIPanelPlugin buttonPressed() method
-// thus we can map our functions into a CustomUIPanelPlugin, and have them be triggered
+// thus we can map our functions into a CustomUIPanelPlugin, and have them be triggered.
+// A button has a single listener slot, so the listener this one replaces (vanilla's, or another mod's) is kept and
+// ButtonListenerChainPatch forwards every actionPerformed(event, button) to it: the button keeps its original action.
 class ButtonListener(button: ButtonAPI) : BaseCustomUIPanelPlugin() {
     private val onClickFunctions = mutableListOf<() -> Unit>()
+
+    /** The listener that was on the button before this one, or null. */
+    val previousListener: Any? = button.invoke("getListener")
 
     init {
         val buttonListener = Global.getSettings().createCustom(0f, 0f, this)
         button.invoke("setListener", buttonListener)
     }
+
+    internal fun forwardToPrevious(event: Any?, source: Any?) {
+        previousListener?.invoke("actionPerformed", event, source)
+    }
+
     override fun buttonPressed(buttonId: Any?) { onClickFunctions.forEach { it() } }
     fun addOnClick(function: () -> Unit) { onClickFunctions.add(function) }
     fun clearOnClickFunctions() { onClickFunctions.clear() }

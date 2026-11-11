@@ -1,5 +1,24 @@
 package org.starficz.starui.core
 
+import com.fs.starfarer.api.Global
+
+/** Font paths this framework has already made sure are loaded (SettingsAPI.loadFont re-parses on every call). */
+private val loadedFontPaths = HashSet<String>()
+
+/**
+ * Starsector only preloads the fonts vanilla UI uses in each role. Using another .fnt as a paragraph font
+ * (setParaFont, which measureTextSize and Text rely on) leaves the label with a null font and throws an NPE inside
+ * the vanilla label's setText. So every path handed out by [getFontPath] is loaded once on first use.
+ */
+private fun ensureFontLoaded(path: String) {
+    if (!loadedFontPaths.add(path)) return
+    try {
+        Global.getSettings().loadFont(path)
+    } catch (e: Exception) {
+        Global.getLogger(Font::class.java).error("StarUI: could not load font $path", e)
+    }
+}
+
 /**
  * A comprehensive enum of every font used in Starsector
  */
@@ -38,7 +57,9 @@ enum class Font {
     VICTOR_21,            // victor21.fnt
 }
 
-fun getFontPath(font: Font): String {
+fun getFontPath(font: Font): String = fontPathOf(font).also { ensureFontLoaded(it) }
+
+private fun fontPathOf(font: Font): String {
     return when (font) {
         // Arial
         Font.ARIAL_10 -> "graphics/fonts/arial10.fnt"

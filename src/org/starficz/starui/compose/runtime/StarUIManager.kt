@@ -26,6 +26,7 @@ import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.children
 import org.starficz.starui.core.findChildWithMethod
 import org.starficz.starui.core.getChildrenCopy
+import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.width
 import java.lang.ref.WeakReference
@@ -72,8 +73,9 @@ object StarUIManager {
         registeredPlugins.remove(plugin)
     }
 
+    // Runs every frame for every injection target, so it reads the live child list instead of a fresh copy.
     private fun hasFrameworkPanel(panel: UIPanelAPI): Boolean {
-        return panel.children.any {
+        return panel.getChildrenNonCopy().any {
             it is CustomPanelAPI &&
                     it.plugin is StarUIPanelPlugin &&
                     (it.plugin as StarUIPanelPlugin).customData == "StarUIFrameworkPanel"
@@ -124,14 +126,17 @@ object StarUIManager {
     }
 
     private fun processDynamicInjections() {
-        dynamicInjections.forEach { injection ->
+        // Snapshot: an injection may register further injections while it runs.
+        dynamicInjections.toList().forEach { injection ->
             val targetPanel = injection.findTarget() ?: return@forEach
 
             val trackedList = dynamicInjectionElements.getOrPut(injection.id) { mutableListOf() }
 
             trackedList.removeAll { it.get() == null }
 
-            val alreadyInjected = trackedList.any { targetPanel.children.contains(it.get()) }
+            // One read of the live child list per frame (this used to copy the list once per tracked element).
+            val liveChildren = targetPanel.getChildrenNonCopy()
+            val alreadyInjected = trackedList.any { ref -> ref.get()?.let { it in liveChildren } == true }
 
             if (!alreadyInjected) {
                 val childrenBefore = targetPanel.children.toSet()

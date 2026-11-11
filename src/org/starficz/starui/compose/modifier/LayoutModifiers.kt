@@ -57,9 +57,10 @@ data class Margin(val left: Float = 0f, val right: Float = 0f, val top: Float = 
     val vertical get() = top + bottom
 }
 
+// Same side order as padding (and Compose's PaddingValues): left, top, right, bottom.
 fun Modifier.margin(all: Float) = margin(all, all, all, all)
-fun Modifier.margin(horizontal: Float = 0f, vertical: Float = 0f) = margin(horizontal, horizontal, vertical, vertical)
-fun Modifier.margin(left: Float = 0f, right: Float = 0f, top: Float = 0f, bottom: Float = 0f) = this.then { component ->
+fun Modifier.margin(horizontal: Float = 0f, vertical: Float = 0f) = margin(horizontal, vertical, horizontal, vertical)
+fun Modifier.margin(left: Float = 0f, top: Float = 0f, right: Float = 0f, bottom: Float = 0f) = this.then { component ->
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMargins[component.actual] = Margin(left, right, top, bottom)
     }

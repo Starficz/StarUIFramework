@@ -254,6 +254,8 @@ internal fun UIPanelAPI.StackLayout(
 
 /**
  * A layout container that places its children in a vertical sequence.
+ * Defaults follow Jetpack Compose: children start at the left ([HorizontalAlignment.Left]), the Column fills the
+ * available width and wraps its content's height. [grow] = [VGrow.Upwards] stacks from the bottom instead.
  */
 fun UIPanelAPI.Column(
     size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Fill(), yAxis = Axis.Wrap()),
@@ -277,6 +279,8 @@ fun UIPanelAPI.Column(
 
 /**
  * A layout container that places its children in a horizontal sequence.
+ * Defaults follow Jetpack Compose: children align to the top ([VerticalAlignment.Top]), the Row wraps its content's
+ * width and fills the available height. [grow] = [HGrow.Leftwards] stacks from the right instead.
  */
 fun UIPanelAPI.Row(
     size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Wrap(), yAxis = Axis.Fill()),
@@ -298,6 +302,14 @@ fun UIPanelAPI.Row(
     builder = builder
 )
 
+/**
+ * Old name for [Column]. Same engine, but it centres children by default where [Column] starts them at the left,
+ * so the replacement spells the alignment out to keep existing layouts unchanged.
+ */
+@Deprecated(
+    message = "Use Column. VerticalStackLayout centres by default; Column defaults to HorizontalAlignment.Left.",
+    replaceWith = ReplaceWith("Column(size = size, modifier = modifier, grow = grow, horizontalAlignment = align, yPadding = yPadding, xPadding = xPadding, spacing = spacing, builder = builder)")
+)
 fun UIPanelAPI.VerticalStackLayout(
     size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Fill(), yAxis = Axis.Wrap()),
     modifier: Modifier = Modifier,
@@ -307,17 +319,16 @@ fun UIPanelAPI.VerticalStackLayout(
     xPadding: Float = 0f,
     spacing: Float = 0f,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
-): CustomPanelAPI = StackLayout(
-    direction = grow.direction,
-    crossAlignValue = align.alignValue,
-    size = size,
-    modifier = modifier,
-    primaryPadding = yPadding,
-    secondaryPadding = xPadding,
-    spacing = spacing,
-    builder = builder
-)
+): CustomPanelAPI = Column(size, modifier, grow, align, yPadding, xPadding, spacing, builder)
 
+/**
+ * Old name for [Row]. Same engine, but it centres children vertically by default where [Row] aligns them to the top,
+ * so the replacement spells the alignment out to keep existing layouts unchanged.
+ */
+@Deprecated(
+    message = "Use Row. HorizontalStackLayout centres by default; Row defaults to VerticalAlignment.Top.",
+    replaceWith = ReplaceWith("Row(size = size, modifier = modifier, grow = grow, verticalAlignment = align, xPadding = xPadding, yPadding = yPadding, spacing = spacing, builder = builder)")
+)
 fun UIPanelAPI.HorizontalStackLayout(
     size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Wrap(), yAxis = Axis.Fill()),
     modifier: Modifier = Modifier,
@@ -327,16 +338,7 @@ fun UIPanelAPI.HorizontalStackLayout(
     yPadding: Float = 0f,
     spacing: Float = 0f,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
-): CustomPanelAPI = StackLayout(
-    direction = grow.direction,
-    crossAlignValue = align.alignValue,
-    size = size,
-    modifier = modifier,
-    primaryPadding = xPadding,
-    secondaryPadding = yPadding,
-    spacing = spacing,
-    builder = builder
-)
+): CustomPanelAPI = Row(size, modifier, grow, align, xPadding, yPadding, spacing, builder)
 
 typealias StarUIScrollPanel = BoxedScrollPanel
 

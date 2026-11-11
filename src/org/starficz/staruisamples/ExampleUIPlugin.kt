@@ -13,7 +13,7 @@ import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Checkbox
 import org.starficz.starui.compose.components.Divider
 import org.starficz.starui.compose.components.FlexSpacer
-import org.starficz.starui.compose.components.HorizontalStackLayout
+import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.Image
 import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.ShipDisplay
@@ -22,7 +22,7 @@ import org.starficz.starui.compose.components.StarUIScrollPanel
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.components.TextAlign
 import org.starficz.starui.compose.components.Theme
-import org.starficz.starui.compose.components.VerticalStackLayout
+import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.layout.XAlign
 import org.starficz.starui.compose.layout.YAlign
 import org.starficz.starui.compose.modifier.Modifier
@@ -95,21 +95,21 @@ object ExampleUIPlugin {
 
             // ROOT CONTAINER
             Theme(myCyberTheme) {
-                VerticalStackLayout(
+                Column(
                     size = LayoutSize.exact(1200f, 800f),
                     modifier = Modifier
                         .anchor(Anchor.inside.center.ofParent())
                         .background(Color(10, 10, 15, 240))
                         .border(Color(80, 80, 100, 255), 2f)
                         .onRender { if (showDebug.value) drawDebugBorders(customPanel) },
-                    align = XAlign.Center,
+                    horizontalAlignment = XAlign.Center,
                     xPadding = 20f, yPadding = 20f, spacing = 15f
                 ) {
 
                     // ==========================================
                     // HEADER
                     // ==========================================
-                    HorizontalStackLayout(size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), align = YAlign.Center) {
+                    Row(size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), verticalAlignment = YAlign.Center) {
                         Text("StarUI Unified Architecture Test", font = Font.ORBITRON_24_BOLD, color = Color.CYAN)
                         FlexSpacer(1f)
                         Checkbox("Draw Debug Outlines", bind = showDebug, color = Color.YELLOW)
@@ -120,12 +120,16 @@ object ExampleUIPlugin {
                     // ==========================================
                     // MAIN BODY (Two Columns)
                     // ==========================================
-                    HorizontalStackLayout(size = LayoutSize.fill(1f), spacing = 20f, align = YAlign.Top) {
+                    Row(size = LayoutSize.fill(1f), spacing = 20f, verticalAlignment = YAlign.Top) {
 
                         // ---------------------------------------------------------
                         // COLUMN A: ADVANCED CONTROLLERS & SCROLL COMMANDS
                         // ---------------------------------------------------------
-                        VerticalStackLayout(size = LayoutSize.mixed(Axis.Exact(350f), Axis.Fill()), spacing = 15f) {
+                        Column(
+                            size = LayoutSize.mixed(Axis.Exact(350f), Axis.Fill()),
+                            spacing = 15f,
+                            horizontalAlignment = XAlign.Center
+                        ) {
 
                             // TEXT WRAPPER TEST
                             Text("1. Text Wrapper Features", font = Font.INSIGNIA_21, color = Color.WHITE)
@@ -137,24 +141,27 @@ object ExampleUIPlugin {
                                 size = Size.fillX(),
                                 textAlign = TextAlign.Center,
                                 color = Color.WHITE,
-                                modifier = Modifier.background(Color(100, 0, 0, 200)).border(Color.RED).margin(bottom = 10f)
+                                modifier = Modifier
+                                    .background(Color(100, 0, 0, 200))
+                                    .border(Color.RED)
+                                    .margin(bottom = 10f)
                             )
 
                             // IMAGE WRAPPER TEST
                             Text("2. Image API Features", font = Font.INSIGNIA_21, color = Color.WHITE)
-                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 10f, align = YAlign.Bottom) {
+                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 10f, verticalAlignment = YAlign.Bottom) {
                                 // Outline Test
-                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
                                     Image("graphics/icons/cargo/supplies.png", withOutline = true)
                                     Text("Outline", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                                 // Schematic Test
-                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
                                     Image("graphics/icons/cargo/supplies.png", renderSchematic = true)
                                     Text("Schematic", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                                 // Border Test
-                                VerticalStackLayout(LayoutSize.fillX(1f), align = XAlign.Center) {
+                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
                                     Image("graphics/icons/cargo/supplies.png", showBorder = true, borderColor = Color.GREEN)
                                     Text("Border", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
@@ -177,7 +184,7 @@ object ExampleUIPlugin {
 
                             // SCROLL API COMMANDS
                             Text("4. Scroll API Interaction", font = Font.INSIGNIA_21, color = Color.WHITE)
-                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f) {
+                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f, verticalAlignment = YAlign.Center) {
                                 Button("Jump to Item #75", baseColor = Color.GREEN) {
                                     // Notice how we don't need to cast or unwrap manually!
                                     // ensureVisible automatically passes the Kotlin Proxy into the vanilla method!
@@ -189,7 +196,7 @@ object ExampleUIPlugin {
                                     myScroller?.scrollToY(0f)
                                 }
                             }
-                            HorizontalStackLayout(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f) {
+                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f, verticalAlignment = YAlign.Center) {
                                 Button("Save State") { myScroller?.saveVerticalScrollState() }
                                 Button("Restore State") { myScroller?.restoreVerticalScrollState() }
                             }
@@ -216,9 +223,9 @@ object ExampleUIPlugin {
 
                             for (i in 1..100) {
                                 // Create the row
-                                val row = HorizontalStackLayout(
+                                val row = Row(
                                     size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()),
-                                    align = YAlign.Center,
+                                    verticalAlignment = YAlign.Center,
                                     spacing = 15f,
                                     modifier = Modifier
                                         .background(if (i == 75) Color(0, 50, 0, 200) else Color(20, 20, 20, 255))
@@ -230,7 +237,7 @@ object ExampleUIPlugin {
                                     Text("#$i", font = Font.ORBITRON_12_CONDENSED, color = if (i == 75) Color.GREEN else Color.CYAN)
                                     Image("graphics/ships/hound/hound_base.png", size = ImageSize.exact(40f, 40f))
 
-                                    VerticalStackLayout(LayoutSize.fill(1f), align = XAlign.Left) {
+                                    Column(LayoutSize.fill(1f), horizontalAlignment = XAlign.Left) {
                                         Text(if (i == 75) "TARGET ACQUIRED" else "Standard Hound Variant", font = Font.INSIGNIA_15, color = Color.WHITE)
                                         Text("A cheap, readily available frigate.", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                     }

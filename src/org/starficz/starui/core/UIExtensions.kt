@@ -184,8 +184,23 @@ fun UIPanelAPI.clearChildren() {
     invoke("clearChildren")
 }
 
+// Measuring builds a throwaway panel, tooltip and label, and Text's measure lambda calls this on every layout pass.
+// The result only depends on (text, font), so keep a small LRU of results.
+private const val TEXT_MEASURE_CACHE_SIZE = 1024
+private val textMeasureCache = object : LinkedHashMap<Pair<String, Font?>, Pair<Float, Float>>(256, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Pair<String, Font?>, Pair<Float, Float>>?) =
+        size > TEXT_MEASURE_CACHE_SIZE
+}
+
 // Returns Pair(Width, Height)
 fun measureTextSize(text: String, font: Font? = null): Pair<Float, Float> {
+    if (text.isEmpty()) return Pair(0f, 0f)
+    val key = text to font
+    textMeasureCache[key]?.let { return it }
+    return measureTextSizeUncached(text, font).also { textMeasureCache[key] = it }
+}
+
+internal fun measureTextSizeUncached(text: String, font: Font?): Pair<Float, Float> {
     if (text.isEmpty()) return Pair(0f, 0f)
 
     val tempPanel = Global.getSettings().createCustom(10000f, 10000f, null)

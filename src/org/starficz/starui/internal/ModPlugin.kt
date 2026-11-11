@@ -12,9 +12,9 @@ internal class ModPlugin : BaseModPlugin() {
             Global.getSector().addTransientScript(CampaignUIAdderScript())
     }
 
-    // for testing only
     override fun onApplicationLoad() {
         StarUIManager.initAtApplicationLoad()
-        StarUIManager.registerPlugin(ExampleUIPlugin.ExampleStarUIPlugin())
+        // Title-screen demo panel, for manual testing only:
+        // StarUIManager.registerPlugin(ExampleUIPlugin.ExampleStarUIPlugin())
     }
 }

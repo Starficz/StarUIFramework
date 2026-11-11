@@ -138,8 +138,12 @@ internal class StackLayoutEngine(
 
             val currentAvailablePrimary = if (availablePrimary == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availablePrimary - fixedPrimarySpace)
 
-            // Measure the child's raw content + its own padding
-            val paddedIntrinsic = measureChildPaddedIntrinsic(child, plugin, availableCross, currentAvailablePrimary)
+            // Measure the child's raw content + its own padding. The helper takes (width, height): in a Column the
+            // cross axis is the width, in a Row the primary axis is.
+            val paddedIntrinsic = if (isVertical)
+                measureChildPaddedIntrinsic(child, plugin, availableCross, currentAvailablePrimary)
+            else
+                measureChildPaddedIntrinsic(child, plugin, currentAvailablePrimary, availableCross)
             childPaddedIntrinsics[child] = paddedIntrinsic
 
             val paddedIntrinsicPrimary = if (isVertical) paddedIntrinsic.second else paddedIntrinsic.first

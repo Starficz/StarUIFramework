@@ -1,6 +1,7 @@
 package org.starficz.starui.compose.runtime
 
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
+import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -57,10 +58,13 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         fun getOrCreate(component: UIComponentAPI): StarUIPanelPlugin {
             val target = if (component is BoxedUIElement) component.boxedElement else component
             if (target is CustomPanelAPI) {
-                val existing = target.plugin as? StarUIPanelPlugin
-                if (existing != null) return existing
+                val existing = target.plugin
+                if (existing is StarUIPanelPlugin) return existing
                 val created = StarUIPanelPlugin()
                 created.component = target
+                // A CustomPanel has one plugin slot. Wrap a foreign plugin (vanilla's or another mod's) instead of
+                // replacing it, so modifiers on someone else's panel never switch its own behaviour off.
+                created.delegate = existing
                 target.setPlugin(created)
                 return created
             }
@@ -77,6 +81,13 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     lateinit var component: UIComponentAPI
+
+    /**
+     * The plugin that was on this CustomPanel before StarUI attached, if any. Every callback is forwarded to it:
+     * underlays draw before it, overlays after it, and it sees input before StarUI's handlers.
+     */
+    var delegate: CustomUIPanelPlugin? = null
+        internal set
 
     var customPanel: CustomPanelAPI
         get() = component as CustomPanelAPI
@@ -159,8 +170,24 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         private set
 
     var consumeEvents = false
-    var ignoreConsumedEvents = false
+
+    /**
+     * Kept for source compatibility. Consumed events are now always skipped: the engine's InputEvent throws
+     * "Attempt to access data of a consumed InputEvent" from getX/getY/getEventType, and a patched leaf's
+     * processInput can still see events it or an earlier sibling consumed (the parent purges them only after
+     * dispatching to every child).
+     */
+    @Deprecated("Consumed events are always ignored now.")
+    var ignoreConsumedEvents = true
     private var inProcessInput = false
+
+    /**
+     * Events handled by the previous processInput call, by identity. Vanilla processInput(List) copies the caller's
+     * events into the engine's internal list and calls processInput(internal) on the same object; the lifecycle
+     * patch sees both overloads, so the same event objects arrive twice. The engine creates new event objects on
+     * every poll, so an event already seen here is the same dispatch, not a new one.
+     */
+    private var lastHandledEvents: Set<InputEventAPI> = emptySet()
 
     internal fun runLayout() {
         if (!hasLayoutRun) {
@@ -217,7 +244,12 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     fun onPositionChanged(function: (PositionAPI) -> Unit) { onPositionChangedFunctions.add(function) }
     override fun positionChanged(position: PositionAPI) {
         super.positionChanged(position)
+        delegate?.positionChanged(position)
         onPositionChangedFunctions.forEach { it(position) }
+    }
+
+    override fun buttonPressed(buttonId: Any?) {
+        delegate?.buttonPressed(buttonId)
     }
 
     fun setMouseCapturePad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
@@ -243,12 +275,14 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             it(alphaMult)
             GL11.glPopMatrix()
         }
+        delegate?.renderBelow(alphaMult)
     }
 
     fun onLayout(function: () -> Unit) { onLayoutFunctions.add(function) }
     fun render(function: (alphaMult: Float) -> Unit) { renderFunctions.add(function) }
     override fun render(alphaMult: Float) {
         runLayout()
+        delegate?.render(alphaMult)
 
         renderFunctions.forEach {
             GL11.glPushMatrix()
@@ -262,14 +296,22 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     fun advance(function: (amount: Float) -> Unit) { advanceFunctions.add(function) }
-    override fun advance(amount: Float) { advanceFunctions.forEach { it(amount) } }
+    override fun advance(amount: Float) {
+        delegate?.advance(amount)
+        advanceFunctions.forEach { it(amount) }
+    }
 
     override fun processInput(events: MutableList<InputEventAPI>) {
+        delegate?.processInput(events)
         if (inProcessInput) return
         inProcessInput = true
         try {
-            events.filter { it.isMouseEvent }.forEach { event ->
-                if (ignoreConsumedEvents && event.isConsumed) return@forEach
+            val alreadyHandled = lastHandledEvents
+            lastHandledEvents = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<InputEventAPI, Boolean>()).also { it.addAll(events) }
+            val fresh = events.filter { it !in alreadyHandled }
+
+            fresh.filter { it.isMouseEvent }.forEach { event ->
+                if (event.isConsumed) return@forEach
                 val inElement = event.x.toFloat() in (left - inputCaptureLeftPad)..(right + inputCaptureRightPad) &&
                         event.y.toFloat() in (bottom - inputCaptureBottomPad)..(top + inputCaptureTopPad)
                 if (inElement) {
@@ -298,8 +340,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
                 }
             }
 
-            events.filter { it.isKeyboardEvent }.forEach { event ->
-                if (ignoreConsumedEvents && event.isConsumed) return@forEach
+            fresh.filter { it.isKeyboardEvent }.forEach { event ->
+                if (event.isConsumed) return@forEach
                 if (event.isKeyDownEvent) onKeyDownFunctions.forEach { it(event) }
                 if (event.isKeyUpEvent) onKeyUpFunctions.forEach { it(event) }
                 if (!event.isConsumed && event.isRepeat) onKeyHeldFunctions.forEach { it(event) }
