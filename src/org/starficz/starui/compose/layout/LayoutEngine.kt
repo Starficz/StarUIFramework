@@ -57,9 +57,8 @@ internal fun commitChildLayout(
     child.setSize(finalW, finalH)
     plugin.childLayoutDelegates[child]?.invoke(finalW, finalH)
 
-    val childPlugin = StarUIPanelPlugin.getAttached(child)
-    if (childPlugin?.layoutEngine != null) {
-        childPlugin.layoutEngine!!.layout(finalW, finalH)
-        childPlugin.markLayoutResolved()
-    }
+    // Every child with a plugin is told, engine or not, so onLayout on a leaf fires on each pass of its container.
+    val childPlugin = StarUIPanelPlugin.getAttached(child) ?: return
+    childPlugin.layoutEngine?.layout(finalW, finalH)
+    childPlugin.markLayoutResolved()
 }

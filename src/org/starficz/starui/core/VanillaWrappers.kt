@@ -11,6 +11,7 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.ReflectionUtils.invoke
 import java.awt.Color
 
@@ -118,6 +119,15 @@ class BoxedUILabel(val uiLabel: LabelAPI) :
     override fun setOpacity(opacity: Float) { uiLabel.opacity = opacity }
 
     override fun autoSize() { (uiLabel as UIComponentAPI).invoke("autoSize") }
+
+    /** A changed string changes the label's measured size, so its layout container is asked to lay out again. */
+    override fun setText(text: String?) {
+        val changed = uiLabel.text != text
+        uiLabel.text = text
+        if (changed) {
+            (uiLabel as UIComponentAPI).parent?.let { StarUIPanelPlugin.getAttached(it) }?.requestLayout()
+        }
+    }
 }
 
 interface ImageAPI {

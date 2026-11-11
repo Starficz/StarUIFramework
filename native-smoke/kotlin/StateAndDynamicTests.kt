@@ -103,7 +103,9 @@ fun registerStateTests() {
 }
 
 fun registerDynamicTests() {
-    StarUITestSuite.group("dynamic-invalidate-relayout") {
+    StarUITestSuite.group("dynamic-unmanaged-child-relayout") {
+        // A child added outside any builder context is not registered with the container, but it still takes part
+        // in the flow (measured by its current size) and the container still re-lays out for it.
         val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
             Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(200, 60, 60)))
             Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(60, 200, 60)))
@@ -111,15 +113,13 @@ fun registerDynamicTests() {
         frame()
         near(col.h, 45f, "initial wrapped height")
         val plugin = col.plugin as StarUIPanelPlugin
-        lateinit var added: CustomPanelAPI
-        StarUIContext.withPlugin(plugin) { added = col.Spacer(PanelSize.exact(150f, 30f), Modifier.background(Color(60, 60, 200))) }
+        val added = Global.getSettings().createCustom(150f, 30f, null)
+        col.addComponent(added)
         frame()
-        near(col.h, 45f, "without invalidateLayout the layout is not re-run")
-        plugin.invalidateLayout()
-        frame()
-        near(col.h, 80f, "after invalidateLayout the Column re-wraps all three children")
+        near(col.h, 80f, "a plain addComponent re-wraps all three children")
         near(col.w, 150f, "and re-wraps the new widest child")
         near(added.relTop(col), 50f, "the new child flows after the old ones")
+        expect(plugin.layoutPassCount == 2, "one pass for the first frame, one for the added child (${plugin.layoutPassCount})")
         screenshot("final")
     }
 

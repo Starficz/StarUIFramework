@@ -193,6 +193,12 @@ object ButtonListenerChainPatch {
  * Automatically unwraps any [BoxedUIElement] passed into vanilla [UIPanelAPI] container methods
  * (`addComponent`, `removeComponent`, `bringComponentToTop`, `sendToBottom`) so boxed StarUI elements
  * never trigger a `ClassCastException` inside obfuscated `UIPanel`.
+ *
+ * It also tells a StarUI layout container when its child list changes, so the layout re-runs without a manual call.
+ * Vanilla's `addComponent` / `removeComponent` delegate to the base panel's own `add` / `remove` (one parameter of
+ * an engine type, so matched by name and arity only), which is also what vanilla widgets call directly;
+ * `clearChildren` empties the list without going through `remove`. All three are readable but not API names
+ * (inferred): re-check them after a game update. The handlers only set flags on panels that carry a StarUI plugin.
  */
 // 0.98a-RC8 Windows: matches com.fs.starfarer.ui.interfacenew (UIPanel)
 @Patch(
@@ -241,6 +247,25 @@ object UIPanelContainerPatch {
         }
     }
 
+    // 0.98a-RC8 Windows: UIPanel.add(UIComponent) and its varargs overload; both only mark the layout as stale.
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "add", parameterCount = 1, methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun onChildAdded(context: AfterContext) = requestLayoutOf(context.self)
+
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "remove", parameterCount = 1, methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun onChildRemoved(context: AfterContext) = requestLayoutOf(context.self)
+
+    @JvmStatic
+    @Before(target = MethodMatch(methodName = "clearChildren", parameterCount = 0, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun onChildrenCleared(context: BeforeContext) = requestLayoutOf(context.self)
+
+    private fun requestLayoutOf(self: Any?) {
+        val panel = self as? UIPanelAPI ?: return
+        val plugin = StarUIPanelPlugin.getAttached(panel) ?: return
+        if (plugin.layoutEngine != null) plugin.requestLayout()
+    }
+
     @JvmStatic
     @Before(
         target = MethodMatch(
@@ -256,6 +281,7 @@ object UIPanelContainerPatch {
         if (arg is BoxedUIElement) {
             context.setArg(0, arg.boxedElement)
         }
+        requestLayoutOf(context.self)   // child order is flow order in a Column or Row
     }
 
     @JvmStatic
@@ -273,5 +299,6 @@ object UIPanelContainerPatch {
         if (arg is BoxedUIElement) {
             context.setArg(0, arg.boxedElement)
         }
+        requestLayoutOf(context.self)
     }
 }

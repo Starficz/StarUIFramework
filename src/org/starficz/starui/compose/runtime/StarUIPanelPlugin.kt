@@ -105,6 +105,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal var layoutEngine: LayoutEngine? = null
     internal var isTopLevelNode: Boolean = false
     private var hasLayoutRun = false
+
+    /** Number of measure + layout passes this node's own engine has started (as a layout root). For tests and tuning. */
+    internal var layoutPassCount = 0
     var customData: Any? = null
 
     // Used when a leaf component is placed inside a larger padded/aligned layout slot.
@@ -153,6 +156,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     private var advanceFunctions: MutableList<(Float) -> Unit> = mutableListOf()
     private var onLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
+    private var onFirstLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
 
     var inputCaptureTopPad = 0f
         private set
@@ -191,51 +195,88 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     internal fun runLayout() {
         if (!hasLayoutRun) {
-            layoutEngine?.let { engine ->
-                val p = component.parent
-                val rootMaxWidth = if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
-                val rootMaxHeight = if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
+            // Resolved before anything runs: a requestLayout() made by a layout callback (a label that changes its
+            // own text in onLayout, say) must survive this pass and schedule the next one.
+            hasLayoutRun = true
+            try {
+                runEngine()
+            } catch (t: Throwable) {
+                hasLayoutRun = false   // a broken layout keeps failing loudly instead of silently staying wrong
+                throw t
+            }
+            fireLayoutCallbacks()
+        }
+    }
 
-                // 1. Measure the children's intrinsic footprint
-                val (contentW, contentH) = engine.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)
+    private fun runEngine() {
+        layoutEngine?.let { engine ->
+            layoutPassCount++
+            val p = component.parent
+            val rootMaxWidth = if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
+            val rootMaxHeight = if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
 
-                // 2. SELF SIZING: If this panel is a top-level root, size itself right now!
-                if (isTopLevelNode) {
-                    val finalW = when (val wDim = myNodeSize.width) {
-                        is Dimension.Exact -> wDim.pixels
-                        is Dimension.WrapContent -> contentW + myPadding.horizontal
-                        else -> if (component.width > 1f) component.width else rootMaxWidth
-                    }
-                    val finalH = when (val hDim = myNodeSize.height) {
-                        is Dimension.Exact -> hDim.pixels
-                        is Dimension.WrapContent -> contentH + myPadding.vertical
-                        else -> if (component.height > 1f) component.height else rootMaxHeight
-                    }
-                    component.setSize(finalW, finalH)
-                    myAnchor?.let { component.applyAnchor(it) }
+            // 1. Measure the children's intrinsic footprint
+            val (contentW, contentH) = engine.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)
+
+            // 2. SELF SIZING: If this panel is a top-level root, size itself right now!
+            if (isTopLevelNode) {
+                val finalW = when (val wDim = myNodeSize.width) {
+                    is Dimension.Exact -> wDim.pixels
+                    is Dimension.WrapContent -> contentW + myPadding.horizontal
+                    else -> if (component.width > 1f) component.width else rootMaxWidth
                 }
-
-                // 3. Layout the children within our finalized boundaries
-                engine.layout(component.width, component.height)
+                val finalH = when (val hDim = myNodeSize.height) {
+                    is Dimension.Exact -> hDim.pixels
+                    is Dimension.WrapContent -> contentH + myPadding.vertical
+                    else -> if (component.height > 1f) component.height else rootMaxHeight
+                }
+                component.setSize(finalW, finalH)
+                myAnchor?.let { component.applyAnchor(it) }
             }
 
-            onLayoutFunctions.forEach { it() }
-            onLayoutFunctions.clear()
-            hasLayoutRun = true
+            // 3. Layout the children within our finalized boundaries
+            engine.layout(component.width, component.height)
         }
     }
 
+    /** Called by the parent's engine once it has sized and laid out this node. */
     internal fun markLayoutResolved() {
         hasLayoutRun = true
-        if (onLayoutFunctions.isNotEmpty()) {
-            onLayoutFunctions.forEach { it() }
-            onLayoutFunctions.clear()
+        fireLayoutCallbacks()
+    }
+
+    private fun fireLayoutCallbacks() {
+        if (onFirstLayoutFunctions.isNotEmpty()) {
+            val first = onFirstLayoutFunctions.toList()
+            onFirstLayoutFunctions.clear()
+            first.forEach { it() }
+        }
+        if (onLayoutFunctions.isNotEmpty()) onLayoutFunctions.toList().forEach { it() }
+    }
+
+    /**
+     * Asks for this node to be measured and laid out again on the next frame it renders. The request travels up
+     * through every StarUI layout container to the top-level node, which re-measures its whole tree, resizes itself
+     * and re-applies its anchor.
+     *
+     * StarUI calls this by itself when children are added to or removed from a layout container and when a [Text]
+     * changes its string. Call it after changing something StarUI cannot see (a child's size set by hand, for
+     * example). It only sets flags, so it is cheap and safe to call from event handlers.
+     */
+    fun requestLayout() {
+        var node = this
+        while (true) {
+            node.hasLayoutRun = false
+            if (!node::component.isInitialized) return
+            val parentPanel = node.component.parent ?: return
+            val parentPlugin = getAttached(parentPanel) ?: return
+            if (parentPlugin.layoutEngine == null) return
+            node = parentPlugin
         }
     }
 
-    internal fun invalidateLayout() {
-        hasLayoutRun = false
-    }
+    @Deprecated("Use requestLayout().", ReplaceWith("requestLayout()"))
+    internal fun invalidateLayout() = requestLayout()
 
     internal fun registerBinding(binding: Any) {
         activeBindings.add(binding)
@@ -278,7 +319,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         delegate?.renderBelow(alphaMult)
     }
 
+    /** Runs after every layout pass that sizes and positions this node. Use [onFirstLayout] for one-time setup. */
     fun onLayout(function: () -> Unit) { onLayoutFunctions.add(function) }
+
+    /** Runs once, after the first layout pass that sizes and positions this node. */
+    fun onFirstLayout(function: () -> Unit) { onFirstLayoutFunctions.add(function) }
     fun render(function: (alphaMult: Float) -> Unit) { renderFunctions.add(function) }
     override fun render(alphaMult: Float) {
         runLayout()
