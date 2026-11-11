@@ -30,9 +30,10 @@ fun UIPanelAPI.TextField(
     font: Font = StarUITheme.current.textField.font,
     hint: String? = null
 ): TextFieldAPI {
+    checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
-        val textToMeasure = bind.value.ifEmpty { hint ?: "" }
+        val textToMeasure = bind.peek().ifEmpty { hint ?: "" }
         val (tw, th) = measureTextSize(textToMeasure, font)
         return Pair(maxOf(tw, 50f), maxOf(th, 20f))
     }
@@ -49,12 +50,12 @@ fun UIPanelAPI.TextField(
     modifier.operations.forEach { it(textField) }
 
     val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(textField)
-    textField.text = bind.value
+    textField.text = bind.peek()
     bind.onChange(ownerPlugin) { newValue ->
         if (textField.text != newValue) textField.text = newValue
     }
     ownerPlugin.advance {
-        if (textField.text != bind.value) {
+        if (textField.text != bind.peek()) {
             bind.value = textField.text
         }
     }
@@ -74,6 +75,7 @@ fun UIPanelAPI.Button(
     shortcut: Int? = null,
     onClick: ((ButtonAPI) -> Unit)? = null
 ): ButtonAPI {
+    checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
         return measureTextSize(text, font)
@@ -105,6 +107,7 @@ fun UIPanelAPI.AreaCheckbox(
     bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null
 ): ButtonAPI {
+    checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
         return measureTextSize(text, font)
@@ -127,7 +130,7 @@ fun UIPanelAPI.AreaCheckbox(
     if (validGroup) {
         buttonGroup.addButtonToGroup(button, bind)
     } else if (bind != null) {
-        button.isChecked = bind.value
+        button.isChecked = bind.peek()
         button.onClick { bind.value = button.isChecked }
     }
 
@@ -147,6 +150,7 @@ fun UIPanelAPI.Checkbox(
     bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null
 ): ButtonAPI {
+    checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
         val (tw, th) = if (text != null) measureTextSize(text, font) else Pair(0f, 0f)
@@ -169,7 +173,7 @@ fun UIPanelAPI.Checkbox(
     if (validGroup) {
         buttonGroup.addButtonToGroup(button, bind)
     } else if (bind != null) {
-        button.isChecked = bind.value
+        button.isChecked = bind.peek()
         button.onClick { bind.value = button.isChecked }
     }
 

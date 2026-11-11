@@ -42,6 +42,14 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     companion object {
         private val attachedPlugins = WeakHashMap<UIComponentAPI, StarUIPanelPlugin>()
+        private var serialCounter = 0L
+
+        /** False until the first StarUI plugin exists, so hooks on vanilla code can leave early. */
+        @Volatile
+        internal var hasAnyPlugins = false
+
+        /** A number larger than the serial of every plugin created so far. */
+        internal fun nextSerial(): Long = ++serialCounter
 
         @Volatile
         internal var hasAttachedPlugins = false
@@ -81,6 +89,23 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     lateinit var component: UIComponentAPI
+
+    /** Creation order, so a scope can tell plugins that existed before its build from ones the build created. */
+    private val serial = nextSerial()
+
+    init {
+        hasAnyPlugins = true
+    }
+
+    /** The builder block that fills this container, kept so it can run again when a state it read changes. */
+    internal var scope: Scope? = null
+
+    /** A scope at or below this node is waiting to be rebuilt. */
+    internal var dirtyScopeBelow = false
+
+    /** True after [dispose]: the handlers are gone and the scope will never rebuild. */
+    var isDisposed = false
+        private set
 
     /**
      * The plugin that was on this CustomPanel before StarUI attached, if any. Every callback is forwarded to it:
@@ -137,7 +162,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     // ==========================================
     // EVENTS & LIFECYCLE CALLBACKS
     // ==========================================
-    private val activeBindings = mutableListOf<Any>()
+    private val activeBindings = mutableListOf<Pair<UIState<*>, Any>>()
     private var onPositionChangedFunctions: MutableList<(PositionAPI) -> Unit> = mutableListOf()
 
     private var onClickFunctions: MutableList<(InputEventAPI) -> Unit> = ArrayList()
@@ -278,11 +303,90 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     @Deprecated("Use requestLayout().", ReplaceWith("requestLayout()"))
     internal fun invalidateLayout() = requestLayout()
 
-    internal fun registerBinding(binding: Any) {
-        activeBindings.add(binding)
+    internal fun registerBinding(state: UIState<*>, binding: Any) {
+        val entry = Pair(state, binding)
+        activeBindings.add(entry)
+        owningScope()?.addCleanup {
+            activeBindings.remove(entry)
+            state.removeBinding(binding)
+        }
     }
 
-    fun onPositionChanged(function: (PositionAPI) -> Unit) { onPositionChangedFunctions.add(function) }
+    // ==========================================
+    // SCOPES & DISPOSAL
+    // ==========================================
+
+    /**
+     * Makes [builder] this container's scope and runs it for the first time. [kind] and [source] (the caller's own
+     * builder lambda) are only used to name the scope in error messages.
+     */
+    internal fun attachScope(kind: String, source: Any, builder: () -> Unit) {
+        val created = Scope(this, StarUIContext.currentTheme, kind, source.javaClass.name.substringBefore("$$"), builder)
+        scope = created
+        created.build()
+    }
+
+    /**
+     * The scope that must undo a registration made on this plugin right now, or null. That is the scope being built,
+     * when this plugin outlives that build: the scope's own container, or any plugin that existed before the build
+     * started. Plugins created by the build are thrown away with it, so they need no bookkeeping.
+     */
+    private fun owningScope(): Scope? {
+        val building = StarUIContext.currentScope ?: return null
+        return if (building.plugin === this || serial < building.buildSerial) building else null
+    }
+
+    private fun <F> register(list: MutableList<F>, function: F) {
+        list.add(function)
+        owningScope()?.addCleanup { list.remove(function) }
+    }
+
+    internal fun markDirtyScopeBelow() {
+        var node: StarUIPanelPlugin? = this
+        while (node != null) {
+            node.dirtyScopeBelow = true
+            if (!node::component.isInitialized) return
+            node = node.component.parent?.let { getAttached(it) }
+        }
+    }
+
+    /** Forgets everything recorded about the children (they are about to be replaced). */
+    internal fun clearChildLayoutData() {
+        childSizing.clear(); childPadding.clear(); childMargins.clear(); childInnerOffset.clear()
+        childAlignments.clear(); childAnchors.clear(); childMeasurables.clear(); childLayoutDelegates.clear()
+    }
+
+    /** Disposes this plugin only; [dispose] also handles everything below it. */
+    internal fun disposeSelf() {
+        if (isDisposed) return
+        isDisposed = true
+        scope?.dispose()
+        scope = null
+        dirtyScopeBelow = false
+        activeBindings.forEach { (state, binding) -> state.removeBinding(binding) }
+        activeBindings.clear()
+        handlerLists().forEach { it.clear() }
+        clearChildLayoutData()
+    }
+
+    /**
+     * Tears down the StarUI side of this component and of everything below it: event handlers, render and advance
+     * callbacks, UIState listeners and reactive scopes. Use it when you remove UI for good; StarUI does it by itself
+     * for children it rebuilds and for children dropped by `clearChildren()`. A component removed with
+     * `removeComponent` is left alone, so it can be added somewhere else.
+     */
+    fun dispose() {
+        if (::component.isInitialized) Scope.disposeTree(component) else disposeSelf()
+    }
+
+    private fun handlerLists(): List<MutableList<*>> = listOf(
+        onPositionChangedFunctions, onClickFunctions, onClickOutsideFunctions, onClickReleaseFunctions,
+        onHoverFunctions, onHoverEnterFunctions, onHoverExitFunctions, onMouseButtonHeldFunctions,
+        onKeyDownFunctions, onKeyUpFunctions, onKeyHeldFunctions, renderBelowFunctions, renderFunctions,
+        advanceFunctions, onLayoutFunctions, onFirstLayoutFunctions
+    )
+
+    fun onPositionChanged(function: (PositionAPI) -> Unit) { register(onPositionChangedFunctions, function) }
     override fun positionChanged(position: PositionAPI) {
         super.positionChanged(position)
         delegate?.positionChanged(position)
@@ -303,8 +407,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    fun renderBelow(function: (alphaMult: Float) -> Unit) { renderBelowFunctions.add(function) }
+    fun renderBelow(function: (alphaMult: Float) -> Unit) { register(renderBelowFunctions, function) }
     override fun renderBelow(alphaMult: Float) {
+        // Before this node's children render and before any layout below runs: the safe point to replace children.
+        if (Scope.hasPendingDetached) Scope.disposeDetachedPending()
+        if (dirtyScopeBelow) Scope.flush(this)
         runLayout()
 
         renderBelowFunctions.forEach {
@@ -320,11 +427,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     /** Runs after every layout pass that sizes and positions this node. Use [onFirstLayout] for one-time setup. */
-    fun onLayout(function: () -> Unit) { onLayoutFunctions.add(function) }
+    fun onLayout(function: () -> Unit) { register(onLayoutFunctions, function) }
 
     /** Runs once, after the first layout pass that sizes and positions this node. */
-    fun onFirstLayout(function: () -> Unit) { onFirstLayoutFunctions.add(function) }
-    fun render(function: (alphaMult: Float) -> Unit) { renderFunctions.add(function) }
+    fun onFirstLayout(function: () -> Unit) { register(onFirstLayoutFunctions, function) }
+    fun render(function: (alphaMult: Float) -> Unit) { register(renderFunctions, function) }
     override fun render(alphaMult: Float) {
         runLayout()
         delegate?.render(alphaMult)
@@ -340,10 +447,13 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    fun advance(function: (amount: Float) -> Unit) { advanceFunctions.add(function) }
+    fun advance(function: (amount: Float) -> Unit) { register(advanceFunctions, function) }
     override fun advance(amount: Float) {
         delegate?.advance(amount)
         advanceFunctions.forEach { it(amount) }
+        // This node's children have advanced already (vanilla advances children before the plugin), so they can be
+        // replaced now. When a StarUI parent is also marked it will flush everything below it in a moment.
+        if (dirtyScopeBelow && component.parent?.let { getAttached(it) }?.dirtyScopeBelow != true) Scope.flush(this)
     }
 
     override fun processInput(events: MutableList<InputEventAPI>) {
@@ -397,14 +507,14 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    fun onClick(function: (InputEventAPI) -> Unit) { onClickFunctions.add(function) }
-    fun onClickRelease(function: (InputEventAPI) -> Unit) { onClickReleaseFunctions.add(function) }
-    fun onClickOutside(function: (InputEventAPI) -> Unit) { onClickOutsideFunctions.add(function) }
-    fun onHover(function: (InputEventAPI) -> Unit) { onHoverFunctions.add(function) }
-    fun onHoverEnter(function: (InputEventAPI) -> Unit) { onHoverEnterFunctions.add(function) }
-    fun onHoverExit(function: (InputEventAPI) -> Unit) { onHoverExitFunctions.add(function) }
-    fun onMouseHeld(function: (InputEventAPI) -> Unit) { onMouseButtonHeldFunctions.add(function) }
-    fun onKeyDown(function: (InputEventAPI) -> Unit) { onKeyDownFunctions.add(function) }
-    fun onKeyUp(function: (InputEventAPI) -> Unit) { onKeyUpFunctions.add(function) }
-    fun onKeyHeld(function: (InputEventAPI) -> Unit) { onKeyHeldFunctions.add(function) }
+    fun onClick(function: (InputEventAPI) -> Unit) { register(onClickFunctions, function) }
+    fun onClickRelease(function: (InputEventAPI) -> Unit) { register(onClickReleaseFunctions, function) }
+    fun onClickOutside(function: (InputEventAPI) -> Unit) { register(onClickOutsideFunctions, function) }
+    fun onHover(function: (InputEventAPI) -> Unit) { register(onHoverFunctions, function) }
+    fun onHoverEnter(function: (InputEventAPI) -> Unit) { register(onHoverEnterFunctions, function) }
+    fun onHoverExit(function: (InputEventAPI) -> Unit) { register(onHoverExitFunctions, function) }
+    fun onMouseHeld(function: (InputEventAPI) -> Unit) { register(onMouseButtonHeldFunctions, function) }
+    fun onKeyDown(function: (InputEventAPI) -> Unit) { register(onKeyDownFunctions, function) }
+    fun onKeyUp(function: (InputEventAPI) -> Unit) { register(onKeyUpFunctions, function) }
+    fun onKeyHeld(function: (InputEventAPI) -> Unit) { register(onKeyHeldFunctions, function) }
 }

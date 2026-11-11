@@ -10,6 +10,10 @@ import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.LayoutSize
 import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
+import org.starficz.starui.compose.components.Button
+import org.starficz.starui.compose.components.Text
+import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.HorizontalStackLayout
@@ -174,6 +178,26 @@ fun registerPerfTests() {
         log(String.format("PERF measureTextSize: %.1f us uncached, %.2f us cached", uncachedUs, cachedUs))
         expect(measureTextSize(texts[7]) == measureTextSizeUncached(texts[7], null), "cached measurement equals a fresh one")
         expect(cachedUs * 10 < uncachedUs, "cache makes repeated measuring at least 10x cheaper")
+
+        // 2b. Brute-force scope rebuild: a Column of 100 rows (label + button each), rebuilt and laid out again.
+        val perfTick = UIState(0)
+        val list = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(620f, 0f)), spacing = 1f) {
+            val tick = perfTick.value
+            for (i in 0 until 100) Row(LayoutSize.wrap(), spacing = 4f) {
+                Text("Row $i tick $tick")
+                Button("Go", size = Size.exact(40f, 16f)) { }
+            }
+        }
+        NativeSmokeSupport.render(root)
+        repeat(5) { perfTick.value++; NativeSmokeSupport.render(root) }
+        t0 = System.nanoTime(); repeat(20) { NativeSmokeSupport.render(root) }
+        val idleMs = (System.nanoTime() - t0) / 1e6 / 20
+        t0 = System.nanoTime(); repeat(20) { perfTick.value++; NativeSmokeSupport.render(root) }
+        val rebuildMs = (System.nanoTime() - t0) / 1e6 / 20 - idleMs
+        log(String.format("PERF scope rebuild: 100 rows (300 components) rebuilt + laid out in %.2f ms (idle frame %.2f ms)", rebuildMs, idleMs))
+        expect(list.getChildrenNonCopy().size == 100, "the rebuilt list has its 100 rows")
+        expect(rebuildMs < 50.0, "rebuilding 100 rows stays under 50 ms (${"%.2f".format(rebuildMs)} ms)")
+        root.removeComponent(list)
 
         // 3. Injection polling: StarUIManager.advance with 20 injections whose element is already present.
         val targets = (0 until 20).map { i -> root.CustomPanel(PanelSize.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofParent(700f + i * 12f, 600f))) }

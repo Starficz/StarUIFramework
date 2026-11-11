@@ -78,6 +78,24 @@ internal fun getInitialBounds(size: StarUISizing, intrinsic: Pair<Float, Float>?
     return Pair(w, h)
 }
 
+/**
+ * Called first by every component function. A container whose builder read a UIState replaces its children whenever
+ * that state changes, so a child added from anywhere else (an event handler, code that kept a reference to the
+ * panel) would silently disappear on the next rebuild. Fail at the call instead, and say what to do.
+ */
+internal fun UIPanelAPI.checkDslTarget() {
+    val target: UIPanelAPI = (this as? BoxedScrollPanel)?.contentContainer ?: this
+    val plugin = StarUIPanelPlugin.getAttached(target) ?: return
+    val scope = plugin.scope ?: return
+    if (!scope.isReactive || StarUIContext.currentPluginOrNull === plugin) return
+    throw IllegalStateException(
+        "StarUI: a component was added to a reactive container from outside its builder block (for example from an " +
+        "onClick handler). This container rebuilds its children whenever a UIState its builder read changes, so " +
+        "anything added from outside would be lost. Change a UIState instead and let the builder read it: " +
+        "`if (showDetails.value) Text(...)` inside the builder, `showDetails.value = true` in the handler."
+    )
+}
+
 internal fun registerComponentSizing(
     component: UIComponentAPI,
     size: StarUISizing,
@@ -145,6 +163,7 @@ fun UIPanelAPI.CustomPanel(
     modifier: Modifier = Modifier,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
+    checkDslTarget()
     val plugin = StarUIPanelPlugin()
     val (initW, initH) = getInitialBounds(size)
 
@@ -156,7 +175,7 @@ fun UIPanelAPI.CustomPanel(
 
     modifier.operations.forEach { it(panel) }
 
-    StarUIContext.withPlugin(plugin) { panel.builder() }
+    plugin.attachScope("CustomPanel", builder) { panel.builder() }
     return panel
 }
 
@@ -199,6 +218,7 @@ fun UIPanelAPI.Box(
     modifier: Modifier = Modifier,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
+    checkDslTarget()
     val plugin = StarUIPanelPlugin()
     val (initW, initH) = getInitialBounds(size)
 
@@ -211,7 +231,7 @@ fun UIPanelAPI.Box(
 
     modifier.operations.forEach { it(panel) }
 
-    StarUIContext.withPlugin(plugin) { panel.builder() }
+    plugin.attachScope("Box", builder) { panel.builder() }
     return panel
 }
 
@@ -225,6 +245,7 @@ internal fun UIPanelAPI.StackLayout(
     spacing: Float,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit
 ): CustomPanelAPI {
+    checkDslTarget()
     val plugin = StarUIPanelPlugin()
     plugin.isStackLayout = true
     val (initW, initH) = getInitialBounds(size)
@@ -248,7 +269,7 @@ internal fun UIPanelAPI.StackLayout(
 
     modifier.operations.forEach { it(panel) }
 
-    StarUIContext.withPlugin(plugin) { panel.builder() }
+    plugin.attachScope(if (direction.isVertical) "Column" else "Row", builder) { panel.builder() }
     return panel
 }
 
@@ -363,6 +384,7 @@ fun UIPanelAPI.ScrollPanel(
     useMouseWheel: Boolean = StarUITheme.current.scrollPanel.useMouseWheel,
     builder: (@StarUIDsl BoxedScrollPanel).() -> Unit = {}
 ): BoxedScrollPanel {
+    checkDslTarget()
     val (initW, initH) = getInitialBounds(size)
 
     // 1. Spawn the genuine vanilla ScrollPanel
@@ -439,9 +461,7 @@ fun UIPanelAPI.ScrollPanel(
     modifier.operations.forEach { it(boxedScroll) }
 
     // 6. Execute builder scoped directly to BoxedScrollPanel!
-    StarUIContext.withPlugin(contentPlugin) {
-        boxedScroll.builder()
-    }
+    contentPlugin.attachScope("ScrollPanel", builder) { boxedScroll.builder() }
 
     return boxedScroll
 }

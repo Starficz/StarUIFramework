@@ -62,6 +62,7 @@ fun UIPanelAPI.Text(
     textAlign: TextAlign = StarUITheme.current.text.textAlign,
     highlightedText: Collection<Pair<String, Color>>? = null
 ): BoxedUILabel {
+    checkDslTarget()
     val rawLabel = this.addPara(text, font, color, highlightedText)
 
     fun applyTextAlign() {
@@ -138,6 +139,7 @@ fun UIPanelAPI.Image(
     showBorder: Boolean = StarUITheme.current.image.showBorder,
     borderColor: Color? = StarUITheme.current.image.borderColor
 ): BoxedUIImage {
+    checkDslTarget()
     val rawImage = this.addImage(spritePath, 100f, 100f)
 
     rawImage.sizeToOriginalSpriteSize()
@@ -233,6 +235,7 @@ fun UIPanelAPI.ShipDisplay(
     title: String? = null,
     subtitle: String? = null
 ): BoxedUIShipPreview {
+    checkDslTarget()
     val (initW, initH) = getInitialBounds(size, Pair(100f, 100f))
 
     val rawShip = this.addShipPreview(initW, initH, fleetMember, style, color)

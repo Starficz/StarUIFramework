@@ -86,6 +86,7 @@ object StarUIManager {
         val state = AppDriver.getInstance().currentState
         tabOverride = null
         tabIDOverride = null
+        Scope.disposeDetachedPending()
 
         if (state is TitleScreenState) {
             val title = state.invoke("getScreenPanel") as? UIPanelAPI ?: return

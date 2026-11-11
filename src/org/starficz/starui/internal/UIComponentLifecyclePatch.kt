@@ -5,9 +5,11 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.runtime.Scope
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.BoxedUIElement
 import org.starficz.starui.core.ButtonListener
+import org.starficz.starui.core.getChildrenNonCopy
 import patchlib.api.context.AfterContext
 import patchlib.api.context.BeforeContext
 import patchlib.api.match.ClassMatch
@@ -250,7 +252,17 @@ object UIPanelContainerPatch {
     // 0.98a-RC8 Windows: UIPanel.add(UIComponent) and its varargs overload; both only mark the layout as stale.
     @JvmStatic
     @After(target = MethodMatch(methodName = "add", parameterCount = 1, methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
-    fun onChildAdded(context: AfterContext) = requestLayoutOf(context.self)
+    fun onChildAdded(context: AfterContext) {
+        requestLayoutOf(context.self)
+        // A subtree that was detached while one of its scopes waited for a rebuild is being attached again: pass
+        // the "dirty below" mark on to its new ancestors so the rebuild happens before they lay out.
+        if (Scope.hasDirty) {
+            val child = context.getArg(0) as? UIComponentAPI ?: return
+            if (StarUIPanelPlugin.getAttached(child)?.dirtyScopeBelow == true) {
+                (context.self as? UIPanelAPI)?.let { StarUIPanelPlugin.getAttached(it) }?.markDirtyScopeBelow()
+            }
+        }
+    }
 
     @JvmStatic
     @After(target = MethodMatch(methodName = "remove", parameterCount = 1, methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
@@ -258,7 +270,17 @@ object UIPanelContainerPatch {
 
     @JvmStatic
     @Before(target = MethodMatch(methodName = "clearChildren", parameterCount = 0, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
-    fun onChildrenCleared(context: BeforeContext) = requestLayoutOf(context.self)
+    fun onChildrenCleared(context: BeforeContext) {
+        requestLayoutOf(context.self)
+        // clearChildren() is how panels throw their content away. StarUI children are disposed a little later, and
+        // only if nothing has added them back by then (some code clears and re-adds the same components to reorder).
+        if (!StarUIPanelPlugin.hasAnyPlugins) return
+        val panel = context.self as? UIPanelAPI ?: return
+        for (child in panel.getChildrenNonCopy()) {
+            val plugin = StarUIPanelPlugin.getAttached(child) ?: continue
+            if (!plugin.isDisposed) Scope.noteDetached(child)
+        }
+    }
 
     private fun requestLayoutOf(self: Any?) {
         val panel = self as? UIPanelAPI ?: return

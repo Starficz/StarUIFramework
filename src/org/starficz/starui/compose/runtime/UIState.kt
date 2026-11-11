@@ -5,24 +5,64 @@ import org.lwjgl.input.Keyboard
 import org.starficz.starui.core.onClick
 import java.lang.ref.WeakReference
 
+/**
+ * A value the UI follows.
+ *
+ * Reading [value] inside a container's builder block (`Column { ... }`, `CustomPanel { ... }`, ...) subscribes that
+ * container: when the value changes, its children are rebuilt on the next frame, so plain `if` / `for` / `when` in a
+ * builder stay in step with the state. Reads anywhere else (event handlers, render callbacks) just return the value.
+ * Writing only marks the subscribed containers; nothing is rebuilt during the write.
+ */
 class UIState<T>(initialValue: T) {
-    var value: T = initialValue
+    private var current: T = initialValue
+
+    var value: T
+        get() {
+            StarUIContext.currentScope?.recordRead(this)
+            return current
+        }
         set(newValue) {
-            if (field != newValue) {
-                field = newValue
+            if (current != newValue) {
+                current = newValue
 
-                val observersSnapshot = observers.toList()
-                observersSnapshot.forEach { weakRef ->
-                    weakRef.get()?.invoke(newValue)
+                if (scopeSubscribers.isNotEmpty()) {
+                    val subscribed = scopeSubscribers.toList()
+                    scopeSubscribers.retainAll { it.get()?.disposed == false }
+                    subscribed.forEach { it.get()?.markDirty() }
                 }
-                observers.retainAll { it.get() != null }
 
-                strongObservers.forEach { it.invoke(newValue) }
+                // Observers are not part of whatever builder happens to be running when the write is made.
+                StarUIContext.untracked {
+                    val observersSnapshot = observers.toList()
+                    observersSnapshot.forEach { weakRef ->
+                        weakRef.get()?.invoke(newValue)
+                    }
+                    observers.retainAll { it.get() != null }
+
+                    strongObservers.toList().forEach { it.invoke(newValue) }
+                }
             }
         }
 
+    /** Reads the value without subscribing the builder that is running. */
+    fun peek(): T = current
+
     internal val observers = mutableListOf<WeakReference<(T) -> Unit>>()
     internal val strongObservers = mutableListOf<(T) -> Unit>()
+    internal val scopeSubscribers = mutableListOf<WeakReference<Scope>>()
+
+    internal fun subscribe(scope: WeakReference<Scope>) {
+        scopeSubscribers.add(scope)
+    }
+
+    internal fun unsubscribe(scope: WeakReference<Scope>) {
+        scopeSubscribers.removeAll { it === scope || it.get() == null }
+    }
+
+    /** Removes a listener added with [onChange] right away (it would otherwise linger until garbage collection). */
+    internal fun removeBinding(action: Any) {
+        observers.removeAll { it.get().let { held -> held == null || held === action } }
+    }
 
     /**
      * Binds a listener to the UI.
@@ -33,7 +73,7 @@ class UIState<T>(initialValue: T) {
         val activePlugin = ownerPlugin ?: if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else null
 
         if (activePlugin != null) {
-            activePlugin.registerBinding(action)
+            activePlugin.registerBinding(this, action)
             observers.add(WeakReference(action))
         } else {
             throw IllegalStateException(
@@ -58,11 +98,12 @@ class UIState<T>(initialValue: T) {
 }
 
 class ButtonGroup {
-    private val allFlags: MutableCollection<UIState<Boolean>> = mutableListOf()
+    // A set: a rebuilt builder registers the same states again for its new buttons.
+    private val allFlags: MutableCollection<UIState<Boolean>> = LinkedHashSet()
 
     internal fun addButtonToGroup(button: ButtonAPI, bind: UIState<Boolean>) {
         allFlags.add(bind)
-        button.isChecked = bind.value == true
+        button.isChecked = bind.peek() == true
         button.onClick {
             if (allFlags.count { it.value } == 1 && bind.value) {
                 allFlags.forEach { it.value = true }

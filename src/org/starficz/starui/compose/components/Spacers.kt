@@ -26,6 +26,7 @@ fun UIPanelAPI.Spacer(
     modifier: Modifier = Modifier,
     color: Color? = null
 ): CustomPanelAPI {
+    checkDslTarget()
 
     val (initW, initH) = getInitialBounds(size)
 
