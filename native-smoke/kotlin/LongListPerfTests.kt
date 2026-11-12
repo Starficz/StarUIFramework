@@ -90,7 +90,7 @@ private fun TestContext.idleMs(windows: Int = 4, frames: Int = 30): Double {
 }
 
 private fun TestContext.benchList(name: String, rows: Int, cull: Boolean, statGrid: Boolean, emptyMs: Double,
-                                  perFrameCull: Boolean = true): ListResult {
+                                  perFrameCull: Boolean = true, pauseAdvance: Boolean = false): ListResult {
     // without culling every frame draws every row: a few frames are enough to see that (and take seconds each)
     val windows = if (cull) 3 else 1
     root.clearChildren()
@@ -104,6 +104,7 @@ private fun TestContext.benchList(name: String, rows: Int, cull: Boolean, statGr
         val firstBuild = timeMs(1) {
             list = root.Column(Size.exact(700f, 700f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)), spacing = 4f,
                 overflow = Overflow.ScrollVertical) {
+                StarUIPanelPlugin.getAttached(this)!!.pausesOffscreenAdvance = pauseAdvance
                 for (i in 0 until rows) key(i) { benchRow(i, counters[i], if (i == 2) visibleRow else null, statGrid) }
             }
             NativeSmokeSupport.render(root)
@@ -199,6 +200,7 @@ fun registerLongListPerfTests() {
         val noCull = benchList("1000-no-cull", 1000, cull = false, statGrid = false, emptyMs = empty)
         benchList("1000-culled-render-only", 1000, cull = true, statGrid = false, emptyMs = empty, perFrameCull = false)
         val culled = benchList("1000-culled", 1000, cull = true, statGrid = false, emptyMs = empty)
+        val paused = benchList("1000-culled-advance-paused", 1000, cull = true, statGrid = false, emptyMs = empty, pauseAdvance = true)
         val big = benchList("3000-culled", 3000, cull = true, statGrid = false, emptyMs = empty)
         val grids = benchList("300-statgrid-culled", 300, cull = true, statGrid = true, emptyMs = empty)
 
@@ -208,8 +210,11 @@ fun registerLongListPerfTests() {
         // change); LazyColumn is the answer for lists far longer than these.
         expect(culled.idleMs * 20 < noCull.idleMs, "culling makes idle frames at least 20x cheaper (${"%.3f".format(culled.idleMs)} vs ${"%.3f".format(noCull.idleMs)} ms)")
         expect(culled.idleMs * 20 < vanillaIdle, "a culled StarUI list idles at least 20x cheaper than vanilla's own scroll panel with the same text (${"%.3f".format(culled.idleMs)} vs ${"%.3f".format(vanillaIdle)} ms)")
-        expect(culled.idleMs < drawFloor + 3.0, "1000 text rows: idle frame within 3 ms of drawing the visible text (${"%.3f".format(culled.idleMs)} ms, floor ${"%.3f".format(drawFloor)} ms)")
-        expect(big.idleMs < drawFloor + 5.0, "3000 text rows: idle frame within 5 ms of drawing the visible text (${"%.3f".format(big.idleMs)} ms)")
+        // A plain scrolling Column keeps advancing its off-screen rows (onAdvance, vanilla animations): that part grows
+        // with the row count. Lazy lists pause it (pausesOffscreenAdvance), measured by the paused case.
+        expect(culled.idleMs < drawFloor + 6.0, "1000 text rows: idle frame within 6 ms of drawing the visible text (${"%.3f".format(culled.idleMs)} ms, floor ${"%.3f".format(drawFloor)} ms)")
+        expect(big.idleMs < drawFloor + 16.0, "3000 text rows: idle frame within 16 ms of drawing the visible text (${"%.3f".format(big.idleMs)} ms)")
+        expect(paused.idleMs < drawFloor + 3.0, "1000 text rows, off-screen advance paused: idle frame within 3 ms of drawing the visible text (${"%.3f".format(paused.idleMs)} ms)")
         expect(culled.scrollMs < drawFloor + 12.0, "1000 text rows: scrolling frames within 12 ms of drawing the visible text (${"%.3f".format(culled.scrollMs)} ms)")
         expect(culled.rowChangeMs < 15.0, "1000 text rows: one row's state change under 15 ms (${"%.2f".format(culled.rowChangeMs)} ms)")
         expect(culled.setTextMs < 15.0, "1000 text rows: a label's text change under 15 ms (${"%.2f".format(culled.setTextMs)} ms)")

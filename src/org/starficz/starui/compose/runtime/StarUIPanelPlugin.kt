@@ -66,6 +66,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         @JvmField
         internal var traceLayoutRequests = 0
 
+        /** onAdvance handlers registered on leaves (see AdvanceList). */
+        @JvmField
+        internal var leafAdvanceHandlers = 0
+
         /** Number of [requestLayout] calls so far. For tests. */
         @JvmField
         internal var layoutRequests = 0L
@@ -154,7 +158,18 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal var isStackLayout: Boolean = false
     internal var layoutEngine: LayoutEngine? = null
     internal var isTopLevelNode: Boolean = false
-    /** This panel was culled (not drawn) in the last render: it skips advance and input until drawn again. */
+    /**
+     * On a container: its children that were culled in the last render also skip their advance (their onAdvance and
+     * vanilla animations pause while off screen). Off by default; lazy lists turn it on.
+     */
+    @JvmField
+    internal var pausesOffscreenAdvance = false
+
+    /** On a container: one of its leaf children has had onAdvance handlers (the advance hook looks only then). */
+    @JvmField
+    internal var hasLeafAdvancers = false
+
+    /** This panel was culled (not drawn) in the last render: it skips input (and advance, see above) until drawn again. */
     @JvmField
     internal var culled = false
 
@@ -260,7 +275,26 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     private var renderBelowFunctions: MutableList<(Float) -> Unit> = mutableListOf()
     private var renderFunctions: MutableList<(Float) -> Unit> = mutableListOf()
 
-    private var advanceFunctions: MutableList<(Float) -> Unit> = mutableListOf()
+    private var advanceFunctions: MutableList<(Float) -> Unit> = AdvanceList()
+
+    /**
+     * Counts onAdvance handlers on leaves (labels, buttons: components that are not CustomPanels), so the advance hook
+     * on every vanilla component can leave without a plugin lookup while there are none.
+     */
+    private inner class AdvanceList : ArrayList<(Float) -> Unit>() {
+        private fun isLeaf() = this@StarUIPanelPlugin::component.isInitialized && component !is CustomPanelAPI
+        override fun add(element: (Float) -> Unit): Boolean = super.add(element).also {
+            if (isLeaf()) {
+                leafAdvanceHandlers++
+                ((component.parent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin)?.hasLeafAdvancers = true
+            }
+        }
+        override fun remove(element: (Float) -> Unit): Boolean = super.remove(element).also { if (it && isLeaf()) leafAdvanceHandlers-- }
+        override fun clear() {
+            if (isLeaf()) leafAdvanceHandlers -= size
+            super.clear()
+        }
+    }
     private var onLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
     private var onFirstLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
     // Run by the PatchLib hooks when a native control's value changes (text field text, checked state, slider
@@ -703,8 +737,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         // This node's children have advanced already (vanilla advances children before the plugin), so they can be
         // replaced now. When a StarUI parent is also marked it will flush everything below it in a moment.
         // Not when detached: a callback above may just have removed this node (a vanilla panel rebuilding itself).
+        if (!dirtyScopeBelow) return
         val parent = component.parent ?: return
-        if (dirtyScopeBelow && getAttached(parent)?.dirtyScopeBelow != true) Scope.flush(this)
+        if (getAttached(parent)?.dirtyScopeBelow != true) Scope.flush(this)
     }
 
     override fun processInput(events: MutableList<InputEventAPI>) {

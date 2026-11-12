@@ -112,14 +112,16 @@ object UIComponentLifecyclePatch {
         plugin.render(alphaMult)
     }
 
-    /** A StarUI panel culled in the last render skips its advance (see [ClipStack.cullPerFrameWork]). */
+    /** A StarUI panel culled in the last render skips its advance when its container pauses off-screen children. */
     @JvmStatic
     @Before(target = MethodMatch(methodName = "advance", parameterTypes = [Float::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun onAdvanceBefore(context: BeforeContext) {
         if (!ClipStack.cullPerFrameWork) return
         val self = context.self as? CustomPanelAPI ?: return
         val plugin = self.plugin as? StarUIPanelPlugin ?: return
-        if (plugin.culled) context.skipOriginal(null)
+        if (!plugin.culled) return
+        val container = (self.parent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin ?: return
+        if (container.pausesOffscreenAdvance) context.skipOriginal(null)
     }
 
     /** ... and its input, unless it still thinks it is hovered (so it gets the event that ends that). */
@@ -143,9 +145,14 @@ object UIComponentLifecyclePatch {
         )
     )
     fun onAdvanceAfter(context: AfterContext) {
-        if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
+        // a leaf's plugin only has work in advance when it has onAdvance handlers; none anywhere: no lookup at all
+        if (StarUIPanelPlugin.leafAdvanceHandlers <= 0 || !StarUIPanelPlugin.hasAttachedPlugins) return
         val self = context.self as? UIComponentAPI ?: return
         if (self is CustomPanelAPI) return
+        // in a StarUI container none of whose leaves has onAdvance: nothing to look up
+        val parentPlugin = (self.parent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin
+        if (parentPlugin != null && !parentPlugin.hasLeafAdvancers) return
+        if (!context.isMostDerivedCall) return
         val plugin = StarUIPanelPlugin.getAttached(self) ?: return
         val amount = context.getArg(0) as? Float ?: return
         plugin.advance(amount)

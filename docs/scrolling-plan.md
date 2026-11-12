@@ -264,13 +264,16 @@ Rows: Orbitron title, three labels, a 3-5 line paragraph, a highlighted label, a
 | vanilla's own scroll panel, 1000 rows as paragraphs | 2298 | | | | 535 | 552 |
 | first measurement: 1000 rows, render culling only | 1219 | 539 | 557 | 556 | 17.0 | 19.4 |
 | 1000 rows, no culling | 2900 | | | | 860 | 875 |
-| 1000 rows, culled (now) | 485 | 7.2 | 8.0 | 7.6 | 4.8 | 8.2 |
-| 3000 rows, culled | 1587 | 42 | 39 | 35 | 6.0 | 19.4 |
+| 1000 rows, culled, advance kept (now) | 515 | 6.0 | 6.0 | 5.5 | 7.4 | 9.7 |
+| 1000 rows, culled, off-screen advance paused | 565 | 7.5 | 7.9 | 7.2 | 4.7 | 9.7 |
+| 3000 rows, culled, advance kept | 1546 | 33 | 34 | 32 | 17.5 | 33 |
 | 300 rows + a StatGrid each, culled | 223 | 4.6 | 4.0 | 4.1 | 5.3 | 8.6 |
 
 What it took (each found in the JFR profile):
-- render culling; plus off-screen StarUI panels skip advance and input (`ClipStack.cullPerFrameWork`; input as
-  vanilla's scroll panel does; advance is new: off-screen rows' `onAdvance` and vanilla animations pause);
+- render culling; plus off-screen StarUI panels skip input (`ClipStack.cullPerFrameWork`, as vanilla's scroll panel
+  does). Advance keeps running for plain containers (the user's call: onAdvance and vanilla animations of off-screen
+  rows must not pause there); a container can pause it (`pausesOffscreenAdvance`), which lazy lists will do. With
+  advance kept, 1000 rows idle at ~8 ms (floor ~3.7), 3000 at ~17 ms; paused, 1000 rows idle at ~4.5 ms;
 - Column/Row children placed relative to the container, not chained on the previous sibling (chaining made vanilla
   recompute every later sibling on each move: quadratic);
 - `setSize` skips an unchanged size; a placement is not redone when unchanged;
@@ -278,12 +281,14 @@ What it took (each found in the JFR profile):
   strings; vanilla's `autoSizeToWidth` is the costliest call in a layout);
 - measure results reused across passes for nodes nothing changed in, and their layout skipped (incremental layout);
 - a scrolling container with an exact/fill size is a layout boundary;
+- the advance hook skips the plugin lookup for labels in StarUI containers none of whose leaves has onAdvance;
 - debug log strings only built when debugging; a highlighted `Text` with `%` no longer crashes.
 
 Still growing with the row count: scrolling (vanilla recomputes every position in the content on each offset change)
 and a change anywhere (StarUI walks every sibling, each now cached). At 3000 rows that is ~20-40 ms. Hence step 6.
-Budgets in the test are relative to the floor (idle within 3 ms of it at 1000 rows, 5 ms at 3000; scrolling within
-12 ms; one change under 15 ms; at least 20x cheaper than vanilla's own scroll panel).
+Budgets in the test are relative to the floor (idle within 6 ms of it at 1000 rows, 16 ms at 3000, 3 ms with
+off-screen advance paused; scrolling within 12 ms; one change under 15 ms; at least 20x cheaper than vanilla's own
+scroll panel). Lazy lists (step 6): pause off-screen advance, and only rows near the view exist.
 
 ### 6. Lazy lists (after step 5, if its numbers call for it)
 

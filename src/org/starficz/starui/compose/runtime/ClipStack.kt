@@ -34,9 +34,9 @@ internal object ClipStack {
     var cullingEnabled = true
 
     /**
-     * Whether a StarUI panel culled in the last render also skips its advance and input until it is drawn again.
-     * Vanilla's scroll panel skips input for its off-screen items too; advance is StarUI's addition: off-screen rows'
-     * onAdvance callbacks and vanilla animations pause. Without it every row of a long list costs every frame.
+     * Whether a StarUI panel culled in the last render also skips its input until it is drawn again, as vanilla's
+     * scroll panel does for its off-screen items. Its advance keeps running (onAdvance, vanilla animations) unless its
+     * container pauses off-screen children ([StarUIPanelPlugin.pausesOffscreenAdvance], lazy lists).
      */
     @JvmField
     var cullPerFrameWork = true
