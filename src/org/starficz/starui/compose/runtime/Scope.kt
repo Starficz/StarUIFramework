@@ -113,6 +113,7 @@ internal class Scope(
             plugin.reuseCursor = null
         }
         cursor.removeUnused()
+        cursor.restoreCallOrder()
         plugin.requestLayout()
     }
 
@@ -275,6 +276,14 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
     private val keyed = HashMap<Pair<String, Any>, UIComponentAPI>()
     private val unused = LinkedHashSet<UIComponentAPI>()
 
+    /** Every child the new build emitted (reused or new), in call order. */
+    private val emitted = ArrayList<UIComponentAPI>()
+
+    /** Records a child the current build emitted; [restoreCallOrder] puts them in this order. */
+    fun noteEmitted(child: UIComponentAPI) {
+        emitted.add(child)
+    }
+
     init {
         for (child in panel.getChildrenNonCopy()) {
             unused.add(child)
@@ -290,8 +299,7 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
     /**
      * The old child for a call of [kind] with [key] and [props], or null. With a key: the old child that had it.
      * Without: the first unused old child of that kind (so unkeyed children are matched in order). In both cases
-     * only when the unchangeable props are equal. The child is moved to the end of the child list, which keeps the
-     * list in call order and makes it "the last child", exactly like a freshly added one.
+     * only when the unchangeable props are equal. The child stays where it is until [restoreCallOrder].
      */
     fun take(kind: String, key: Any?, props: Any?): ChildRecord? {
         val child: UIComponentAPI = if (key != null) {
@@ -306,8 +314,32 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
         }
         unused.remove(child)
         StarUIPanelPlugin.getAttached(child)?.resetForReuse()
-        panel.bringComponentToTop(child)
         return records[child]
+    }
+
+    /**
+     * Puts the emitted children in call order (render, input and flow order all follow the child list). Children
+     * the build did not emit keep their exact places. Done on the panel's own list, not with `bringComponentToTop`:
+     * vanilla's bringToTop also moves every ancestor to the top of its parent, which would lift the whole screen
+     * this container lives in above tooltips and overlays. And not with remove + add, which closes open tooltips.
+     */
+    fun restoreCallOrder() {
+        @Suppress("UNCHECKED_CAST")
+        val live = panel.getChildrenNonCopy() as MutableList<UIComponentAPI>
+        val inLive = java.util.Collections.newSetFromMap(IdentityHashMap<UIComponentAPI, Boolean>()).also { it.addAll(live) }
+        val wanted = emitted.filter { it in inLive }
+        val wantedSet = java.util.Collections.newSetFromMap(IdentityHashMap<UIComponentAPI, Boolean>()).also { it.addAll(wanted) }
+        val slots = live.indices.filter { live[it] in wantedSet }
+        if (slots.size != wanted.size) return   // the same child emitted twice: leave the order alone
+        var changed = false
+        for (k in slots.indices) {
+            if (live[slots[k]] !== wanted[k]) {
+                live[slots[k]] = wanted[k]
+                changed = true
+            }
+        }
+        // readable engine method: the panel renders and dispatches input from a cached copy of the list
+        if (changed) (panel as Any).invoke("setNeedToCopy", true)
     }
 
     /** Removes and disposes the old children no call asked for. */
@@ -336,7 +368,11 @@ internal class ChildSlot(
 
     /** Remembers [component] (the native object) and [handle] (what the function returns) for the next rebuild. */
     fun remember(component: UIComponentAPI, handle: Any) {
-        if (container != null) container.childRecords[component] = ChildRecord(kind, key, props, handle)
-        else StarUIPanelPlugin.getAttached(component)?.kind = kind
+        if (container != null) {
+            container.childRecords[component] = ChildRecord(kind, key, props, handle)
+            container.reuseCursor?.noteEmitted(component)
+        } else {
+            StarUIPanelPlugin.getAttached(component)?.kind = kind
+        }
     }
 }

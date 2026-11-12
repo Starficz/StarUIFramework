@@ -2,6 +2,7 @@
 // them, and key(...) keeps list items attached to their own native objects.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
@@ -13,6 +14,7 @@ import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Column
+import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
@@ -71,6 +73,35 @@ fun registerReuseTests() {
         expect(col.children.size == 3, "no extra children (${col.children.size})")
         expect(col.children == listOf(nativeLabel, spacer, inner), "children stay in call order")
         near(col.w, 100f, "the Column re-wraps the resized child")
+        screenshot("final")
+    }
+
+    StarUITestSuite.group("reuse-keeps-ancestor-order") {
+        // Vanilla bringToTop also moves every ancestor to the top of its own parent. A rebuild must never reorder
+        // anything outside the rebuilt container: a blinking caret in Refit Filters hoisted the whole weapon picker
+        // above vanilla tooltips and the console overlay twice a second.
+        val tick = UIState(0)
+        val host = root.CustomPanel(PanelSize.exact(400f, 200f), origin(40f, 40f).background(REUSE_BG))
+        val reactive = host.Column(LayoutSize.wrap(), Modifier.background(Color(50, 50, 70))) {
+            Text("a ${tick.value}")
+            Text("b")
+            if (tick.value % 2 == 1) Text("c")
+        }
+        val laterSibling = Global.getSettings().createCustom(10f, 10f, null)
+        host.addComponent(laterSibling).inTL(300f, 0f)
+        val overlay = Global.getSettings().createCustom(10f, 10f, null)
+        root.addComponent(overlay).inTL(0f, 0f)
+        frame()
+        val hostOrder = host.children.toList()
+        val rootOrder = root.children.toList()
+
+        for (i in 1..3) { tick.value = i; frame() }
+        expect(host.children == hostOrder, "the rebuilt container keeps its place among its siblings")
+        expect(root.children == rootOrder, "and so does every ancestor (the overlay stays on top)")
+        expect(reactive.texts() == listOf("a 3", "b", "c"), "the rebuilt children are in call order (${reactive.texts()})")
+        tick.value = 4
+        frame()
+        expect(reactive.texts() == listOf("a 4", "b"), "and after removing one (${reactive.texts()})")
         screenshot("final")
     }
 
