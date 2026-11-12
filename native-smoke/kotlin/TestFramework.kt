@@ -226,6 +226,7 @@ object StarUITestSuite {
         registerInteropTests()
         registerApiConsolidationTests()
         registerReviewFixTests()
+        registerFillMeasureTests()
         registerPerfTests()   // last: it registers 20 permanent dynamic injections
     }
 }

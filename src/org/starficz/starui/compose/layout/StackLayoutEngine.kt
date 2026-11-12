@@ -127,96 +127,134 @@ internal class StackLayoutEngine(
         val availableCross = if (effectiveMaxCross == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, effectiveMaxCross - crossPaddingSum)
 
         val isMyPrimaryWrap = myPrimaryDim is Dimension.WrapContent
+        // When this container's cross size is its content (wrap), a child that fills the cross axis takes its
+        // siblings' cross size and never widens the container, so it is measured once that size is known.
+        val isMyCrossFromContent = myCrossDim !is Dimension.Exact && myCrossDim !is Dimension.FillMax
 
-        // ==========================================
-        // PASS 1A: Primary Intrinsic Scrape
-        // ==========================================
-        debugLog("[$debugId] --- PASS 1A: Primary Intrinsic Scrape & Fixed Tally ---")
-        children.forEachIndexed { i, child ->
-            val childSizing = plugin.childSizing[child] ?: NodeSize()
-            val childMargin = plugin.childMargins[child] ?: Margin()
+        fun dimsOf(child: UIComponentAPI) = getAxisDimension(plugin.childSizing[child] ?: NodeSize(), isVertical)
+        fun primaryMarginOf(child: UIComponentAPI) = (plugin.childMargins[child] ?: Margin()).let { if (isVertical) it.vertical else it.horizontal }
+        fun crossMarginOf(child: UIComponentAPI) = (plugin.childMargins[child] ?: Margin()).let { if (isVertical) it.horizontal else it.vertical }
+        fun minus(space: Float, amount: Float) = if (space == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, space - amount)
 
-            val currentAvailablePrimary = if (availablePrimary == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availablePrimary - fixedPrimarySpace)
-
-            // Measure the child's raw content + its own padding. The helper takes (width, height): in a Column the
-            // cross axis is the width, in a Row the primary axis is.
-            val paddedIntrinsic = if (isVertical)
-                measureChildPaddedIntrinsic(child, plugin, availableCross, currentAvailablePrimary)
-            else
-                measureChildPaddedIntrinsic(child, plugin, currentAvailablePrimary, availableCross)
-            childPaddedIntrinsics[child] = paddedIntrinsic
-
-            val paddedIntrinsicPrimary = if (isVertical) paddedIntrinsic.second else paddedIntrinsic.first
-            val primaryMarginSum = if (isVertical) childMargin.vertical else childMargin.horizontal
-
-            val (primaryDim, crossDim) = getAxisDimension(childSizing, isVertical)
-
-            debugLog("  [$debugId] Child[$i] (${child.javaClass.simpleName}) | Padded Intrinsic: ${paddedIntrinsic.first} x ${paddedIntrinsic.second}")
-            debugLog("  [$debugId] Child[$i] Resolved Axes -> Primary: $primaryDim, Cross: $crossDim")
-
-            // --- THE HARD MATH EXCEPTIONS ---
+        // --- THE HARD MATH EXCEPTIONS ---
+        children.forEach { child ->
+            val primaryDim = dimsOf(child).first
             if (isMyPrimaryWrap && primaryDim is Dimension.FillMax) {
                 throw IllegalStateException("StarUI Layout Exception: A StackLayout set to WrapContent its primary axis cannot contain children that FillMax the primary axis.")
             }
             if (effectiveMaxPrimary == Float.MAX_VALUE && primaryDim is Dimension.FillMax) {
                 throw IllegalStateException("StarUI Layout Exception: Cannot use Dimension.FillMax inside an unconstrained infinite axis (e.g. ScrollPanel). Use WrapContent or Exact instead.")
             }
+            if (primaryDim is Dimension.FillMax) totalFillWeight += primaryDim.weight
+        }
+        val totalSpacing = maxOf(0, children.size - 1) * spacing
 
-            var childPrimaryContributed = 0f
-            when (primaryDim) {
-                is Dimension.FillMax -> totalFillWeight += primaryDim.weight
-                is Dimension.Exact -> childPrimaryContributed = primaryDim.pixels
-                is Dimension.WrapContent, is Dimension.AspectRatio -> childPrimaryContributed = paddedIntrinsicPrimary
+        // Each child is measured at the size layout will give it wherever that size is known: its exact size, its
+        // share of the flexible space when it fills the main axis, the container's cross size (minus its margin) when
+        // it fills the cross axis. Otherwise at the room it has. Wrapping text measured any wider reports too few lines.
+        fun measure(child: UIComponentAPI, primaryRoom: Float, crossRoom: Float) {
+            val (primaryDim, crossDim) = dimsOf(child)
+            val primary = if (primaryDim is Dimension.Exact) primaryDim.pixels else primaryRoom
+            val cross = when (crossDim) {
+                is Dimension.Exact -> crossDim.pixels
+                is Dimension.FillMax -> minus(crossRoom, crossMarginOf(child))
+                else -> crossRoom
             }
-            fixedPrimarySpace += (childPrimaryContributed + primaryMarginSum)
-            debugLog("  [$debugId] Child[$i] contributed Fixed Primary Space: $childPrimaryContributed (Total Fixed: $fixedPrimarySpace)")
+            // The helper takes (width, height): in a Column the cross axis is the width, in a Row the primary axis is.
+            val padded = if (isVertical) measureChildPaddedIntrinsic(child, plugin, cross, primary)
+                         else measureChildPaddedIntrinsic(child, plugin, primary, cross)
+            childPaddedIntrinsics[child] = padded
+            debugLog("  [$debugId] Child (${child.javaClass.simpleName}) | Axes $primaryDim / $crossDim | measured at $primary x $cross -> Padded Intrinsic: ${padded.first} x ${padded.second}")
         }
 
-        val totalSpacing = maxOf(0, children.size - 1) * spacing
-        val actualAvailableFlexSpace = maxOf(0f, availablePrimary - fixedPrimarySpace - totalSpacing)
+        // What a measured child adds to the main axis, margin included (a fill child adds only its margin here).
+        fun primaryContribution(child: UIComponentAPI): Float {
+            val (pw, ph) = childPaddedIntrinsics[child]!!
+            val own = when (val primaryDim = dimsOf(child).first) {
+                is Dimension.FillMax -> 0f
+                is Dimension.Exact -> primaryDim.pixels
+                is Dimension.WrapContent, is Dimension.AspectRatio -> if (isVertical) ph else pw
+            }
+            return own + primaryMarginOf(child)
+        }
 
-        debugLog("[$debugId] Pre-Pass-1B Flex Space: $actualAvailableFlexSpace")
-
-        // ==========================================
-        // PASS 1B: Cross Axis Resolution
-        // ==========================================
-        debugLog("[$debugId] --- PASS 1B: Dependent Cross Axes Calculation ---")
-        children.forEachIndexed { i, child ->
-            val childSizing = plugin.childSizing[child] ?: NodeSize()
-            val childMargin = plugin.childMargins[child] ?: Margin()
-            val crossMarginSum = if (isVertical) childMargin.horizontal else childMargin.vertical
-
+        // How much cross room a measured child needs, margin included; a cross-fill child needs none (it stretches).
+        fun crossRequirement(child: UIComponentAPI, flexSpace: Float): Float {
             val (paddedW, paddedH) = childPaddedIntrinsics[child]!!
-
-            val (primaryDim, crossDim) = getAxisDimension(childSizing, isVertical)
-
+            val (primaryDim, crossDim) = dimsOf(child)
             // Aspect Ratio mathematically derives secondary size from finalized primary size
             val finalizedPrimarySize = when (primaryDim) {
-                is Dimension.FillMax -> if (totalFillWeight > 0f) (primaryDim.weight / totalFillWeight) * actualAvailableFlexSpace else 0f
+                is Dimension.FillMax -> if (totalFillWeight > 0f) (primaryDim.weight / totalFillWeight) * flexSpace else 0f
                 is Dimension.Exact -> primaryDim.pixels
                 is Dimension.WrapContent, is Dimension.AspectRatio -> if (isVertical) paddedH else paddedW
             }
-
             val paddedIntrinsicSecondary = if (crossDim is Dimension.AspectRatio) {
                 val rawAr = if (plugin.childMeasurables.containsKey(child)) {
                     val ratioIntrin = plugin.childMeasurables[child]!!.invoke(100f, 100f)
                     ratioIntrin.first / ratioIntrin.second
                 } else 1f
-
                 if (isVertical) finalizedPrimarySize * rawAr else finalizedPrimarySize / rawAr
             } else {
                 if (isVertical) paddedW else paddedH
             }
-
-            val resolvedSecondary = when (crossDim) {
-                is Dimension.Exact -> crossDim.pixels + crossMarginSum
-                is Dimension.WrapContent, is Dimension.AspectRatio -> paddedIntrinsicSecondary + crossMarginSum
+            return when (crossDim) {
+                is Dimension.Exact -> crossDim.pixels + crossMarginOf(child)
+                is Dimension.WrapContent, is Dimension.AspectRatio -> paddedIntrinsicSecondary + crossMarginOf(child)
                 is Dimension.FillMax -> 0f // Stretch is evaluated in Layout pass
             }
-
-            debugLog("  [$debugId] Child[$i] Resolved Secondary Intrinsic Requirement: $resolvedSecondary")
-            maxSecondarySpace = maxOf(maxSecondarySpace, resolvedSecondary)
         }
+
+        val fillChildren = children.filter { dimsOf(it).first is Dimension.FillMax }
+        val waitsForCross = if (isMyCrossFromContent) children.filter { dimsOf(it).second is Dimension.FillMax }.toSet() else emptySet()
+        // With only cross-fill children there is no cross size to take; they are measured at the room there is and the
+        // container collapses on that axis (the paradox warning below).
+        val hasCrossContent = children.any { dimsOf(it).second !is Dimension.FillMax }
+
+        // ==========================================
+        // PASS 1A: children whose size depends on nothing else here, in order
+        // ==========================================
+        debugLog("[$debugId] --- PASS 1A: Independent children ---")
+        var independentPrimary = 0f
+        for (child in children) {
+            if (child in fillChildren || (hasCrossContent && child in waitsForCross)) continue
+            measure(child, minus(availablePrimary, independentPrimary), availableCross)
+            independentPrimary += primaryContribution(child)
+        }
+        val independentCross = children
+            .filter { childPaddedIntrinsics.containsKey(it) && it !in fillChildren }
+            .maxOfOrNull { crossRequirement(it, 0f) } ?: 0f
+
+        // ==========================================
+        // PASS 1B: cross-fill children (once the cross size is known) and main-axis fill children (at their share)
+        // ==========================================
+        // The cross size can grow when a fill child turns out wider than the rest, which changes what the cross-fill
+        // children need and so the shares; a second round settles that, a third is a safety margin.
+        var crossSize = if (hasCrossContent) independentCross else availableCross
+        var actualAvailableFlexSpace = 0f
+        for (round in 0 until 3) {
+            fixedPrimarySpace = independentPrimary
+            for (child in children) {
+                if (child in fillChildren || child !in waitsForCross || !hasCrossContent) continue
+                measure(child, minus(availablePrimary, fixedPrimarySpace), crossSize)
+                fixedPrimarySpace += primaryContribution(child)
+            }
+            for (child in fillChildren) fixedPrimarySpace += primaryMarginOf(child)
+            actualAvailableFlexSpace = maxOf(0f, availablePrimary - fixedPrimarySpace - totalSpacing)
+
+            for (child in fillChildren) {
+                val weight = (dimsOf(child).first as Dimension.FillMax).weight
+                val share = if (totalFillWeight > 0f) weight / totalFillWeight * actualAvailableFlexSpace else 0f
+                measure(child, share, if (child in waitsForCross) crossSize else availableCross)
+            }
+            if (waitsForCross.isEmpty() || !hasCrossContent) break
+            val settledCross = maxOf(independentCross, fillChildren.maxOfOrNull { crossRequirement(it, actualAvailableFlexSpace) } ?: 0f)
+            if (kotlin.math.abs(settledCross - crossSize) < 0.5f) break
+            debugLog("[$debugId] Cross size grew from $crossSize to $settledCross: measuring the cross-fill children again")
+            crossSize = settledCross
+        }
+        debugLog("[$debugId] Flex Space: $actualAvailableFlexSpace (Total Fixed: $fixedPrimarySpace)")
+
+        children.forEach { maxSecondarySpace = maxOf(maxSecondarySpace, crossRequirement(it, actualAvailableFlexSpace)) }
 
         measuredPrimary = fixedPrimarySpace + totalSpacing + primaryPaddingSum
         measuredSecondary = maxSecondarySpace + crossPaddingSum
