@@ -169,6 +169,8 @@ fun registerOverflowTests() {
         expect(Overflow(AxisOverflow.Clip, AxisOverflow.Scroll) == Overflow.ScrollVertical, "the shorthands are plain values")
         expect(Overflow.ScrollVertical.toString() == "ScrollVertical" &&
             Overflow(AxisOverflow.Clip, AxisOverflow.Visible).toString() == "Overflow(Clip, Visible)", "toString names them")
+        val percent = root.Text("CR 70% of 100%", highlightedText = listOf("70%" to Color.YELLOW))
+        expect(percent.text == "CR 70% of 100%", "a highlighted Text may contain % (vanilla formats it) (${percent.text})")
         val clipped = root.CustomPanel(Size.exact(100f, 100f), overflow = Overflow.Clip)
         expect(clipped.scrollPanel == null, "a clipping panel is a plain panel, no scroll panel")
     }

@@ -1,6 +1,6 @@
 # Overflow plan: clipping and scrolling as one per-axis setting, wheel on both axes, long lists
 
-Status: steps 1-4 done (2026-11-12: 9dffb54, 3079e0b); steps 5-7 to do. Found on the way: a per-pass measure
+Status: steps 1-5 done (2026-11-12); steps 6-7 to do. Found on the way: a per-pass measure
 cache was needed (nesting multiplied measures) and VanillaElementEngine re-laid out every frame; both fixed in 3079e0b.
 Clip on both axes uses vanilla's own `setClipping` (a nesting scissor); one-axis clip is a StarUI GL scissor. Work in the order of the steps below; each step ends with the
 in-game suite passing (`native-smoke/run-test-suite.ps1`, under `smoke-slot.sh run`) and the PNGs looked at.
@@ -252,6 +252,38 @@ and StarUI must not. Measure, don't assume; text is the case to stress, not empt
   `autoSize`), StarUI's layout passes and per-frame plugin dispatch. Anything that scales with the total row count
   rather than the visible rows is a bug to fix in this step.
 - Record the results (table of the cases above) in this plan, then decide step 6.
+
+#### Step 5 results (2026-11-12, `perf-long-lists` in `LongListPerfTests.kt`)
+
+Rows: Orbitron title, three labels, a 3-5 line paragraph, a highlighted label, a per-row UIState label, a button.
+700 x 700 scrolling Column. Milliseconds; "idle" and "scrolling" are per frame over an empty screen.
+
+| Case | first build | relayout | one row's state | label setText | idle | scrolling |
+|---|---|---|---|---|---|---|
+| vanilla: only the ~6 visible rows, no list (the floor) | | | | | 3.1 | |
+| vanilla's own scroll panel, 1000 rows as paragraphs | 2298 | | | | 535 | 552 |
+| first measurement: 1000 rows, render culling only | 1219 | 539 | 557 | 556 | 17.0 | 19.4 |
+| 1000 rows, no culling | 2900 | | | | 860 | 875 |
+| 1000 rows, culled (now) | 485 | 7.2 | 8.0 | 7.6 | 4.8 | 8.2 |
+| 3000 rows, culled | 1587 | 42 | 39 | 35 | 6.0 | 19.4 |
+| 300 rows + a StatGrid each, culled | 223 | 4.6 | 4.0 | 4.1 | 5.3 | 8.6 |
+
+What it took (each found in the JFR profile):
+- render culling; plus off-screen StarUI panels skip advance and input (`ClipStack.cullPerFrameWork`; input as
+  vanilla's scroll panel does; advance is new: off-screen rows' `onAdvance` and vanilla animations pause);
+- Column/Row children placed relative to the container, not chained on the previous sibling (chaining made vanilla
+  recompute every later sibling on each move: quadratic);
+- `setSize` skips an unchanged size; a placement is not redone when unchanged;
+- each `Text` keeps its own measurement and wrapped heights (the shared 1024-entry LRU missed every time with 7000
+  strings; vanilla's `autoSizeToWidth` is the costliest call in a layout);
+- measure results reused across passes for nodes nothing changed in, and their layout skipped (incremental layout);
+- a scrolling container with an exact/fill size is a layout boundary;
+- debug log strings only built when debugging; a highlighted `Text` with `%` no longer crashes.
+
+Still growing with the row count: scrolling (vanilla recomputes every position in the content on each offset change)
+and a change anywhere (StarUI walks every sibling, each now cached). At 3000 rows that is ~20-40 ms. Hence step 6.
+Budgets in the test are relative to the floor (idle within 3 ms of it at 1000 rows, 5 ms at 3000; scrolling within
+12 ms; one change under 15 ms; at least 20x cheaper than vanilla's own scroll panel).
 
 ### 6. Lazy lists (after step 5, if its numbers call for it)
 

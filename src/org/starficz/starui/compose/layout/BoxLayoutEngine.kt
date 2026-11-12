@@ -17,15 +17,17 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         var DEBUG_LAYOUT = false
     }
 
-    private fun debugLog(msg: String) {
-        if (DEBUG_LAYOUT) log.info(msg)
+    private val debugId: String get() = "Box@${Integer.toHexString(plugin.component.hashCode())}"
+
+    /** Builds the message only when debugging is on (layout runs often; the strings are not free). */
+    private inline fun debugLog(msg: () -> String) {
+        if (DEBUG_LAYOUT) log.info(msg())
     }
 
     override fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
-        val debugId = "Box@${Integer.toHexString(plugin.component.hashCode())}"
 
-        debugLog("[$debugId] === MEASURE START ===")
-        debugLog("[$debugId] Inherited Envelope Bounds -> maxW: $maxWidth, maxH: $maxHeight")
+        debugLog { "[$debugId] === MEASURE START ===" }
+        debugLog { "[$debugId] Inherited Envelope Bounds -> maxW: $maxWidth, maxH: $maxHeight" }
 
         var maxW = 0f
         var maxH = 0f
@@ -48,7 +50,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         // ==========================================
         // PASS 1: Intrinsic Scrape & Infinite Bounds Check
         // ==========================================
-        debugLog("[$debugId] --- PASS 1: Intrinsic Scrape ---")
+        debugLog { "[$debugId] --- PASS 1: Intrinsic Scrape ---" }
         children.forEachIndexed { i, child ->
             val sizeConfig = plugin.childSizing[child] ?: NodeSize()
 
@@ -68,7 +70,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
             // Shared helper handles raw measurement + child padding + NaN fallbacks
             val (paddedIntrinsicW, paddedIntrinsicH) = measureChildPaddedIntrinsic(child, plugin, childAvailableW, childAvailableH)
 
-            debugLog("  [$debugId] Child[$i] (${child.javaClass.simpleName}) | Sizing: $sizeConfig | Padded Intrinsic: $paddedIntrinsicW x $paddedIntrinsicH")
+            debugLog { "  [$debugId] Child[$i] (${child.javaClass.simpleName}) | Sizing: $sizeConfig | Padded Intrinsic: $paddedIntrinsicW x $paddedIntrinsicH" }
 
             // FillMax elements do not contribute to a Box's intrinsic size; they wait for the Box to size itself
             val childW = when (sizeConfig.width) {
@@ -82,7 +84,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
                 is Dimension.FillMax -> 0f
             }
 
-            debugLog("  [$debugId] Child[$i] contributed bounds: W=$childW, H=$childH")
+            debugLog { "  [$debugId] Child[$i] contributed bounds: W=$childW, H=$childH" }
 
             maxW = maxOf(maxW, childW)
             maxH = maxOf(maxH, childH)
@@ -103,15 +105,14 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         val finalIntrinsicW = maxW + containerPadding.horizontal
         val finalIntrinsicH = maxH + containerPadding.vertical
 
-        debugLog("[$debugId] MEASURE END | Final Intrinsic Bounds: $finalIntrinsicW x $finalIntrinsicH")
+        debugLog { "[$debugId] MEASURE END | Final Intrinsic Bounds: $finalIntrinsicW x $finalIntrinsicH" }
         return Pair(finalIntrinsicW, finalIntrinsicH)
     }
 
     override fun layout(assignedWidth: Float, assignedHeight: Float) {
-        val debugId = "Box@${Integer.toHexString(plugin.component.hashCode())}"
 
-        debugLog("[$debugId] === LAYOUT START ===")
-        debugLog("[$debugId] Assigned Bounds: W=$assignedWidth, H=$assignedHeight")
+        debugLog { "[$debugId] === LAYOUT START ===" }
+        debugLog { "[$debugId] Assigned Bounds: W=$assignedWidth, H=$assignedHeight" }
 
         val containerPadding = plugin.myPadding
         val innerAvailableW = maxOf(0f, assignedWidth - containerPadding.horizontal)
@@ -122,7 +123,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         // ==========================================
         // FINAL ASSIGNMENT & SIZING
         // ==========================================
-        debugLog("[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---")
+        debugLog { "[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---" }
         children.forEachIndexed { i, child ->
             val sizeConfig = plugin.childSizing[child] ?: NodeSize()
 
@@ -161,7 +162,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
                 }
             }
 
-            debugLog("  [$debugId] Child[$i] Final Physical Size -> W: $finalW x H: $finalH")
+            debugLog { "  [$debugId] Child[$i] Final Physical Size -> W: $finalW x H: $finalH" }
 
             // Shared helper sets the size and cascades layout calls downwards to nested containers
             commitChildLayout(child, plugin, finalW, finalH)
@@ -170,13 +171,13 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
             // POSITIONING
             // ==========================================
             val alignment = plugin.childAlignments[child] ?: Alignment.TopLeft
-            applyBoxAlignment(child, alignment, containerPadding, debugId, i)
+            applyBoxAlignment(child, alignment, containerPadding, i)
         }
 
-        debugLog("[$debugId] LAYOUT END")
+        debugLog { "[$debugId] LAYOUT END" }
     }
 
-    private fun applyBoxAlignment(child: UIComponentAPI, alignment: Alignment, containerPadding: PaddingValues, debugId: String, childIndex: Int) {
+    private fun applyBoxAlignment(child: UIComponentAPI, alignment: Alignment, containerPadding: PaddingValues, childIndex: Int) {
         var offsetX = 0f
         var offsetY = 0f
 
@@ -193,7 +194,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         offsetX += containerPadding.left * (1f - alignX) - containerPadding.right * alignX
         offsetY += containerPadding.bottom * (1f - alignY) - containerPadding.top * alignY
 
-        debugLog("  [$debugId] Child[$childIndex] anchored to Box bounds (AlignX: $alignX, AlignY: $alignY) | Offset X: $offsetX, Y: $offsetY")
+        debugLog { "  [$debugId] Child[$childIndex] anchored to Box bounds (AlignX: $alignX, AlignY: $alignY) | Offset X: $offsetX, Y: $offsetY" }
 
         // 3. Bake coordinates for Starsector's relativeTo method
         val targetAnchorX = alignX

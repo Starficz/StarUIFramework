@@ -182,7 +182,17 @@ fun <T> UIPanelAPI.Table(
         // brought to top: vanilla's bringComponentToTop also raises the panel in its parent, and so on up, which
         // reorders the Columns and Rows above.
         engine.afterBuild = { _ -> for ((_, _, box) in customCells) { panel.removeComponent(box); panel.addComponent(box) } }
-        engine.afterLayout = { table -> placeCustomCells(panel, plugin, table, customCells) }
+        // Vanilla makes a row's cell panels when the row is first drawn, which can be after this layout (or much later,
+        // while the table is scrolled out of view): check each frame until they exist, then lay out once more.
+        var waitingForCells = false
+        engine.afterLayout = { table -> waitingForCells = !placeCustomCells(panel, table, customCells) }
+        if (customCells.isNotEmpty()) plugin.advance {
+            val table = engine.current
+            if (waitingForCells && table != null && customCellsReady(table, customCells)) {
+                waitingForCells = false
+                plugin.requestLayout()
+            }
+        }
         engine.invalidate()
     }
     return panel
@@ -232,21 +242,31 @@ private fun <T> rowData(cells: List<TableCell>, specs: List<TableColumnSpec<T>>,
 }
 
 /** Puts each custom cell's Box over its cell: the row's column panel, read from the table itself. */
-private fun placeCustomCells(panel: CustomPanelAPI, plugin: org.starficz.starui.compose.runtime.StarUIPanelPlugin,
-                             table: UIComponentAPI, customCells: List<Triple<Int, Int, CustomPanelAPI>>) {
-    if (customCells.isEmpty()) return
-    val rows = table.invoke("getRows") as? List<*> ?: return
+/** Places the custom cells over their cell panels; false when some cell panel does not exist yet. */
+private fun placeCustomCells(panel: CustomPanelAPI, table: UIComponentAPI,
+                             customCells: List<Triple<Int, Int, CustomPanelAPI>>): Boolean {
+    if (customCells.isEmpty()) return true
+    val plugin = panel.plugin as org.starficz.starui.compose.runtime.StarUIPanelPlugin
+    val rows = table.invoke("getRows") as? List<*> ?: return true
     val panelLeft = panel.position.x
     val panelTop = panel.position.y + panel.position.height
     var waiting = false
     for ((row, col, box) in customCells) {
         val rowComponent = rows.getOrNull(row) ?: continue
-        // a row makes its cell panels when it is first sized, which can be after this layout: place it next frame
-        val cellPanel = runCatching { rowComponent.invoke("getCol", col) as? UIComponentAPI }.getOrNull()
+        val cellPanel = cellPanel(rowComponent, col)
         if (cellPanel == null) { waiting = true; continue }
         val cell = cellPanel.position
         box.position.inTL(cell.x - panelLeft, panelTop - (cell.y + cell.height))
         commitChildLayout(box, plugin, cell.width, cell.height)
     }
-    if (waiting) plugin.requestLayout()
+    return !waiting
+}
+
+private fun cellPanel(row: Any, col: Int): UIComponentAPI? =
+    runCatching { row.invoke("getCol", col) as? UIComponentAPI }.getOrNull()
+
+/** Whether every custom cell's panel exists now. */
+private fun customCellsReady(table: UIComponentAPI, customCells: List<Triple<Int, Int, CustomPanelAPI>>): Boolean {
+    val rows = table.invoke("getRows") as? List<*> ?: return true
+    return customCells.all { (row, col, _) -> rows.getOrNull(row)?.let { cellPanel(it, col) } != null }
 }

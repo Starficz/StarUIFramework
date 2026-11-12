@@ -64,14 +64,25 @@ object UIComponentLifecyclePatch {
     )
     fun onRenderBefore(context: BeforeContext) {
         if (ClipStack.depth == 0 && !StarUIPanelPlugin.hasAttachedPlugins) return
-        if (!context.isMostDerivedCall) return
         val self = context.self as? UIComponentAPI ?: return
+        if (self is CustomPanelAPI) {
+            // a super call inside a body that runs was not culled either: no most-derived check needed here
+            val plugin = self.plugin as? StarUIPanelPlugin
+            if (ClipStack.depth > 0 && ClipStack.culls(self)) {
+                plugin?.culled = true
+                context.setLocal(CULLED, true)
+                context.skipOriginal(null)
+            } else {
+                plugin?.culled = false
+            }
+            return
+        }
         if (ClipStack.depth > 0 && ClipStack.culls(self)) {
             context.setLocal(CULLED, true)
             context.skipOriginal(null)
             return
         }
-        if (!StarUIPanelPlugin.hasAttachedPlugins || self is CustomPanelAPI) return
+        if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
         val plugin = StarUIPanelPlugin.getAttached(self) ?: return
         val alphaMult = context.getArg(0) as? Float ?: return
         plugin.renderBelow(alphaMult)
@@ -99,6 +110,26 @@ object UIComponentLifecyclePatch {
         val plugin = StarUIPanelPlugin.getAttached(self) ?: return
         val alphaMult = context.getArg(0) as? Float ?: return
         plugin.render(alphaMult)
+    }
+
+    /** A StarUI panel culled in the last render skips its advance (see [ClipStack.cullPerFrameWork]). */
+    @JvmStatic
+    @Before(target = MethodMatch(methodName = "advance", parameterTypes = [Float::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun onAdvanceBefore(context: BeforeContext) {
+        if (!ClipStack.cullPerFrameWork) return
+        val self = context.self as? CustomPanelAPI ?: return
+        val plugin = self.plugin as? StarUIPanelPlugin ?: return
+        if (plugin.culled) context.skipOriginal(null)
+    }
+
+    /** ... and its input, unless it still thinks it is hovered (so it gets the event that ends that). */
+    @JvmStatic
+    @Before(target = MethodMatch(methodName = "processInput", parameterCount = 1, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun onProcessInputBefore(context: BeforeContext) {
+        if (!ClipStack.cullPerFrameWork) return
+        val self = context.self as? CustomPanelAPI ?: return
+        val plugin = self.plugin as? StarUIPanelPlugin ?: return
+        if (plugin.culled && !plugin.isHovering) context.skipOriginal(null)
     }
 
     @JvmStatic
@@ -462,11 +493,11 @@ object ClipInputPatch {
     @JvmStatic
     @Before(target = MethodMatch(methodName = "processInput", parameterCount = 1, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun hideClippedInput(context: BeforeContext) {
-        if (!ClipStack.anyClipContainers || !context.isMostDerivedCall) return
+        if (!ClipStack.anyClipContainers) return
         val self = context.self as? CustomPanelAPI ?: return
         val plugin = self.plugin as? StarUIPanelPlugin ?: return
         val overflow = plugin.overflow
-        if (!overflow.clips || plugin.scrollHost != null) return
+        if (!overflow.clips || plugin.scrollHost != null || !context.isMostDerivedCall) return
         val events = context.getArg(0) as? List<*> ?: return
         val p = self.position
         val clipsX = overflow.horizontal != AxisOverflow.Visible

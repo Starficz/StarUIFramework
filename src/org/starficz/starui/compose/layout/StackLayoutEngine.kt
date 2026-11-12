@@ -39,8 +39,11 @@ internal class StackLayoutEngine(
         var DEBUG_LAYOUT = false
     }
 
-    private fun debugLog(msg: String) {
-        if (DEBUG_LAYOUT) log.info(msg)
+    private val debugId: String get() = "${if (direction.isVertical) "VStack" else "HStack"}@${Integer.toHexString(plugin.component.hashCode())}"
+
+    /** Builds the message only when debugging is on (layout runs often; the strings are not free). */
+    private inline fun debugLog(msg: () -> String) {
+        if (DEBUG_LAYOUT) log.info(msg())
     }
 
     private var measuredPrimary = 0f
@@ -50,8 +53,15 @@ internal class StackLayoutEngine(
         get() = if (direction.isVertical) Pair(measuredSecondary, measuredPrimary) else Pair(measuredPrimary, measuredSecondary)
     private var totalFillWeight = 0f
 
-    // Caches the (Raw Content + Child Padding) footprint for the layout pass
+    // Caches the (Raw Content + Child Padding) footprint for the layout pass. Kept after the layout: a measure reused
+    // from an earlier pass (StarUIPanelPlugin.measure) is laid out again from it.
     private val childPaddedIntrinsics = mutableMapOf<UIComponentAPI, Pair<Float, Float>>()
+
+    /** Where each child was last placed (main-axis offset, cross offset): an unchanged placement is not redone. */
+    private val placed = java.util.IdentityHashMap<UIComponentAPI, Long>()
+
+    /** Forgets the placements (children were moved by something else, e.g. pinned on a removal). */
+    internal fun forgetPlacements() = placed.clear()
 
     // Dynamically maps Width/Height to Primary/Cross based on layout direction
     private fun getAxisDimension(size: NodeSize, isVertical: Boolean): Pair<Dimension, Dimension> {
@@ -63,11 +73,10 @@ internal class StackLayoutEngine(
 
     override fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
         val isVertical = direction.isVertical
-        val debugId = "${if (isVertical) "VStack" else "HStack"}@${Integer.toHexString(plugin.component.hashCode())}"
 
-        debugLog("[$debugId] === MEASURE START ===")
-        debugLog("[$debugId] Inherited Envelope Bounds -> maxW: $maxWidth, maxH: $maxHeight")
-        debugLog("[$debugId] My Engine Sizing -> ${plugin.myNodeSize}")
+        debugLog { "[$debugId] === MEASURE START ===" }
+        debugLog { "[$debugId] Inherited Envelope Bounds -> maxW: $maxWidth, maxH: $maxHeight" }
+        debugLog { "[$debugId] My Engine Sizing -> ${plugin.myNodeSize}" }
 
         var fixedPrimarySpace = 0f
         var maxSecondarySpace = 0f
@@ -78,7 +87,7 @@ internal class StackLayoutEngine(
         val containerPadding = plugin.myPadding
 
         val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.myNodeSize, isVertical)
-        debugLog("[$debugId] Resolved Engine Axes -> Primary: $myPrimaryDim, Cross: $myCrossDim")
+        debugLog { "[$debugId] Resolved Engine Axes -> Primary: $myPrimaryDim, Cross: $myCrossDim" }
 
         val primaryPaddingSum = if (isVertical) containerPadding.vertical else containerPadding.horizontal
         val crossPaddingSum = if (isVertical) containerPadding.horizontal else containerPadding.vertical
@@ -141,7 +150,7 @@ internal class StackLayoutEngine(
             val padded = if (isVertical) measureChildPaddedIntrinsic(child, plugin, cross, primary)
                          else measureChildPaddedIntrinsic(child, plugin, primary, cross)
             childPaddedIntrinsics[child] = padded
-            debugLog("  [$debugId] Child (${child.javaClass.simpleName}) | Axes $primaryDim / $crossDim | measured at $primary x $cross -> Padded Intrinsic: ${padded.first} x ${padded.second}")
+            debugLog { "  [$debugId] Child (${child.javaClass.simpleName}) | Axes $primaryDim / $crossDim | measured at $primary x $cross -> Padded Intrinsic: ${padded.first} x ${padded.second}" }
         }
 
         // What a measured child adds to the main axis, margin included (a fill child adds only its margin here).
@@ -190,7 +199,7 @@ internal class StackLayoutEngine(
         // ==========================================
         // PASS 1A: children whose size depends on nothing else here, in order
         // ==========================================
-        debugLog("[$debugId] --- PASS 1A: Independent children ---")
+        debugLog { "[$debugId] --- PASS 1A: Independent children ---" }
         var independentPrimary = 0f
         for (child in children) {
             if (child in fillChildren || (hasCrossContent && child in waitsForCross)) continue
@@ -226,10 +235,10 @@ internal class StackLayoutEngine(
             if (waitsForCross.isEmpty() || !hasCrossContent) break
             val settledCross = maxOf(independentCross, fillChildren.maxOfOrNull { crossRequirement(it, actualAvailableFlexSpace) } ?: 0f)
             if (kotlin.math.abs(settledCross - crossSize) < 0.5f) break
-            debugLog("[$debugId] Cross size grew from $crossSize to $settledCross: measuring the cross-fill children again")
+            debugLog { "[$debugId] Cross size grew from $crossSize to $settledCross: measuring the cross-fill children again" }
             crossSize = settledCross
         }
-        debugLog("[$debugId] Flex Space: $actualAvailableFlexSpace (Total Fixed: $fixedPrimarySpace)")
+        debugLog { "[$debugId] Flex Space: $actualAvailableFlexSpace (Total Fixed: $fixedPrimarySpace)" }
 
         children.forEach { maxSecondarySpace = maxOf(maxSecondarySpace, crossRequirement(it, actualAvailableFlexSpace)) }
 
@@ -255,8 +264,8 @@ internal class StackLayoutEngine(
             else -> measuredSecondary
         }
 
-        debugLog("[$debugId] MEASURE END | Calculated Intrinsic Bounds: measuredPrimary=$measuredPrimary, measuredSecondary=$measuredSecondary")
-        debugLog("[$debugId] MEASURE END | Final Constraints Propagated to Parent: primary=$finalPrimary, cross=$finalCross")
+        debugLog { "[$debugId] MEASURE END | Calculated Intrinsic Bounds: measuredPrimary=$measuredPrimary, measuredSecondary=$measuredSecondary" }
+        debugLog { "[$debugId] MEASURE END | Final Constraints Propagated to Parent: primary=$finalPrimary, cross=$finalCross" }
 
         return Pair(if (isVertical) finalCross else finalPrimary, if (isVertical) finalPrimary else finalCross)
     }
@@ -265,10 +274,9 @@ internal class StackLayoutEngine(
         val children = plugin.panel.getChildrenCopy()
 
         val isVertical = direction.isVertical
-        val debugId = "${if (isVertical) "VStack" else "HStack"}@${Integer.toHexString(plugin.component.hashCode())}"
 
-        debugLog("[$debugId] === LAYOUT START ===")
-        debugLog("[$debugId] Post-Measure Assigned Space from Parent -> assignedW: $assignedWidth, assignedH: $assignedHeight")
+        debugLog { "[$debugId] === LAYOUT START ===" }
+        debugLog { "[$debugId] Post-Measure Assigned Space from Parent -> assignedW: $assignedWidth, assignedH: $assignedHeight" }
 
         val containerPadding = plugin.myPadding
         val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.myNodeSize, isVertical)
@@ -291,7 +299,7 @@ internal class StackLayoutEngine(
         val rawAvailableFlexSpace = finalContainerPrimary - measuredPrimary
         val initialFlexSpace = maxOf(0f, rawAvailableFlexSpace)
 
-        debugLog("[$debugId] Initial Assigned Flex Space: $initialFlexSpace | Total Flex Weight Demanded: $totalFillWeight")
+        debugLog { "[$debugId] Initial Assigned Flex Space: $initialFlexSpace | Total Flex Weight Demanded: $totalFillWeight" }
 
         val clips = plugin.overflow.clips
         if (rawAvailableFlexSpace < -0.5f && !clips) {
@@ -312,7 +320,7 @@ internal class StackLayoutEngine(
         // ==========================================
         // FINAL ASSIGNMENT & SIZING
         // ==========================================
-        debugLog("[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---")
+        debugLog { "[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---" }
         children.forEachIndexed { i, child ->
             val childSizing = plugin.childSizing[child] ?: NodeSize()
             val childMargin = plugin.childMargins[child] ?: Margin()
@@ -347,124 +355,76 @@ internal class StackLayoutEngine(
             val finalCW = if (isVertical) newSecondary else newPrimary
             val finalCH = if (isVertical) newPrimary else newSecondary
 
-            debugLog("  [$debugId] Child[$i] Final Physical Size -> W: $finalCW x H: $finalCH")
+            debugLog { "  [$debugId] Child[$i] Final Physical Size -> W: $finalCW x H: $finalCH" }
             commitChildLayout(child, plugin, finalCW, finalCH)
         }
 
         // ==========================================
         // POSITIONING
         // ==========================================
-        debugLog("[$debugId] --- APPLYING STACK POSITIONING ---")
-        var previousElement: UIComponentAPI? = null
+        // Every child is placed relative to the container at its running offset along the main axis. Anchoring each
+        // child on the one before it (as this once did) makes vanilla recompute every later sibling whenever one
+        // moves: quadratic in the number of children, which a long list cannot afford.
+        debugLog { "[$debugId] --- APPLYING STACK POSITIONING ---" }
+        var running = when (direction) {
+            StackDirection.DOWN -> containerPadding.top
+            StackDirection.UP -> containerPadding.bottom
+            StackDirection.RIGHT -> containerPadding.left
+            StackDirection.LEFT -> containerPadding.right
+        }
         children.forEachIndexed { i, component ->
             val myMargin = plugin.childMargins[component] ?: Margin()
-            val prevMargin = if (previousElement != null) plugin.childMargins[previousElement] ?: Margin() else Margin()
-
-            applyStackPositioning(
-                parent = plugin.panel,
-                child = component,
-                prev = previousElement,
-                containerPadding = containerPadding,
-                myMargin = myMargin,
-                prevMargin = prevMargin,
-                debugId = debugId,
-                childIndex = i
-            )
-            previousElement = component
+            val (leading, trailing) = when (direction) {
+                StackDirection.DOWN -> myMargin.top to myMargin.bottom
+                StackDirection.UP -> myMargin.bottom to myMargin.top
+                StackDirection.RIGHT -> myMargin.left to myMargin.right
+                StackDirection.LEFT -> myMargin.right to myMargin.left
+            }
+            val offset = running + leading
+            applyStackPositioning(component, offset, containerPadding, myMargin, i)
+            val size = if (isVertical) component.position.height else component.position.width
+            running = offset + size + trailing + spacing
         }
+        // children dropped without a removal hook (clearChildren) must not be held on to
+        if (placed.size > children.size) placed.keys.retainAll(children.toSet())
 
-        childPaddedIntrinsics.clear()
-        debugLog("[$debugId] LAYOUT END")
+        debugLog { "[$debugId] LAYOUT END" }
     }
 
+    /** Places [child] [offset] along the main axis from the container's leading edge, aligned across it. */
     private fun applyStackPositioning(
-        parent: UIComponentAPI, child: UIComponentAPI, prev: UIComponentAPI?,
-        containerPadding: PaddingValues, myMargin: Margin, prevMargin: Margin,
-        debugId: String, childIndex: Int
+        child: UIComponentAPI, offset: Float, containerPadding: PaddingValues, myMargin: Margin,
+        childIndex: Int
     ) {
-        val isFirst = prev == null
         val targetAnchorX: Float; val targetAnchorY: Float
         val myAnchorX: Float; val myAnchorY: Float
-        var offsetX = 0f; var offsetY = 0f
+        val offsetX: Float; val offsetY: Float
 
         if (direction.isVertical) {
-            // --- CROSS AXIS ALIGNMENT (X) ---
             targetAnchorX = crossAlignValue
             myAnchorX = -crossAlignValue
-
-            // Linear interpolation of padding and margins
             offsetX = (containerPadding.left * (1f - targetAnchorX) - containerPadding.right * targetAnchorX) +
                     (myMargin.left * (1f - targetAnchorX) - myMargin.right * targetAnchorX)
-
-            // --- ROUNDING DRIFT CORRECTION ---
-            // Starsector uses Math.round() on absolute coordinates. If we chain anchors,
-            // sub-pixel rounding errors compound. This tracks deviation from the true parent center line.
-            if (!isFirst) {
-                val parentAnchorPoint = parent.position.x + parent.width * targetAnchorX
-                val prevAnchorPoint = prev!!.position.x + prev.width * targetAnchorX
-                val drift = parentAnchorPoint - prevAnchorPoint
-                if (drift != 0f) debugLog("  [$debugId] Child[$childIndex] Cross-Axis Drift Correction Applied: ${drift}px")
-                offsetX += drift
-            }
-
-            // --- PRIMARY AXIS FLOW (Y) ---
-            if (direction == StackDirection.UP) { // Positive Y
-                if (isFirst) {
-                    targetAnchorY = 0f; myAnchorY = 0f
-                    offsetY = containerPadding.bottom + myMargin.bottom
-                } else {
-                    targetAnchorY = 1f; myAnchorY = 0f
-                    offsetY = spacing + prevMargin.top + myMargin.bottom
-                }
-            } else { // StackDirection.DOWN (Negative Y)
-                if (isFirst) {
-                    targetAnchorY = 1f; myAnchorY = -1f
-                    offsetY = -(containerPadding.top + myMargin.top)
-                } else {
-                    targetAnchorY = 0f; myAnchorY = -1f
-                    offsetY = -(spacing + prevMargin.bottom + myMargin.top)
-                }
+            if (direction == StackDirection.UP) {
+                targetAnchorY = 0f; myAnchorY = 0f; offsetY = offset
+            } else {
+                targetAnchorY = 1f; myAnchorY = -1f; offsetY = -offset
             }
         } else {
-            // --- CROSS AXIS ALIGNMENT (Y) ---
             targetAnchorY = crossAlignValue
             myAnchorY = -crossAlignValue
-
             offsetY = (containerPadding.bottom * (1f - targetAnchorY) - containerPadding.top * targetAnchorY) +
                     (myMargin.bottom * (1f - targetAnchorY) - myMargin.top * targetAnchorY)
-
-            // --- ROUNDING DRIFT CORRECTION ---
-            if (!isFirst) {
-                val parentAnchorPoint = parent.position.y + parent.height * targetAnchorY
-                val prevAnchorPoint = prev!!.position.y + prev.height * targetAnchorY
-                val drift = parentAnchorPoint - prevAnchorPoint
-                if (drift != 0f) debugLog("  [$debugId] Child[$childIndex] Cross-Axis Drift Correction Applied: ${drift}px")
-                offsetY += drift
-            }
-
-            // --- PRIMARY AXIS FLOW (X) ---
-            if (direction == StackDirection.RIGHT) { // Positive X
-                if (isFirst) {
-                    targetAnchorX = 0f; myAnchorX = 0f
-                    offsetX = containerPadding.left + myMargin.left
-                } else {
-                    targetAnchorX = 1f; myAnchorX = 0f
-                    offsetX = spacing + prevMargin.right + myMargin.left
-                }
-            } else { // StackDirection.LEFT (Negative X)
-                if (isFirst) {
-                    targetAnchorX = 1f; myAnchorX = -1f
-                    offsetX = -(containerPadding.right + myMargin.right)
-                } else {
-                    targetAnchorX = 0f; myAnchorX = -1f
-                    offsetX = -(spacing + prevMargin.left + myMargin.right)
-                }
+            if (direction == StackDirection.RIGHT) {
+                targetAnchorX = 0f; myAnchorX = 0f; offsetX = offset
+            } else {
+                targetAnchorX = 1f; myAnchorX = -1f; offsetX = -offset
             }
         }
 
-        debugLog("  [$debugId] Child[$childIndex] anchored to ${if (isFirst) "Parent" else "Previous"} | Offset X: $offsetX, Y: $offsetY")
-
-        // A null base anchors relative to the parent
-        child.position.relativeToBase(prev, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
+        debugLog { "  [$debugId] Child[$childIndex] at $offset along the main axis | Offset X: $offsetX, Y: $offsetY" }
+        val key = (offsetX.toRawBits().toLong() shl 32) or (offsetY.toRawBits().toLong() and 0xffffffffL)
+        if (placed.put(child, key) == key) return
+        child.position.relativeToBase(null, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }

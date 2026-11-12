@@ -109,7 +109,8 @@ fun UIPanelAPI.addPara(
 
     val para = if(highlightedText != null){
         val (highlights, highlightColors) = highlightedText.unzip()
-        tempTMAPI.addPara(text, 0f, highlightColors.toTypedArray(), *highlights.toTypedArray())
+        // vanilla runs the text through String.format with the highlights as arguments: a bare % would throw
+        tempTMAPI.addPara(text.replace("%", "%%"), 0f, highlightColors.toTypedArray(), *highlights.toTypedArray())
     } else {
         tempTMAPI.addPara(text, 0f)
     }

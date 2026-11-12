@@ -29,6 +29,18 @@ internal object ClipStack {
     @Volatile
     var anyClipContainers = false
 
+    /** Off only to measure what culling saves (tests). */
+    @JvmField
+    var cullingEnabled = true
+
+    /**
+     * Whether a StarUI panel culled in the last render also skips its advance and input until it is drawn again.
+     * Vanilla's scroll panel skips input for its off-screen items too; advance is StarUI's addition: off-screen rows'
+     * onAdvance callbacks and vanilla animations pause. Without it every row of a long list costs every frame.
+     */
+    @JvmField
+    var cullPerFrameWork = true
+
     private var left = FloatArray(8)
     private var bottom = FloatArray(8)
     private var right = FloatArray(8)
@@ -58,7 +70,7 @@ internal object ClipStack {
 
     /** True when [component] is a StarUI container's child lying entirely outside the visible rectangle. */
     fun culls(component: UIComponentAPI): Boolean {
-        if (depth == 0) return false
+        if (depth == 0 || !cullingEnabled) return false
         val parent = component.parent as? CustomPanelAPI ?: return false
         if (parent.plugin !is StarUIPanelPlugin) return false
         val p = component.position

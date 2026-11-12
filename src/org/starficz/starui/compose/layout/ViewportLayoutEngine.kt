@@ -25,6 +25,13 @@ internal class ViewportLayoutEngine(
     private val size: NodeSize
 ) : LayoutEngine {
 
+    /**
+     * True when the scroll panel's own size does not depend on its content (exact or fill on both axes): a change
+     * inside then only needs the content laid out again, not everything above it.
+     */
+    val isLayoutBoundary: Boolean = size.width !is Dimension.WrapContent && size.width !is Dimension.AspectRatio &&
+        size.height !is Dimension.WrapContent && size.height !is Dimension.AspectRatio
+
     /** The viewport the content was last measured at by [measure], when both axes were known; else null. */
     private var measuredAt: Pair<Float, Float>? = null
     private var needed = Pair(0f, 0f)
@@ -93,8 +100,11 @@ internal class ViewportLayoutEngine(
         content.myNodeSize = NodeSize(Dimension.Exact(contentW), Dimension.Exact(contentH))
         content.panel.setSize(contentW, contentH)
         host.setContentSize(contentW, contentH)
+        content.beginLayout()
+        content.laidOutW = contentW
+        content.laidOutH = contentH
         content.layoutEngine?.layout(contentW, contentH)
-        content.markLayoutResolved()
+        content.finishLayout()
         StarUIPanelPlugin.getAttached(host.contentContainer)?.markLayoutResolved()
 
         // A list that got shorter must not stay scrolled past its end. x offsets are 0 or less (content moves left),

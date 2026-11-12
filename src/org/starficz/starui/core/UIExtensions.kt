@@ -82,8 +82,11 @@ var UIComponentAPI.enabled: Boolean
 
 // width, height, x and y are UIComponentAPI members since 0.98.5a (read-only; set them on `position`).
 
+/** Sizes the component; does nothing when it already has that size (vanilla recomputes the position tree on each call). */
 fun UIComponentAPI.setSize(width: Float, height: Float){
-    position.setSize(width, height)
+    val p = position
+    if (p.width == width && p.height == height) return
+    p.setSize(width, height)
 }
 
 

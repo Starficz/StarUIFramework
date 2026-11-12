@@ -17,6 +17,7 @@ import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.LayoutEngine
 import org.starficz.starui.compose.layout.NodeSize
+import org.starficz.starui.compose.layout.ViewportLayoutEngine
 import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.Anchor
@@ -153,6 +154,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal var isStackLayout: Boolean = false
     internal var layoutEngine: LayoutEngine? = null
     internal var isTopLevelNode: Boolean = false
+    /** This panel was culled (not drawn) in the last render: it skips advance and input until drawn again. */
+    @JvmField
+    internal var culled = false
+
     /** True while a layout engine swaps one of this panel's children itself: the change needs no new layout. */
     internal var swappingChild = false
     private var hasLayoutRun = false
@@ -313,6 +318,14 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     private fun runEngine() {
+        val viewport = layoutEngine as? ViewportLayoutEngine
+        if (viewport != null && viewport.isLayoutBoundary && !isTopLevelNode) {
+            // a layout boundary asked to lay out its content again: its own size is what its parent gave it
+            layoutPassCount++
+            layoutPass++
+            viewport.layout(component.width, component.height)
+            return
+        }
         layoutEngine?.let { engine ->
             layoutPassCount++
             layoutPass++
@@ -348,38 +361,58 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     private var measuredW = 0f
     private var measuredH = 0f
     private var measuredSize: NodeSize? = null
+    private var measuredPadding: PaddingValues? = null
     private var measuredResult: Pair<Float, Float>? = null
 
+    /** The size this node was last laid out at by its parent; NaN before that. */
+    internal var laidOutW = Float.NaN
+    internal var laidOutH = Float.NaN
+
+    /** True when nothing at or below this node asked for a layout since it was last laid out. */
+    internal val isLayoutClean: Boolean get() = hasLayoutRun
+
     /**
-     * This node's engine's measure, reused when the same layout pass asks again with the same room and the same
-     * node size (see [layoutPass]). The engine keeps what the last measure found for its layout, so the result is
-     * only reused while that last measure is the matching one, and never after the node was laid out.
+     * This node's engine's measure, reused when it is asked again with the same room, node size and padding, either
+     * within one layout pass (see [layoutPass]) or, across passes, while nothing at or below it asked for a layout
+     * ([isLayoutClean]): a change in one row of a long list then measures that row, not every row. The engine keeps
+     * what its last measure found for its layout, and the result is only reused while that last measure matches.
      */
     internal fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
         val engine = layoutEngine ?: return Pair(component.width, component.height)
         val cached = measuredResult
-        if (cached != null && measuredPass == layoutPass && measuredW == maxWidth && measuredH == maxHeight &&
-            measuredSize == myNodeSize) return cached
+        if (cached != null && (measuredPass == layoutPass || hasLayoutRun) && measuredW == maxWidth &&
+            measuredH == maxHeight && measuredSize == myNodeSize && measuredPadding == myPadding) return cached
         val result = engine.measure(maxWidth, maxHeight)
         measuredPass = layoutPass
         measuredW = maxWidth
         measuredH = maxHeight
         measuredSize = myNodeSize
+        measuredPadding = myPadding
         measuredResult = result
         return result
     }
 
-    /** Forgets the cached measure (after a layout, which uses up what the engine measured). */
+    /** Forgets the cached measure. */
     internal fun forgetMeasure() {
         measuredResult = null
     }
 
     /** Called by the parent's engine once it has sized and laid out this node. */
     internal fun markLayoutResolved() {
-        forgetMeasure()
         hasLayoutRun = true
         fireLayoutCallbacks()
     }
+
+    /**
+     * Called by the parent's engine before it lays this node out: from here on a layout request (one made during this
+     * node's own layout, say) is a new one and survives, as in [runLayout]. Follow with [finishLayout].
+     */
+    internal fun beginLayout() {
+        hasLayoutRun = true
+    }
+
+    /** After the layout [beginLayout] started: the layout callbacks. */
+    internal fun finishLayout() = fireLayoutCallbacks()
 
     private var hasEverLaidOut = false
 
@@ -417,6 +450,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             val parentPlugin = getAttached(parentPanel) ?: return
             if (parentPlugin.layoutEngine == null) return
             node = parentPlugin
+            // a scrolling container whose size does not follow its content lays its content out by itself
+            if ((node.layoutEngine as? ViewportLayoutEngine)?.isLayoutBoundary == true && !node.isTopLevelNode) {
+                node.hasLayoutRun = false
+                return
+            }
         }
     }
 
@@ -526,6 +564,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * sibling; the engine rejects any resize while a child is anchored on a sibling that has been removed.
      */
     internal fun pinChildrenToPanel() {
+        (layoutEngine as? org.starficz.starui.compose.layout.StackLayoutEngine)?.forgetPlacements()
         val panelPosition = panel.position
         val panelTop = panelPosition.y + panelPosition.height
         for (child in panel.getChildrenNonCopy()) {

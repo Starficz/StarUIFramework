@@ -65,6 +65,15 @@ internal fun commitChildLayout(
 
     // Every child with a plugin is told, engine or not, so onLayout on a leaf fires on each pass of its container.
     val childPlugin = StarUIPanelPlugin.getAttached(child) ?: return
-    childPlugin.layoutEngine?.layout(finalW, finalH)
-    childPlugin.markLayoutResolved()
+    val engine = childPlugin.layoutEngine
+    // A container nothing changed in, given the size it already has, is already laid out: skipping it is what keeps
+    // a change in one row of a long list from laying out every row.
+    val clean = childPlugin.isLayoutClean && childPlugin.laidOutW == finalW && childPlugin.laidOutH == finalH
+    childPlugin.beginLayout()
+    if (engine != null && !clean) {
+        childPlugin.laidOutW = finalW
+        childPlugin.laidOutH = finalH
+        engine.layout(finalW, finalH)
+    }
+    childPlugin.finishLayout()
 }

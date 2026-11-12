@@ -61,10 +61,11 @@ fun UIPanelAPI.Text(
     fun applyTextAlign() = rawLabel.setAlignment(textAlign.toVanilla())
     applyTextAlign()
 
+    val initialMeasure = measureTextSize(text, font)
     if (reused != null) {
-        applyReuseBounds(rawLabel, size, measureTextSize(text, font))
+        applyReuseBounds(rawLabel, size, initialMeasure)
     } else {
-        val (initW, initH) = getInitialBounds(size, measureTextSize(text, font))
+        val (initW, initH) = getInitialBounds(size, initialMeasure)
         rawLabel.setSize(initW, initH)
     }
 
@@ -75,17 +76,37 @@ fun UIPanelAPI.Text(
         val parentPlugin = StarUIContext.currentPlugin
         val actual: UIComponentAPI = rawLabel
 
+        // Vanilla lays wrapped text out again on every autoSizeToWidth, the costliest part of a layout pass with
+        // much text. The wrapped height per width is kept for the current text, and the label itself is only sized
+        // again when its text or width changed.
+        var cachedText: String? = text
+        var singleLine = initialMeasure   // measureTextSize(cachedText): its shared cache is too small for a long list
+        val heightAtWidth = HashMap<Float, Float>(4)
+        var labelSizedText: String? = null
+        var labelSizedWidth = Float.NaN
+        fun autoSize(str: String, width: Float) {
+            if (str == labelSizedText && width == labelSizedWidth) return
+            rawLabel.autoSizeToWidth(width)
+            labelSizedText = str
+            labelSizedWidth = width
+        }
+
         parentPlugin.childMeasurables[actual] = { maxW, _ ->
             val currentStr = rawLabel.text
             if (currentStr.isEmpty()) {
                 Pair(0f, 0f)
             } else {
-                val (unwrappedW, singleLineH) = measureTextSize(currentStr, font)
+                if (currentStr != cachedText) {
+                    cachedText = currentStr
+                    singleLine = measureTextSize(currentStr, font)
+                    heightAtWidth.clear()
+                }
+                val (unwrappedW, singleLineH) = singleLine
                 if (unwrappedW <= maxW) {
                     Pair(unwrappedW, singleLineH)
                 } else {
-                    rawLabel.autoSizeToWidth(maxW)
-                    Pair(maxW, rawLabel.height)
+                    val height = heightAtWidth.getOrPut(maxW) { autoSize(currentStr, maxW); rawLabel.height }
+                    Pair(maxW, height)
                 }
             }
         }
@@ -93,7 +114,7 @@ fun UIPanelAPI.Text(
         parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
             val pad = parentPlugin.childPadding[actual] ?: PaddingValues()
             val availW = maxOf(1f, assignedW - pad.horizontal)
-            rawLabel.autoSizeToWidth(availW)
+            autoSize(rawLabel.text, availW)
             rawLabel.setSize(assignedW, assignedH)
             applyTextAlign()
         }
