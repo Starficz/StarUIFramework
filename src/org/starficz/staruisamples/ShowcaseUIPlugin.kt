@@ -2,7 +2,10 @@ package org.starficz.staruisamples
 
 import com.fs.starfarer.api.Global
 import org.starficz.starui.compose.Alignment
+import com.fs.starfarer.api.fleet.FleetMemberType
+import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
+import com.fs.starfarer.api.ui.CutStyle
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.api.util.Misc
@@ -15,12 +18,14 @@ import org.starficz.starui.compose.VGrow
 import org.starficz.starui.compose.modifier.*
 import org.starficz.starui.compose.runtime.*
 import org.starficz.starui.core.Anchor
+import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.VanillaColors.withAlpha
 import org.starficz.starui.core.bottom
 import org.starficz.starui.core.left
+import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.right
 import org.starficz.starui.core.top
 import java.awt.Color
@@ -48,6 +53,7 @@ object ShowcaseUIPlugin {
     private val GRAY get() = VanillaColors.gray
     private val HIGHLIGHT get() = VanillaColors.highlight
     private val POSITIVE get() = VanillaColors.positive
+    private val NEGATIVE get() = VanillaColors.negative
     /** Vanilla's full-screen panels are black and opaque. */
     private val PAGE_BG = Color(0, 0, 0, 255)
     /** A demo area inside a section: the faction's dark colour, faint. */
@@ -137,7 +143,329 @@ object ShowcaseUIPlugin {
                         Column(Size.fillMaxWidth(), spacing = 10f) { stateColumn() }
                         Column(Size.fillMaxWidth(), spacing = 10f) { contentColumn() }
                     }
+                    // the second band: every option and helper the cards above leave out
+                    Row(Size.fillMaxWidth(), spacing = 14f) {
+                        Column(Size.fillMaxWidth(), spacing = 10f) { moreLayoutColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { moreControlsColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { moreContentColumn() }
+                    }
                     fullSizeShips()
+                }
+            }
+        }
+    }
+
+    // =================================================================================================================
+    // Second band, column 1: more layout
+    // =================================================================================================================
+    private fun UIPanelAPI.moreLayoutColumn() {
+        Section("Sizes: exact, fill at a fixed size, mixed, weights") {
+            Row(Size.fillMaxWidth(height = 40f), Modifier.background(INSET_BG).padding(horizontal = 4f),
+                verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Spacer(Size.exact(40f, 20f), Modifier.background(BASE).tooltip("Size.exact(40, 20)"))
+                Spacer(Size.fillMaxHeight(width = 20f), Modifier.background(BRIGHT).tooltip("Size.fillMaxHeight(width = 20)"))
+                Spacer(Size.mixed(Axis.Fill(1f), Axis.Exact(10f)), Modifier.background(DARK.brighter()).tooltip("Size.mixed(Axis.Fill(1), Axis.Exact(10))"))
+                Spacer(Size.mixed(Axis.Fill(2f), Axis.Exact(26f)), Modifier.background(BASE.withAlpha(150)).tooltip("Size.mixed(Axis.Fill(2), Axis.Exact(26)): twice the share"))
+            }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("A")
+                FlexSpacer(1f)
+                Text("FlexSpacer(1) | FlexSpacer(3)", color = GRAY)
+                FlexSpacer(3f)
+                Text("B")
+            }
+        }
+
+        Section("Row: grow Leftwards, verticalAlignment") {
+            Row(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG).padding(horizontal = 6f), grow = HGrow.Leftwards,
+                verticalAlignment = Alignment.Bottom, spacing = 8f) {
+                Text("1st (rightmost)")
+                Text("2nd")
+                Text("3rd: HGrow.Leftwards, Alignment.Bottom", color = GRAY)
+            }
+            Row(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG).padding(horizontal = 6f),
+                verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                Spacer(Size.exact(12f, 30f), Modifier.background(BASE))
+                Spacer(Size.exact(12f, 10f), Modifier.background(BASE))
+                Text("Alignment.CenterVertically", color = GRAY)
+            }
+        }
+
+        Section("Anchors: above, below, leftOf, my corner to yours") {
+            CustomPanel(Size.fillMaxWidth(height = 130f), Modifier.background(INSET_BG)) {
+                val hub = Spacer(Size.exact(70f, 24f), Modifier.anchor(Anchor.inside.center.ofParent()).background(DARK.brighter()))
+                Text("above.matchingCenter", modifier = Modifier.anchor(Anchor.above.sibling(hub).matchingCenter(4f)))
+                Text("below.matchingRightEdge", color = GRAY, modifier = Modifier.anchor(Anchor.below.sibling(hub).matchingRightEdge(4f)))
+                Text("leftOf", color = HIGHLIGHT, modifier = Modifier.anchor(Anchor.leftOf.sibling(hub).matchingCenter(6f)))
+                Text("rightOf.matchingBottomEdge", modifier = Modifier.anchor(Anchor.rightOf.sibling(hub).matchingBottomEdge(6f)))
+                Spacer(Size.exact(8f, 8f), Modifier.anchor(Anchor.my.bottomLeft.toTopRight.ofSibling(hub)).background(BRIGHT)
+                    .tooltip("Anchor.my.bottomLeft.toTopRight.ofSibling(hub)"))
+                Text("inside.topRight", modifier = Modifier.anchor(Anchor.inside.topRight.ofParent(6f, 6f)))
+                Text("inside.bottomCenter", color = GRAY, modifier = Modifier.anchor(Anchor.inside.bottomCenter.ofParent(6f)))
+            }
+        }
+
+        Section("Spacing by side, hitBoxPadding by side") {
+            Row(Size.fillMaxWidth(), Modifier.background(INSET_BG), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Size.exact(30f, 16f), Modifier.margin(left = 40f, top = 4f, bottom = 12f).background(BASE))
+                Text("margin(left = 40, top = 4, bottom = 12)", color = GRAY, modifier = Modifier.margin(horizontal = 8f, vertical = 0f))
+            }
+            Box(Size.fillMaxWidth(), Modifier.background(INSET_BG).padding(left = 30f, top = 4f, bottom = 14f)) {
+                Text("padding(left = 30, top = 4, bottom = 14)")
+            }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                lateinit var hitLabel: LabelAPI
+                Button("Wide hit box", modifier = Modifier.hitBoxPadding(right = 120f)) { hitLabel.text = "Hit: hitBoxPadding(right = 120)" }
+                hitLabel = Text("click up to 120 px right of the button", color = GRAY)
+            }
+        }
+
+        Section("Section options: untitled, colours, padding") {
+            Row(Size.fillMaxWidth(), spacing = 8f) {
+                Section(null, Size.fillMaxWidth(), contentPadding = PaddingValues.all(10f)) {
+                    Text("Section(null): no heading")
+                    Text("contentPadding = all(10)", color = GRAY)
+                }
+                Section("Custom colours", Size.fillMaxWidth(), backgroundColor = DARK.withAlpha(120), borderColor = BRIGHT, spacing = 1f) {
+                    Text("backgroundColor, borderColor")
+                    Text("spacing = 1", color = GRAY)
+                }
+            }
+        }
+
+        Section("ScrollPanel options") {
+            Row(Size.fillMaxWidth(height = 110f), spacing = 8f) {
+                ScrollPanel(Size.fillMaxSize(), Modifier.background(INSET_BG), horizontalAlignment = Alignment.CenterHorizontally,
+                    isLeftScrollbar = true, scrollWidgetColor = BRIGHT, spacing = 2f) {
+                    Text("isLeftScrollbar, centred,", color = HIGHLIGHT)
+                    Text("scrollWidgetColor", color = HIGHLIGHT)
+                    for (i in 1..12) Text("Line $i")
+                }
+                ScrollPanel(Size.fillMaxSize(), Modifier.background(INSET_BG), renderShadows = false, showScrollbars = false, spacing = 2f) {
+                    Text("no shadows, no scrollbar", color = HIGHLIGHT)
+                    Text("(the wheel still scrolls)", color = GRAY)
+                    for (i in 1..12) Text("Line $i")
+                }
+            }
+        }
+    }
+
+    // =================================================================================================================
+    // Second band, column 2: every control option
+    // =================================================================================================================
+    private val buttonsEnabled = UIState(false)
+    private val hullSizes = listOf("Frigate", "Destroyer", "Cruiser", "Capital").map { it to UIState(it == "Frigate") }
+    private val shipName = UIState("")
+    private val crew = UIState(250f)
+    private val percent = UIState(30f)
+    private val barTarget = UIState(20f)
+
+    private fun UIPanelAPI.moreControlsColumn() {
+        Section("Button options") {
+            Row(Size.fillMaxWidth(), spacing = 4f) {
+                for (cut in listOf(CutStyle.TL_BR, CutStyle.BL_TR, CutStyle.TOP, CutStyle.BOTTOM, CutStyle.ALL, CutStyle.NONE)) {
+                    Button(cut.name, cutStyle = cut, modifier = Modifier.tooltip("cutStyle = CutStyle.${cut.name}"))
+                }
+            }
+            // every ButtonFont; the default is ORBITRON_12_CONDENSED
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button("Victor 10", font = ButtonFont.VICTOR_10)
+                Button("Victor 14", font = ButtonFont.VICTOR_14)
+                Button("Orbitron 20", font = ButtonFont.ORBITRON_20)
+                Button("20 bold", font = ButtonFont.ORBITRON_20_BOLD)
+            }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button("Orbitron 24", font = ButtonFont.ORBITRON_24)
+                Button("24 bold", font = ButtonFont.ORBITRON_24_BOLD)
+            }
+            Button("textAlign = Left", Size.fillMaxWidth(), textAlign = TextAlign.Left)
+            Button("textAlign = Right", Size.fillMaxWidth(), textAlign = TextAlign.Right)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button("Positive", color = POSITIVE, backgroundColor = POSITIVE.darker().darker())
+                Button("Negative", color = NEGATIVE, backgroundColor = NEGATIVE.darker().darker())
+                FlexSpacer()
+                Checkbox("Enabled", bind = buttonsEnabled)
+                // a plain ButtonAPI setter, re-applied whenever the state changes and this row builds again
+                Button("Only when enabled").isEnabled = buttonsEnabled.value
+            }
+        }
+
+        Section("Checkbox and AreaCheckbox options") {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 12f) {
+                Checkbox("TINY", checkboxSize = ButtonAPI.UICheckboxSize.TINY)
+                Checkbox("SMALL", checkboxSize = ButtonAPI.UICheckboxSize.SMALL)
+                Checkbox("LARGE, Orbitron, highlight", checkboxSize = ButtonAPI.UICheckboxSize.LARGE, font = Font.ORBITRON_20_AA, color = HIGHLIGHT)
+            }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                AreaCheckbox("leftAlign = true", size = Size.exact(150f, 24f), leftAlign = true)
+                AreaCheckbox("Own colours", baseColor = POSITIVE, darkColor = POSITIVE.darker().darker(), brightColor = POSITIVE.brighter())
+                AreaCheckbox("Victor 14", font = Font.VICTOR_14)
+            }
+            val sizeGroup = ButtonGroup()
+            Text("One ButtonGroup: a click selects one, Shift-click adds, clicking the only one selects all", color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                for ((name, state) in hullSizes) AreaCheckbox(name, state, Size.exact(90f, 22f), buttonGroup = sizeGroup)
+            }
+            val selected = hullSizes.filter { it.second.value }.joinToString { it.first }
+            Text("Selected: $selected", highlightedText = listOf(selected to HIGHLIGHT))
+        }
+
+        Section("TextField options") {
+            TextField(shipName, font = Font.ORBITRON_20_AA, placeholder = "Orbitron 20 field")
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
+                TextField(shipName, Size.fillMaxWidth(), font = Font.VICTOR_14, placeholder = "The same state, Victor 14",
+                    contentPadding = PaddingValues.symmetric(horizontal = 8f, vertical = 2f))
+                Text("${shipName.value.length} chars", color = GRAY)
+            }
+            Text("Both fields edit one UIState: type in either and the other follows", color = GRAY)
+        }
+
+        Section("Slider and ProgressBar options") {
+            Slider(crew, Size.fillMaxWidth(height = 25f), valueRange = 0f..1000f, text = "Crew", step = 50f,
+                configure = { setShowValueOnly(true) })
+            Slider(percent, Size.fillMaxWidth(height = 25f), text = "Percent", barColor = POSITIVE.darker(),
+                configure = { setShowPercent(true) })
+            Text("valueRange = 0..1000, setShowValueOnly; setShowPercent (configure = { ... })", color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button("Bars to 10") { barTarget.value = 10f }
+                Button("Bars to 90") { barTarget.value = 90f }
+            }
+            ProgressBar(barTarget.value, Size.fillMaxWidth(height = 18f), text = "animate = true")
+            ProgressBar(barTarget.value, Size.fillMaxWidth(height = 18f), text = "animate = false", animate = false,
+                barColor = HIGHLIGHT.darker())
+            ProgressBar(barTarget.value, Size.fillMaxWidth(height = 18f), text = "10 subdivisions",
+                configure = { setNumSubivisions(10) })
+        }
+
+        Section("Reactive scopes: only the builder that reads a state runs again") {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
+                Button("Left + 1") { leftCount.value++ }
+                Button("Right + 1") { rightCount.value++ }
+            }
+            Row(Size.fillMaxWidth(), spacing = 6f) {
+                Column(Size.fillMaxWidth(), Modifier.background(INSET_BG).padding(6f)) {
+                    leftBuilds++
+                    Text("left = ${leftCount.value}")
+                    Text("this column built $leftBuilds times", color = GRAY)
+                }
+                Column(Size.fillMaxWidth(), Modifier.background(INSET_BG).padding(6f)) {
+                    rightBuilds++
+                    Text("right = ${rightCount.value}")
+                    Text("this column built $rightBuilds times", color = GRAY)
+                }
+            }
+            Text("Counters made with mutableStateOf; each column reads only its own", color = GRAY)
+        }
+    }
+    private val leftCount = mutableStateOf(0)
+    private val rightCount = mutableStateOf(0)
+    private var leftBuilds = 0
+    private var rightBuilds = 0
+
+    // =================================================================================================================
+    // Second band, column 3: more content
+    // =================================================================================================================
+    private fun UIPanelAPI.moreContentColumn() {
+        Section("Every Font", spacing = 2f) {
+            for (font in Font.entries) Text(font.name, font = font)
+        }
+
+        Section("Text: wrapping, alignment, measuring") {
+            Text("A Text with a fill width wraps onto as many lines as it needs, and its height follows. " +
+                "Resize the window and it wraps again.", Size.fillMaxWidth())
+            Text("An exact width of 220 wraps here, whatever the column does.", Size.mixed(Axis.Exact(220f), Axis.Wrap),
+                Modifier.background(INSET_BG), color = GRAY)
+            Text("TextAlign.Right", Size.fillMaxWidth(), textAlign = TextAlign.Right)
+            SectionHeading("SectionHeading, Center (the default)")
+            SectionHeading("Right, own colours", color = HIGHLIGHT, backgroundColor = HIGHLIGHT.withAlpha(40), textAlign = TextAlign.Right)
+            val (w, h) = measureTextSize("Starsector", Font.ORBITRON_20_AA)
+            Text("measureTextSize(\"Starsector\", ORBITRON_20_AA) = ${w.toInt()} x ${h.toInt()}", color = GRAY,
+                highlightedText = listOf("${w.toInt()} x ${h.toInt()}" to HIGHLIGHT))
+        }
+
+        Section("Image: sizes, ContentScale, options") {
+            val icon = "graphics/icons/cargo/supplies.png"
+            val tall = "graphics/ships/wolf/wolf_base.png"   // 52 x 96
+            for (sprite in listOf(icon, tall)) if (Global.getSettings().getSprite(sprite).textureId == 0) runCatching { Global.getSettings().loadTexture(sprite) }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 10f) {
+                Image(icon, ImageSize.native(), Modifier.tooltip("ImageSize.native()"))
+                Image(icon, ImageSize.native(scale = 0.5f), Modifier.tooltip("ImageSize.native(scale = 0.5)"))
+                Image(icon, Size.exact(32f, 32f), Modifier.tooltip("withOutline = true"), withOutline = true)
+                Image(icon, Size.exact(32f, 32f), Modifier.tooltip("renderSchematic = true"), renderSchematic = true)
+            }
+            // vertical padding: ContentScale.None draws the 96 px tall sprite past its 60 px box
+            Row(Size.fillMaxWidth(), Modifier.padding(horizontal = 0f, vertical = 18f), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                for (scale in ContentScale.entries) {
+                    Column(Size.wrapContent(), horizontalAlignment = Alignment.CenterHorizontally, spacing = 2f) {
+                        Box(Size.exact(90f, 60f), Modifier.background(INSET_BG)) {
+                            Image(tall, Size.exact(90f, 60f), contentScale = scale)
+                        }
+                        Text(scale.name, color = GRAY)
+                    }
+                }
+                Column(Size.wrapContent(), horizontalAlignment = Alignment.CenterHorizontally, spacing = 2f) {
+                    Box(Size.exact(90f, 60f), Modifier.background(INSET_BG)) {
+                        Image(tall, ImageSize.aspectWrap(), Modifier.align(Alignment.Center))
+                    }
+                    Text("aspectWrap()", color = GRAY)
+                }
+            }
+        }
+
+        Section("ShipDisplay options") {
+            val lasher = Global.getSettings().getVariant("lasher_Assault")
+            val heron = Global.getFactory().createFleetMember(FleetMemberType.SHIP, "heron_Strike")
+            val lasherMember = Global.getFactory().createFleetMember(FleetMemberType.SHIP, "lasher_Assault")
+            Row(Size.fillMaxWidth(), spacing = 6f) {
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, showFighters = true"), fleetMember = heron, showFighters = true)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("style = MINI"), variant = lasher, style = BoxedUIShipPreview.Style.MINI)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("showBorder, borderColor"), variant = lasher, showBorder = true, borderColor = BRIGHT)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, isDisabled = true"), fleetMember = lasherMember, isDisabled = true)
+            }
+            Row(Size.fillMaxWidth(), spacing = 6f) {
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, color = highlight, tintAlpha = 0.6"), fleetMember = lasherMember,
+                    color = HIGHLIGHT, tintAlpha = 0.6f)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("isSchematicMode, scanlineAlpha = 1"), variant = lasher,
+                    isSchematicMode = true, scanlineAlpha = 1f)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("scaleSmallerShips = 0.5"), variant = lasher, scaleSmallerShips = 0.5f)
+            }
+            // vanilla draws the title and subtitle under the ship, at its own size: give it the room
+            ShipDisplay(Size.exact(240f, 150f), fleetMember = lasherMember, title = "Lasher", subtitle = "title and subtitle")
+        }
+
+        Section("More modifiers: border, onHover, keys, tooltip builder") {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                Box(Size.exact(90f, 36f), Modifier.border(1f, BASE)) { Text("border(1)", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.exact(90f, 36f), Modifier.border(3f, HIGHLIGHT)) { Text("border(3)", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG).tooltip(width = 320f) {
+                    addSectionHeading("Built with TooltipMakerAPI", com.fs.starfarer.api.ui.Alignment.MID, 0f)
+                    addPara("Any vanilla tooltip content: %s, %s and more.", 6f, HIGHLIGHT, "highlights", "headings")
+                }) { Text("tooltip { builder }", modifier = Modifier.align(Alignment.Center)) }
+            }
+            lateinit var hoverLabel: LabelAPI
+            CustomPanel(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG)
+                .onHover { event -> hoverLabel.text = "onHover: mouse at ${event.x}, ${event.y}" }
+                .onHoverExit { hoverLabel.text = "Move the mouse here (onHover)" }) {
+                hoverLabel = Text("Move the mouse here (onHover)", modifier = Modifier.anchor(Anchor.inside.center.ofParent()))
+            }
+            lateinit var keyLabel: LabelAPI
+            var repeats = 0
+            CustomPanel(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG)
+                .onKeyHeld { repeats++; keyLabel.text = "onKeyHeld: $repeats repeats" }
+                .onKeyUp { event -> keyLabel.text = "onKeyUp: ${Keyboard.getKeyName(event.eventValue)} after $repeats repeats"; repeats = 0 }) {
+                keyLabel = Text("Hold any key, then let go (onKeyHeld, onKeyUp)", modifier = Modifier.anchor(Anchor.inside.center.ofParent()))
+            }
+        }
+
+        Section("VanillaColors") {
+            val colours = listOf("base" to VanillaColors.base, "dark" to VanillaColors.dark, "bright" to VanillaColors.bright,
+                "text" to VanillaColors.text, "gray" to VanillaColors.gray, "highlight" to VanillaColors.highlight,
+                "positive" to VanillaColors.positive, "negative" to VanillaColors.negative, "story" to VanillaColors.story,
+                "storyDark" to VanillaColors.storyDark, "storyBright" to VanillaColors.storyBright, "panel" to VanillaColors.panel)
+            for (row in colours.chunked(4)) Row(Size.fillMaxWidth(), spacing = 6f) {
+                for ((name, colour) in row) Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                    Spacer(Size.exact(16f, 16f), Modifier.background(colour).border(1f, GRAY.withAlpha(80)))
+                    Text(name, color = GRAY)
                 }
             }
         }
