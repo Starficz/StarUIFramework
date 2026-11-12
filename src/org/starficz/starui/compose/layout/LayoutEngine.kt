@@ -40,7 +40,7 @@ internal fun measureChildPaddedIntrinsic(
     val rawIntrinsic = if (plugin.childMeasurables.containsKey(child)) {
         plugin.childMeasurables[child]!!.invoke(contentAvailW, contentAvailH)
     } else if (childPlugin?.layoutEngine != null) {
-        childPlugin.layoutEngine!!.measure(contentAvailW, contentAvailH)
+        childPlugin.measure(contentAvailW, contentAvailH)
     } else {
         Pair(child.width, child.height)
     }

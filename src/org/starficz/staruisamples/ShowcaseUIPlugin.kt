@@ -240,20 +240,45 @@ object ShowcaseUIPlugin {
             }
         }
 
-        Section("ScrollPanel options") {
-            Row(Size.fillMaxWidth(height = 110f), spacing = 8f) {
-                Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(isLeftScrollbar = true, scrollWidgetColor = BRIGHT))) {
-                    Column(Size.fillMaxSize(), Modifier.background(INSET_BG), horizontalAlignment = Alignment.CenterHorizontally,
-                        spacing = 2f, overflow = Overflow.ScrollVertical) {
-                        Text("isLeftScrollbar, centred,", color = HIGHLIGHT)
-                        Text("scrollWidgetColor", color = HIGHLIGHT)
-                        for (i in 1..12) Text("Line $i")
+        Section("Overflow: clip and scroll, per axis") {
+            Text("Clip cuts children at the edge; Visible (the default) lets them spill out.", color = GRAY)
+            Row(Size.fillMaxWidth(height = 64f), spacing = 56f) {
+                for ((name, overflow) in listOf("Clip" to Overflow.Clip, "Visible" to Overflow.Visible)) {
+                    Box(Size.exact(110f, 40f), Modifier.border(1f, BRIGHT), overflow = overflow) {
+                        Box(Size.exact(150f, 56f), Modifier.background(INSET_BG).padding(4f)) { Text("$name: a child bigger than its box", color = HIGHLIGHT) }
                     }
                 }
-                Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(renderShadows = false, showScrollbars = false))) {
-                    Column(Size.fillMaxSize(), Modifier.background(INSET_BG), spacing = 2f, overflow = Overflow.ScrollVertical) {
-                        Text("no shadows, no scrollbar", color = HIGHLIGHT)
-                        Text("(the wheel still scrolls)", color = GRAY)
+            }
+            Text("ScrollHorizontal: the wheel scrolls it (no vertical overflow)", color = GRAY)
+            Row(Size.fillMaxWidth(height = 64f), Modifier.background(INSET_BG), spacing = 6f,
+                verticalAlignment = Alignment.CenterVertically, overflow = Overflow.ScrollHorizontal) {
+                for (i in 1..12) Box(Size.exact(84f, 48f), Modifier.background(DARK).padding(4f)) { Text("Card $i", color = TEXT) }
+            }
+            Text("Scroll (2D): wheel for y, Shift+wheel for x, right-drag to pan", color = GRAY)
+            Box(Size.fillMaxWidth(height = 130f), Modifier.background(INSET_BG), overflow = Overflow.Scroll) {
+                Column(Size.wrapContent(), spacing = 2f) {
+                    for (r in 1..14) Row(Size.wrapContent(), spacing = 2f) {
+                        for (c in 1..12) Box(Size.exact(58f, 22f), Modifier.background(if ((r + c) % 2 == 0) DARK else INSET_BG)) {
+                            Text("$r,$c", color = if (r == 1 || c == 1) HIGHLIGHT else TEXT, modifier = Modifier.align(Alignment.Center))
+                        }
+                    }
+                }
+            }
+            Text("A fill spacer pins the footer to the bottom until the list overflows", color = GRAY)
+            Row(Size.fillMaxWidth(height = 110f), spacing = 8f) {
+                Column(Size.fillMaxSize(), Modifier.background(INSET_BG).padding(4f), spacing = 2f, overflow = Overflow.ScrollVertical) {
+                    for (i in 1..overflowLines.value) Text("Line $i")
+                    Spacer(Size.fillMaxHeight(width = 1f))
+                    Row(Size.fillMaxWidth(), spacing = 4f) {
+                        Button("Add") { overflowLines.value++ }
+                        Button("Remove") { if (overflowLines.value > 0) overflowLines.value-- }
+                    }
+                }
+                Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(isLeftScrollbar = true, scrollWidgetColor = BRIGHT, renderShadows = false))) {
+                    Column(Size.fillMaxSize(), Modifier.background(INSET_BG), horizontalAlignment = Alignment.CenterHorizontally,
+                        spacing = 2f, overflow = Overflow.ScrollVertical) {
+                        Text("theme: left scrollbar,", color = HIGHLIGHT)
+                        Text("widget colour, no shadows", color = HIGHLIGHT)
                         for (i in 1..12) Text("Line $i")
                     }
                 }
@@ -264,6 +289,7 @@ object ShowcaseUIPlugin {
     // =================================================================================================================
     // Second band, column 2: every control option
     // =================================================================================================================
+    private val overflowLines = UIState(2)
     private val buttonsEnabled = UIState(false)
     private val hullSizes = listOf("Frigate", "Destroyer", "Cruiser", "Capital").map { it to UIState(it == "Frigate") }
     private val shipName = UIState("")

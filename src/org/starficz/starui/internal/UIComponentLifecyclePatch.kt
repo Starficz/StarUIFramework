@@ -369,7 +369,7 @@ object UIPanelContainerPatch {
     fun onChildRemoved(context: AfterContext) {
         val panel = context.self as? UIPanelAPI ?: return
         val plugin = StarUIPanelPlugin.getAttached(panel) ?: return
-        if (plugin.layoutEngine == null) return
+        if (plugin.layoutEngine == null || plugin.swappingChild) return
         // A Column or Row places each child relative to the one before it. If that one is gone, the engine refuses
         // the next resize ("May only anchor on siblings"), so pin the rest where they are until the next layout.
         if (plugin.isStackLayout) plugin.pinChildrenToPanel()
@@ -393,7 +393,7 @@ object UIPanelContainerPatch {
     private fun requestLayoutOf(self: Any?) {
         val panel = self as? UIPanelAPI ?: return
         val plugin = StarUIPanelPlugin.getAttached(panel) ?: return
-        if (plugin.layoutEngine != null) plugin.requestLayout()
+        if (plugin.layoutEngine != null && !plugin.swappingChild) plugin.requestLayout()
     }
 
     @JvmStatic

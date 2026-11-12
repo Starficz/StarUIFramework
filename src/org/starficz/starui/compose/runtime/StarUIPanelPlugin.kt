@@ -52,6 +52,23 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         @Volatile
         internal var hasAnyPlugins = false
 
+        /**
+         * Counts layout passes (one per [runLayout] that measures). A node's measure result is reused within one pass
+         * when it is asked again with the same room ([measure]): every container level would otherwise measure its
+         * whole subtree again (a Box measures its children once more when it lays them out, a Column or Row measures
+         * cross-filling children until their size settles, a scrolling container when its content outgrows it),
+         * which multiplies with nesting.
+         */
+        internal var layoutPass = 0L
+
+        /** Debugging: the next this-many [requestLayout] calls log a stack trace. */
+        @JvmField
+        internal var traceLayoutRequests = 0
+
+        /** Number of [requestLayout] calls so far. For tests. */
+        @JvmField
+        internal var layoutRequests = 0L
+
         /** A number larger than the serial of every plugin created so far. */
         internal fun nextSerial(): Long = ++serialCounter
 
@@ -136,6 +153,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal var isStackLayout: Boolean = false
     internal var layoutEngine: LayoutEngine? = null
     internal var isTopLevelNode: Boolean = false
+    /** True while a layout engine swaps one of this panel's children itself: the change needs no new layout. */
+    internal var swappingChild = false
     private var hasLayoutRun = false
 
     /** Number of measure + layout passes this node's own engine has started (as a layout root). For tests and tuning. */
@@ -296,6 +315,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     private fun runEngine() {
         layoutEngine?.let { engine ->
             layoutPassCount++
+            layoutPass++
             val p = component.parent
             val rootMaxWidth = if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
             val rootMaxHeight = if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
@@ -324,8 +344,39 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
+    private var measuredPass = -1L
+    private var measuredW = 0f
+    private var measuredH = 0f
+    private var measuredSize: NodeSize? = null
+    private var measuredResult: Pair<Float, Float>? = null
+
+    /**
+     * This node's engine's measure, reused when the same layout pass asks again with the same room and the same
+     * node size (see [layoutPass]). The engine keeps what the last measure found for its layout, so the result is
+     * only reused while that last measure is the matching one, and never after the node was laid out.
+     */
+    internal fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
+        val engine = layoutEngine ?: return Pair(component.width, component.height)
+        val cached = measuredResult
+        if (cached != null && measuredPass == layoutPass && measuredW == maxWidth && measuredH == maxHeight &&
+            measuredSize == myNodeSize) return cached
+        val result = engine.measure(maxWidth, maxHeight)
+        measuredPass = layoutPass
+        measuredW = maxWidth
+        measuredH = maxHeight
+        measuredSize = myNodeSize
+        measuredResult = result
+        return result
+    }
+
+    /** Forgets the cached measure (after a layout, which uses up what the engine measured). */
+    internal fun forgetMeasure() {
+        measuredResult = null
+    }
+
     /** Called by the parent's engine once it has sized and laid out this node. */
     internal fun markLayoutResolved() {
+        forgetMeasure()
         hasLayoutRun = true
         fireLayoutCallbacks()
     }
@@ -352,6 +403,12 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * example). It only sets flags, so it is cheap and safe to call from event handlers.
      */
     fun requestLayout() {
+        layoutRequests++
+        if (traceLayoutRequests > 0) {
+            traceLayoutRequests--
+            org.apache.log4j.Logger.getLogger(StarUIPanelPlugin::class.java)
+                .info("StarUI layout request from ${kind ?: component.javaClass.simpleName}", Throwable("trace"))
+        }
         var node = this
         while (true) {
             node.hasLayoutRun = false

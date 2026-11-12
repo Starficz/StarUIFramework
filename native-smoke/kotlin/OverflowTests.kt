@@ -341,4 +341,27 @@ fun registerOverflowTests() {
         expect(pageSp.yOffset > pageBefore, "at the inner list's end the wheel scrolls the page (${pageSp.yOffset})")
         screenshot("final")
     }
+
+    StarUITestSuite.group("showcase-idle-layout") {
+        // the showcase reads the player faction's colours: a sector is needed (left in place: vanilla code that ran
+        // meanwhile may hold on to it)
+        if (com.fs.starfarer.api.Global.getSector() == null) com.fs.starfarer.api.Global.setSector(com.fs.starfarer.campaign.CampaignEngine.getInstance())
+        val build = org.starficz.staruisamples.ShowcaseUIPlugin.Plugin().addPanelToTitleScreen
+        val t0 = System.nanoTime()
+        root.CustomPanel(Size.exact(screenW, screenH)) { build() }
+        frame(1)
+        log("showcase first build + layout: ${(System.nanoTime() - t0) / 1_000_000} ms")
+        frame(10)
+        val before = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests
+        org.starficz.starui.compose.runtime.StarUIPanelPlugin.traceLayoutRequests = 5
+        val t1 = System.nanoTime()
+        for (i in 0 until 20) frame(1)
+        log("20 idle showcase frames: ${(System.nanoTime() - t1) / 1_000_000} ms")
+        org.starficz.starui.compose.runtime.StarUIPanelPlugin.traceLayoutRequests = 0
+        val requests = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests - before
+        // its two status labels change text twice a second; anything per frame is a bug (a layout every frame)
+        expect(requests <= 4L, "the idle showcase does not lay out every frame ($requests requests in 20 frames; traces in the log)")
+        screenshot("final")
+        root.clearChildren()
+    }
 }

@@ -26,34 +26,57 @@ internal class VanillaElementEngine(private val plugin: StarUIPanelPlugin) : Lay
         private set
     private var builtWidth = Float.NaN
 
+    /**
+     * Components made for widths a measure asked about, not attached. A container is often measured at a few widths
+     * before its parent settles; making the component for each is unavoidable (vanilla builds at a width), but
+     * swapping the attached one each time would ask for another layout every pass.
+     */
+    private val measured = LinkedHashMap<Float, UIComponentAPI>()
+
     /** Makes the component again on the next layout (its arguments changed). */
     fun invalidate() {
         builtWidth = Float.NaN
+        measured.clear()
         plugin.requestLayout()
     }
 
     private fun widthFor(room: Float): Float =
         fixedWidth ?: if (room == Float.MAX_VALUE || room <= 0f) fallbackWidth else room
 
-    private fun ensure(width: Float): UIComponentAPI {
+    /** The component for [width]: the attached one, a measured one, or a new one. Not attached here. */
+    private fun forWidth(width: Float): UIComponentAPI {
         val existing = current
         if (existing != null && existing.parent === plugin.panel && width == builtWidth) return existing
-        if (existing != null && existing.parent === plugin.panel) plugin.panel.removeComponent(existing)
+        measured[width]?.let { return it }
         val made = build(width)
-        plugin.panel.addComponent(made).inTL(0f, 0f)
-        current = made
-        builtWidth = width
-        afterBuild?.invoke(made)
+        measured[width] = made
+        if (measured.size > 4) measured.remove(measured.keys.first())
         return made
     }
 
     override fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
-        val made = ensure(widthFor(maxWidth))
+        val made = forWidth(widthFor(maxWidth))
         return Pair(made.width, made.height)
     }
 
     override fun layout(assignedWidth: Float, assignedHeight: Float) {
-        val made = ensure(widthFor(assignedWidth))
+        val width = widthFor(assignedWidth)
+        val made = forWidth(width)
+        val existing = current
+        if (made !== existing || existing?.parent !== plugin.panel) {
+            // swapped during this layout: the container's size already accounts for it, so no new layout is needed
+            plugin.swappingChild = true
+            try {
+                if (existing != null && existing.parent === plugin.panel) plugin.panel.removeComponent(existing)
+                plugin.panel.addComponent(made).inTL(0f, 0f)
+            } finally {
+                plugin.swappingChild = false
+            }
+            measured.remove(width)
+            current = made
+            builtWidth = width
+            afterBuild?.invoke(made)
+        }
         made.position.inTL(0f, 0f)
         afterLayout?.invoke(made)
     }

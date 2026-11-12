@@ -43,7 +43,7 @@ internal class ViewportLayoutEngine(
         )
         val engine = content.layoutEngine
         needed = if (engine != null) {
-            val measured = engine.measure(roomW, roomH)
+            val measured = content.measure(roomW, roomH)
             engine.contentSize ?: measured
         } else {
             // A CustomPanel places its children by anchors: what it needs is how far they reach from its top left.
