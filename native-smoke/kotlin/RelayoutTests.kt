@@ -78,6 +78,26 @@ fun registerRelayoutTests() {
         screenshot("final")
     }
 
+    StarUITestSuite.group("relayout-remove-middle-child") {
+        // Stack children are anchored on their previous sibling; removing one in the middle used to leave the next
+        // child anchored on a component that is no longer there, and the engine threw "May only anchor on siblings".
+        lateinit var middle: CustomPanelAPI
+        lateinit var last: CustomPanelAPI
+        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+            Spacer(PanelSize.exact(100f, 20f), Modifier.background(RED))
+            middle = Spacer(PanelSize.exact(100f, 20f), Modifier.background(GREEN))
+            last = Spacer(PanelSize.exact(100f, 20f), Modifier.background(BLUE))
+        }
+        frame()
+        near(last.relTop(col), 50f, "the last child starts after two others")
+        col.removeComponent(middle)
+        val error = thrown { frame() }
+        expect(error == null, "removing a middle child does not break the next layout (got $error)")
+        near(last.relTop(col), 25f, "the last child moves up into the gap")
+        near(col.h, 45f, "the Column shrinks")
+        screenshot("final")
+    }
+
     StarUITestSuite.group("relayout-text-change") {
         lateinit var label: BoxedUILabel
         lateinit var next: CustomPanelAPI

@@ -33,6 +33,7 @@ import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.actual
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.border
+import org.starficz.starui.compose.runtime.ChildSlot
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
@@ -41,7 +42,9 @@ import org.starficz.starui.compose.wrapPadding
 import org.starficz.starui.core.BoxedScrollPanel
 import org.starficz.starui.core.children
 import org.starficz.starui.core.setPlugin
+import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
+import org.starficz.starui.core.width
 import java.awt.Color
 
 @DslMarker
@@ -96,16 +99,84 @@ internal fun UIPanelAPI.checkDslTarget() {
     )
 }
 
+/**
+ * Called by every component function before it creates anything. It fixes this call's `key(...)` and, when the
+ * surrounding builder is running again, looks for the old child this call should update instead of creating a new
+ * one. [props] are the arguments that cannot be changed on a live native object; an old child is only reused when
+ * its props are equal.
+ */
+internal fun UIPanelAPI.childSlot(kind: String, props: Any? = null): ChildSlot {
+    val container = StarUIContext.currentPluginOrNull
+    val key = StarUIContext.nextKey()
+    val cursor = container?.reuseCursor
+    val record = if (cursor != null && cursor.isFor((this as? BoxedScrollPanel)?.contentContainer ?: this)) {
+        cursor.take(kind, key, props)
+    } else null
+    return ChildSlot(container, kind, key, props, record)
+}
+
+/**
+ * Sizes a reused component the way a new one would start, except on an axis only the layout pass can resolve (Fill,
+ * or Wrap without a known content size): that axis keeps its current size, so a reused component does not collapse
+ * for a moment and a ScrollPanel does not lose its scroll position.
+ */
+internal fun applyReuseBounds(component: UIComponentAPI, size: StarUISizing, intrinsic: Pair<Float, Float>? = null) {
+    val (initW, initH) = getInitialBounds(size, intrinsic)
+    val keepW = when (size) {
+        is Mixed -> size.x is Axis.Fill || (size.x is Axis.Wrap && intrinsic == null)
+        is AspectWrapImage -> true
+        else -> false
+    }
+    val keepH = when (size) {
+        is Mixed -> size.y is Axis.Fill || (size.y is Axis.Wrap && intrinsic == null)
+        is AspectWrapImage -> true
+        else -> false
+    }
+    val w = if (keepW) component.width else initW
+    val h = if (keepH) component.height else initH
+    if (w != component.width || h != component.height) component.setSize(w, h)
+}
+
+/** The CustomPanel for a container call: the reused one, or a new one with a fresh plugin added to this panel. */
+private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: StarUISizing): Pair<CustomPanelAPI, StarUIPanelPlugin> {
+    val reused: CustomPanelAPI? = slot.reused()
+    if (reused != null) {
+        applyReuseBounds(reused, size)
+        return Pair(reused, reused.plugin as StarUIPanelPlugin)
+    }
+    val (initW, initH) = getInitialBounds(size)
+    val plugin = StarUIPanelPlugin()
+    val panel = Global.getSettings().createCustom(initW, initH, plugin)
+    plugin.customPanel = panel
+    this.addComponent(panel)
+    return Pair(panel, plugin)
+}
+
+/**
+ * Gives the components emitted directly inside [block] a stable identity within their container.
+ *
+ * When a builder runs again, StarUI matches each component call to an old child of the same kind in order. That is
+ * right for fixed layouts, but in a list whose items are inserted, removed or reordered it hands an item the native
+ * objects of a different item (a text field keeps the focus of the row that used to be there, a ScrollPanel its
+ * scroll position). Wrap each item in `key(item.id) { ... }` and its components follow the item:
+ *
+ * ```
+ * for (ship in ships.value) key(ship.id) {
+ *     Row { Text(ship.name); TextField(ship.note) }
+ * }
+ * ```
+ *
+ * Keys must be unique within one container and should have a stable `equals` (ids, strings, numbers).
+ */
+fun <R> key(id: Any, block: () -> R): R = StarUIContext.withKey(id, block)
+
 internal fun registerComponentSizing(
     component: UIComponentAPI,
     size: StarUISizing,
     isContainer: Boolean,
-    containerPlugin: StarUIPanelPlugin? = null,
-    kind: String? = null
+    containerPlugin: StarUIPanelPlugin? = null
 ) {
     val actual = component.actual
-    // What the component is, for layout dumps and for matching old children when a builder runs again.
-    if (kind != null) StarUIContext.currentPluginOrNull?.childKinds?.set(actual, kind)
     val nodeSize = size.toNodeSize()
     val (wrapPadX, wrapPadY) = size.wrapPadding()
 
@@ -141,7 +212,6 @@ internal fun registerComponentSizing(
         val selfPlugin = StarUIPanelPlugin.getOrCreate(actual)
         selfPlugin.myNodeSize = nodeSize
         selfPlugin.isTopLevelNode = true
-        if (kind != null) selfPlugin.kind = kind
     }
 }
 
@@ -168,14 +238,11 @@ fun UIPanelAPI.CustomPanel(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     checkDslTarget()
-    val plugin = StarUIPanelPlugin()
-    val (initW, initH) = getInitialBounds(size)
+    val slot = childSlot("CustomPanel")
+    val (panel, plugin) = containerPanel(slot, size)
 
-    val panel = Global.getSettings().createCustom(initW, initH, plugin)
-    plugin.customPanel = panel
-
-    this.addComponent(panel)
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
+    slot.remember(panel, panel)
 
     modifier.operations.forEach { it(panel) }
 
@@ -223,15 +290,12 @@ fun UIPanelAPI.Box(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     checkDslTarget()
-    val plugin = StarUIPanelPlugin()
-    val (initW, initH) = getInitialBounds(size)
-
-    val panel = Global.getSettings().createCustom(initW, initH, plugin)
-    plugin.customPanel = panel
+    val slot = childSlot("Box")
+    val (panel, plugin) = containerPanel(slot, size)
     plugin.layoutEngine = BoxLayoutEngine(plugin)
 
-    this.addComponent(panel)
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
+    slot.remember(panel, panel)
 
     modifier.operations.forEach { it(panel) }
 
@@ -250,12 +314,10 @@ internal fun UIPanelAPI.StackLayout(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit
 ): CustomPanelAPI {
     checkDslTarget()
-    val plugin = StarUIPanelPlugin()
+    val kind = if (direction.isVertical) "Column" else "Row"
+    val slot = childSlot(kind)
+    val (panel, plugin) = containerPanel(slot, size)
     plugin.isStackLayout = true
-    val (initW, initH) = getInitialBounds(size)
-
-    val panel = Global.getSettings().createCustom(initW, initH, plugin)
-    plugin.customPanel = panel
 
     val padX = if (direction.isVertical) secondaryPadding else primaryPadding
     val padY = if (direction.isVertical) primaryPadding else secondaryPadding
@@ -268,12 +330,12 @@ internal fun UIPanelAPI.StackLayout(
         spacing = spacing
     )
 
-    this.addComponent(panel)
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
+    slot.remember(panel, panel)
 
     modifier.operations.forEach { it(panel) }
 
-    plugin.attachScope(if (direction.isVertical) "Column" else "Row", builder) { panel.builder() }
+    plugin.attachScope(kind, builder) { panel.builder() }
     return panel
 }
 
@@ -389,17 +451,27 @@ fun UIPanelAPI.ScrollPanel(
     builder: (@StarUIDsl BoxedScrollPanel).() -> Unit = {}
 ): BoxedScrollPanel {
     checkDslTarget()
+    val slot = childSlot("ScrollPanel")
     val (initW, initH) = getInitialBounds(size)
 
-    // 1. Spawn the genuine vanilla ScrollPanel
-    val tempPanel = Global.getSettings().createCustom(initW, initH, null)
-    val tempTMAPI = tempPanel.createUIElement(initW, initH, true)
-    tempPanel.addUIElement(tempTMAPI)
-    val vanillaScroll = tempPanel.children[0] as ScrollPanelAPI
-    vanillaScroll.removeComponent(tempTMAPI)
+    // 1. Spawn the genuine vanilla ScrollPanel, or keep the one from the previous build (and its scroll position)
+    val reused: BoxedScrollPanel? = slot.reused()
+    val boxedScroll: BoxedScrollPanel
+    val vanillaScroll: ScrollPanelAPI
+    if (reused != null) {
+        boxedScroll = reused
+        vanillaScroll = reused.scrollPanel
+        applyReuseBounds(vanillaScroll, size)
+    } else {
+        val tempPanel = Global.getSettings().createCustom(initW, initH, null)
+        val tempTMAPI = tempPanel.createUIElement(initW, initH, true)
+        tempPanel.addUIElement(tempTMAPI)
+        vanillaScroll = tempPanel.children[0] as ScrollPanelAPI
+        vanillaScroll.removeComponent(tempTMAPI)
 
-    val boxedScroll = BoxedScrollPanel(vanillaScroll)
-    boxedScroll.setSize(initW, initH)
+        boxedScroll = BoxedScrollPanel(vanillaScroll)
+        boxedScroll.setSize(initW, initH)
+    }
 
     // 2. Apply declarative properties directly to the ScrollPanel
     boxedScroll.isLeftScrollbar = isLeftScrollbar
@@ -411,11 +483,12 @@ fun UIPanelAPI.ScrollPanel(
     boxedScroll.setShowScrollbars(showScrollbars)
     boxedScroll.setUseMWheel(useMouseWheel)
 
-    this.addComponent(vanillaScroll)
+    if (reused == null) this.addComponent(vanillaScroll)
 
     // 3. Attach StarUIPanelPlugin directly to the ScrollPanel's internal contentContainer
     val contentContainer = boxedScroll.contentContainer
     val contentPlugin = StarUIPanelPlugin.getOrCreate(contentContainer)
+    if (reused != null) contentPlugin.resetForReuse()
     contentPlugin.isStackLayout = true
     contentPlugin.myNodeSize = NodeSize(Dimension.FillMax(1f), Dimension.WrapContent)
     contentPlugin.myPadding = PaddingValues(left = xPadding, top = yPadding, right = xPadding, bottom = yPadding)
@@ -461,6 +534,7 @@ fun UIPanelAPI.ScrollPanel(
     }
 
     registerComponentSizing(vanillaScroll, size, isContainer = true, containerPlugin = outerPlugin)
+    slot.remember(vanillaScroll, boxedScroll)
 
     // 5. Outer Modifiers apply directly to the ScrollPanel!
     modifier.operations.forEach { it(boxedScroll) }

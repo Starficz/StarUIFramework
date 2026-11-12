@@ -219,6 +219,7 @@ object StarUITestSuite {
         registerRelayoutTests()
         registerScopeTests()
         registerReactiveTests()
+        registerReuseTests()
         registerToolingTests()
         registerGuardTests()
         registerInputTests()

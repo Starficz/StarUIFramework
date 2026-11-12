@@ -38,6 +38,27 @@ internal object StarUIContext {
         }
     }
 
+    // ---- key(...) blocks: the identity given to the components emitted directly inside one ----
+    class KeyFrame(val id: Any) { var emitted = 0 }
+    private val keyStack = ThreadLocal.withInitial { mutableListOf<KeyFrame?>() }
+
+    /** [id] == null hides an outer key block (used while a nested container builds its own children). */
+    inline fun <R> withKey(id: Any?, block: () -> R): R {
+        val stack = keyStack.get()
+        stack.add(if (id == null) null else KeyFrame(id))
+        try {
+            return block()
+        } finally {
+            stack.removeAt(stack.lastIndex)
+        }
+    }
+
+    /** The key for the component being emitted now, or null outside a key block. Each call uses up one position. */
+    fun nextKey(): Any? {
+        val frame = keyStack.get().lastOrNull() ?: return null
+        return Pair(frame.id, frame.emitted++)
+    }
+
     /** Runs [block] with read tracking off: UIState reads inside it do not subscribe the scope being built. */
     inline fun <R> untracked(block: () -> R): R = withScope(null, block)
 

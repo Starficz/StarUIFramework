@@ -19,6 +19,7 @@ import org.starficz.starui.core.addAreaCheckbox
 import org.starficz.starui.core.addButton
 import org.starficz.starui.core.addCheckbox
 import org.starficz.starui.core.addTextField
+import org.starficz.starui.core.clearOnClick
 import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.onClick
 import java.awt.Color
@@ -38,11 +39,21 @@ fun UIPanelAPI.TextField(
         return Pair(maxOf(tw, 50f), maxOf(th, 20f))
     }
 
-    val (initW, initH) = getInitialBounds(size, calcIntrinsic())
-    val textField = this.addTextField(initW, initH, font)
-    if (hint != null) textField.invoke("setHint", hint)
+    // A reused field keeps its caret, selection and keyboard focus; font and hint are fixed when it is made.
+    val slot = childSlot("TextField", listOf(font, hint))
+    val reused: TextFieldAPI? = slot.reused()
+    val textField: TextFieldAPI
+    if (reused != null) {
+        textField = reused
+        applyReuseBounds(textField, size, calcIntrinsic())
+    } else {
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        textField = this.addTextField(initW, initH, font)
+        if (hint != null) textField.invoke("setHint", hint)
+    }
 
-    registerComponentSizing(textField, size, isContainer = false, kind = "TextField")
+    registerComponentSizing(textField, size, isContainer = false)
+    slot.remember(textField, textField)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[textField] = { _, _ -> calcIntrinsic() }
     }
@@ -50,7 +61,7 @@ fun UIPanelAPI.TextField(
     modifier.operations.forEach { it(textField) }
 
     val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(textField)
-    textField.text = bind.peek()
+    if (textField.text != bind.peek()) textField.text = bind.peek()
     bind.onChange(ownerPlugin) { newValue ->
         if (textField.text != newValue) textField.text = newValue
     }
@@ -81,10 +92,22 @@ fun UIPanelAPI.Button(
         return measureTextSize(text, font)
     }
 
-    val (initW, initH) = getInitialBounds(size, calcIntrinsic())
-    val btn = this.addButton(text, null, baseColor, bgColor, align, cutStyle, initW, initH, font, shortcut)
+    // Colours, font, alignment, cut style and shortcut are fixed when a native button is made; the label is not.
+    val slot = childSlot("Button", listOf(baseColor, bgColor, font, align, cutStyle, shortcut))
+    val reused: ButtonAPI? = slot.reused()
+    val btn: ButtonAPI
+    if (reused != null) {
+        btn = reused
+        if (btn.text != text) btn.text = text
+        btn.clearOnClick()
+        applyReuseBounds(btn, size, calcIntrinsic())
+    } else {
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        btn = this.addButton(text, null, baseColor, bgColor, align, cutStyle, initW, initH, font, shortcut)
+    }
 
-    registerComponentSizing(btn, size, isContainer = false, kind = "Button")
+    registerComponentSizing(btn, size, isContainer = false)
+    slot.remember(btn, btn)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[btn] = { _, _ -> calcIntrinsic() }
     }
@@ -113,14 +136,24 @@ fun UIPanelAPI.AreaCheckbox(
         return measureTextSize(text, font)
     }
 
-    val (initW, initH) = getInitialBounds(size, calcIntrinsic())
     val validGroup = (buttonGroup != null && bind != null)
 
-    val button = this.addAreaCheckbox(
-        text, null, baseColor, bgColor, brightColor, initW, initH, font, leftAlign
-    )
+    val slot = childSlot("AreaCheckbox", listOf(text, baseColor, bgColor, brightColor, font, leftAlign))
+    val reused: ButtonAPI? = slot.reused()
+    val button: ButtonAPI
+    if (reused != null) {
+        button = reused
+        button.clearOnClick()
+        applyReuseBounds(button, size, calcIntrinsic())
+    } else {
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        button = this.addAreaCheckbox(
+            text, null, baseColor, bgColor, brightColor, initW, initH, font, leftAlign
+        )
+    }
 
-    registerComponentSizing(button, size, isContainer = false, kind = "AreaCheckbox")
+    registerComponentSizing(button, size, isContainer = false)
+    slot.remember(button, button)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }
@@ -158,12 +191,22 @@ fun UIPanelAPI.Checkbox(
         return Pair(tw + boxSize, maxOf(th, boxSize))
     }
 
-    val (initW, initH) = getInitialBounds(size, calcIntrinsic())
     val validGroup = (buttonGroup != null && bind != null)
 
-    val button = this.addCheckbox(initW, initH, text, null, font, color, checkboxSize)
+    val slot = childSlot("Checkbox", listOf(text, checkboxSize, font, color))
+    val reused: ButtonAPI? = slot.reused()
+    val button: ButtonAPI
+    if (reused != null) {
+        button = reused
+        button.clearOnClick()
+        applyReuseBounds(button, size, calcIntrinsic())
+    } else {
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        button = this.addCheckbox(initW, initH, text, null, font, color, checkboxSize)
+    }
 
-    registerComponentSizing(button, size, isContainer = false, kind = "Checkbox")
+    registerComponentSizing(button, size, isContainer = false)
+    slot.remember(button, button)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }

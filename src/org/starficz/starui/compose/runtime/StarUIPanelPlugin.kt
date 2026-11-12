@@ -20,6 +20,7 @@ import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIElement
 import org.starficz.starui.core.applyAnchor
 import org.starficz.starui.core.bottom
+import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.left
 import org.starficz.starui.core.parent
@@ -153,7 +154,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal val childPadding = mutableMapOf<UIComponentAPI, PaddingValues>()
     internal val childMargins = mutableMapOf<UIComponentAPI, Margin>()
     internal val childInnerOffset = mutableMapOf<UIComponentAPI, Pair<Float, Float>>()
-    internal val childKinds = mutableMapOf<UIComponentAPI, String>()
+    /** The children the last build made through component functions, for dumps and for reuse on the next build. */
+    internal val childRecords = mutableMapOf<UIComponentAPI, ChildRecord>()
+
+    /** Set while this container's builder runs again: the old children its calls may reuse. */
+    internal var reuseCursor: ReuseCursor? = null
 
     // Positioning maps (Box uses Alignments, Absolute uses Anchors)
     internal val childAlignments = mutableMapOf<UIComponentAPI, Alignment>()
@@ -274,7 +279,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         fireLayoutCallbacks()
     }
 
+    private var hasEverLaidOut = false
+
     private fun fireLayoutCallbacks() {
+        hasEverLaidOut = true
         if (onFirstLayoutFunctions.isNotEmpty()) {
             val first = onFirstLayoutFunctions.toList()
             onFirstLayoutFunctions.clear()
@@ -325,10 +333,39 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * builder lambda) are only used to name the scope in error messages.
      */
     internal fun attachScope(kind: String, source: Any, builder: () -> Unit) {
-        if (this.kind == null) this.kind = kind
-        val created = Scope(this, StarUIContext.currentTheme, kind, source.javaClass.name.substringBefore("$$"), builder)
+        this.kind = kind
+        val declaredIn = source.javaClass.name.substringBefore("$$")
+        val existing = scope
+        if (existing != null && !existing.disposed) {
+            // A reused container: the enclosing builder ran again, so this block is a new lambda that may have
+            // captured new values. Run it, reusing this container's own children in turn.
+            existing.adopt(StarUIContext.currentTheme, kind, declaredIn, builder)
+            existing.rebuild()
+            return
+        }
+        val created = Scope(this, StarUIContext.currentTheme, kind, declaredIn, builder)
         scope = created
         created.build()
+    }
+
+    /**
+     * Back to a blank plugin before the component function that made this component configures it again: every
+     * handler, binding and flag the previous build set through modifiers is dropped, then the function re-applies
+     * the current ones. What the engine or the user's input owns (hover, pressed state) is kept.
+     */
+    internal fun resetForReuse() {
+        scope?.runCleanups()
+        activeBindings.forEach { (state, binding) -> state.removeBinding(binding) }
+        activeBindings.clear()
+        handlerLists().forEach { it.clear() }
+        if (inputCaptureTopPad != 0f || inputCaptureBottomPad != 0f || inputCaptureLeftPad != 0f || inputCaptureRightPad != 0f) {
+            setMouseCapturePad(0f, 0f, 0f, 0f)
+        }
+        consumeEvents = false
+        customData = null
+        myAnchor = null
+        myPadding = PaddingValues()
+        slotBounds = null
     }
 
     /**
@@ -355,11 +392,24 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
+    /**
+     * Re-anchors every child to this panel at its current place. Stack layouts anchor each child on its previous
+     * sibling; the engine rejects any resize while a child is anchored on a sibling that has been removed.
+     */
+    internal fun pinChildrenToPanel() {
+        val panelPosition = panel.position
+        val panelTop = panelPosition.y + panelPosition.height
+        for (child in panel.getChildrenNonCopy()) {
+            val p = child.position
+            p.inTL(p.x - panelPosition.x, panelTop - (p.y + p.height))
+        }
+    }
+
     /** Forgets everything recorded about the children (they are about to be replaced). */
     internal fun clearChildLayoutData() {
         childSizing.clear(); childPadding.clear(); childMargins.clear(); childInnerOffset.clear()
         childAlignments.clear(); childAnchors.clear(); childMeasurables.clear(); childLayoutDelegates.clear()
-        childKinds.clear()
+        childRecords.clear()
     }
 
     /** Disposes this plugin only; [dispose] also handles everything below it. */
@@ -447,7 +497,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     fun onLayout(function: () -> Unit) { register(onLayoutFunctions, function) }
 
     /** Runs once, after the first layout pass that sizes and positions this node. */
-    fun onFirstLayout(function: () -> Unit) { register(onFirstLayoutFunctions, function) }
+    fun onFirstLayout(function: () -> Unit) {
+        if (hasEverLaidOut) return   // a reused component had its first layout long ago
+        register(onFirstLayoutFunctions, function)
+    }
     fun render(function: (alphaMult: Float) -> Unit) { register(renderFunctions, function) }
     override fun render(alphaMult: Float) {
         runLayout()

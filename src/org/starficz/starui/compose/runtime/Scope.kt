@@ -6,18 +6,22 @@ import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.core.ReflectionUtils.invoke
-import org.starficz.starui.core.clearChildren
 import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.parent
 import java.lang.ref.WeakReference
+import java.util.IdentityHashMap
 
 /**
  * One container's builder block, kept so it can run again.
  *
  * Every StarUI container (CustomPanel, Box, Column, Row, ScrollPanel content) owns a Scope. While the builder runs,
  * each [UIState.value] read is recorded; when one of those states changes the scope is marked dirty, and on the next
- * frame the container's children are thrown away and the builder runs again. That is what makes a plain `if` or
- * `for` inside a builder follow its state.
+ * frame the builder runs again. That is what makes a plain `if` or `for` inside a builder follow its state.
+ *
+ * A rebuild does not throw the old children away. Each component call in the builder first asks for an old child of
+ * the same kind (the next unused one, or the one with the same `key(...)`) and updates it in place; only calls with
+ * no match create something new, and only old children nobody asked for are removed. Native objects therefore keep
+ * their identity and their own state (scroll position, caret, keyboard focus, hover) across rebuilds.
  *
  * Timing (see docs/reactive-scopes-plan.md, 5.2): a write only sets flags. Rebuilds happen from the `renderBelow` or
  * `advance` callback of a StarUI node above the scope, so never while input is being dispatched, never from campaign
@@ -25,10 +29,10 @@ import java.lang.ref.WeakReference
  */
 internal class Scope(
     val plugin: StarUIPanelPlugin,
-    private val theme: StarUITheme,
-    private val kind: String,
-    private val declaredIn: String,
-    private val builder: () -> Unit
+    private var theme: StarUITheme,
+    private var kind: String,
+    private var declaredIn: String,
+    private var builder: () -> Unit
 ) {
     var dirty = false
         private set
@@ -60,13 +64,23 @@ internal class Scope(
         cleanups.add(cleanup)
     }
 
+    /** The enclosing builder ran again and declared this container anew: take its new block and theme. */
+    fun adopt(theme: StarUITheme, kind: String, declaredIn: String, builder: () -> Unit) {
+        this.theme = theme
+        this.kind = kind
+        this.declaredIn = declaredIn
+        this.builder = builder
+    }
+
     fun build() {
         unsubscribe()
         buildSerial = StarUIPanelPlugin.nextSerial()
         buildCount++
         StarUIContext.withTheme(theme) {
             StarUIContext.withScope(this) {
-                StarUIContext.withPlugin(plugin) { builder() }
+                StarUIContext.withKey(null) {   // a key(...) around this container does not apply to its children
+                    StarUIContext.withPlugin(plugin) { builder() }
+                }
             }
         }
     }
@@ -80,16 +94,21 @@ internal class Scope(
         plugin.markDirtyScopeBelow()
     }
 
-    /** Step 1 (brute force): drop every child and run the builder again. */
+    /** Runs the builder again, reusing the old children where the new calls match them. */
     fun rebuild() {
         if (disposed) return
         dirty = false
         val panel = plugin.panel
-        disposeChildrenOf(panel)
-        panel.clearChildren()
+        val cursor = ReuseCursor(panel, plugin.childRecords)
         plugin.clearChildLayoutData()
         runCleanups()
-        build()
+        plugin.reuseCursor = cursor
+        try {
+            build()
+        } finally {
+            plugin.reuseCursor = null
+        }
+        cursor.removeUnused()
         plugin.requestLayout()
     }
 
@@ -106,7 +125,7 @@ internal class Scope(
         reads.clear()
     }
 
-    private fun runCleanups() {
+    internal fun runCleanups() {
         if (cleanups.isEmpty()) return
         val pending = cleanups.toList()
         cleanups.clear()
@@ -128,8 +147,9 @@ internal class Scope(
         val hasDirty: Boolean get() = dirtyScopes.isNotEmpty()
 
         /**
-         * Rebuilds every dirty scope at or below [top], outermost first. A rebuilt scope disposes the scopes inside
-         * it, so those are skipped. Builders that change state during the flush get further passes, up to a limit.
+         * Rebuilds every dirty scope at or below [top], outermost first. An outer rebuild re-runs the builders of the
+         * containers it keeps, so those are no longer dirty when their turn comes. Builders that change state during
+         * the flush get further passes, up to a limit.
          */
         fun flush(top: StarUIPanelPlugin) {
             top.dirtyScopeBelow = false
@@ -189,7 +209,7 @@ internal class Scope(
                 found.add(Pair(scope, depth))
             }
             found.sortBy { it.second }
-            // still dirty until rebuilt; a scope disposed by an outer rebuild is skipped by the caller
+            // still dirty until rebuilt; a scope disposed or already rebuilt by an outer one is skipped by the caller
             return found.map { it.first }
         }
 
@@ -228,5 +248,86 @@ internal class Scope(
                 if (component.parent == null) disposeTree(component)
             }
         }
+    }
+}
+
+/**
+ * What a container remembers about one child a builder made: enough to recognise it when the builder runs again.
+ * [props] are the arguments that cannot be changed on a live native object (a button's font, say); a call whose
+ * props differ gets a new object. [handle] is what the component function returned (the native object or its
+ * wrapper), handed out again on reuse so references held by user code stay valid.
+ */
+internal class ChildRecord(val kind: String, val key: Any?, val props: Any?, val handle: Any)
+
+/** The old children of a container during one rebuild: handed out to matching calls, the rest removed at the end. */
+internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComponentAPI, ChildRecord>) {
+    private val records = IdentityHashMap<UIComponentAPI, ChildRecord>()
+    private val unkeyed = HashMap<String, ArrayList<UIComponentAPI>>()
+    private val keyed = HashMap<Pair<String, Any>, UIComponentAPI>()
+    private val unused = LinkedHashSet<UIComponentAPI>()
+
+    init {
+        for (child in panel.getChildrenNonCopy()) {
+            unused.add(child)
+            val record = oldRecords[child] ?: continue   // not made by a component function: never reused
+            records[child] = record
+            if (record.key != null) keyed[Pair(record.kind, record.key)] = child
+            else unkeyed.getOrPut(record.kind) { ArrayList() }.add(child)
+        }
+    }
+
+    fun isFor(target: UIPanelAPI): Boolean = target === panel
+
+    /**
+     * The old child for a call of [kind] with [key] and [props], or null. With a key: the old child that had it.
+     * Without: the first unused old child of that kind (so unkeyed children are matched in order). In both cases
+     * only when the unchangeable props are equal. The child is moved to the end of the child list, which keeps the
+     * list in call order and makes it "the last child", exactly like a freshly added one.
+     */
+    fun take(kind: String, key: Any?, props: Any?): ChildRecord? {
+        val child: UIComponentAPI = if (key != null) {
+            val candidate = keyed.remove(Pair(kind, key)) ?: return null
+            if (records[candidate]?.props != props) return null
+            candidate
+        } else {
+            val queue = unkeyed[kind] ?: return null
+            val index = queue.indexOfFirst { records[it]?.props == props }
+            if (index < 0) return null
+            queue.removeAt(index)
+        }
+        unused.remove(child)
+        StarUIPanelPlugin.getAttached(child)?.resetForReuse()
+        panel.bringComponentToTop(child)
+        return records[child]
+    }
+
+    /** Removes and disposes the old children no call asked for. */
+    fun removeUnused() {
+        for (child in unused) {
+            if (child.parent === panel) panel.removeComponent(child)
+            Scope.disposeTree(child)
+        }
+        unused.clear()
+    }
+}
+
+/** One component call's place in its container: the old child to reuse (if any) and how to remember the result. */
+internal class ChildSlot(
+    private val container: StarUIPanelPlugin?,
+    private val kind: String,
+    private val key: Any?,
+    private val props: Any?,
+    private val record: ChildRecord?
+) {
+    /** The value the component function returned for the reused child last time, or null to create a new one. */
+    @Suppress("UNCHECKED_CAST")
+    fun <T : Any> reused(): T? = record?.handle as T?
+
+    val isReuse: Boolean get() = record != null
+
+    /** Remembers [component] (the native object) and [handle] (what the function returns) for the next rebuild. */
+    fun remember(component: UIComponentAPI, handle: Any) {
+        if (container != null) container.childRecords[component] = ChildRecord(kind, key, props, handle)
+        else StarUIPanelPlugin.getAttached(component)?.kind = kind
     }
 }

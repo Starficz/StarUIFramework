@@ -207,6 +207,12 @@ class ButtonListener(button: ButtonAPI) : BaseCustomUIPanelPlugin() {
     fun clearOnClickFunctions() { onClickFunctions.clear() }
 }
 
+/** Drops the handlers added with [onClick]; the listener the button had before StarUI stays in place. */
+internal fun ButtonAPI.clearOnClick() {
+    val listener = invoke("getListener")
+    if (listener is CustomPanelAPI) (listener.plugin as? ButtonListener)?.clearOnClickFunctions()
+}
+
 // Extension function for ButtonAPI
 fun ButtonAPI.onClick(function: () -> Unit) {
     // Use reflection to check if this button already has a listener

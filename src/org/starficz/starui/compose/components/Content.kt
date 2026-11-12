@@ -63,7 +63,12 @@ fun UIPanelAPI.Text(
     highlightedText: Collection<Pair<String, Color>>? = null
 ): BoxedUILabel {
     checkDslTarget()
-    val rawLabel = this.addPara(text, font, color, highlightedText)
+    // Font, colour and highlights are fixed when a native label is made, so a call that changes them gets a new
+    // label; the text itself is updated in place (highlighted labels excepted: their highlights index the text).
+    val slot = childSlot("Text", listOf(font, color, highlightedText, if (highlightedText != null) text else null))
+    val reused: BoxedUILabel? = slot.reused()
+    val rawLabel = reused ?: this.addPara(text, font, color, highlightedText)
+    if (reused != null && rawLabel.text != text) rawLabel.text = text
 
     fun applyTextAlign() {
         rawLabel.setAlignment(
@@ -76,10 +81,15 @@ fun UIPanelAPI.Text(
     }
     applyTextAlign()
 
-    val (initW, initH) = getInitialBounds(size, measureTextSize(text, font))
-    rawLabel.setSize(initW, initH)
+    if (reused != null) {
+        applyReuseBounds(rawLabel.boxedElement, size, measureTextSize(text, font))
+    } else {
+        val (initW, initH) = getInitialBounds(size, measureTextSize(text, font))
+        rawLabel.setSize(initW, initH)
+    }
 
-    registerComponentSizing(rawLabel, size, isContainer = false, kind = "Text")
+    registerComponentSizing(rawLabel, size, isContainer = false)
+    slot.remember(rawLabel.boxedElement, rawLabel)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
@@ -140,7 +150,8 @@ fun UIPanelAPI.Image(
     borderColor: Color? = StarUITheme.current.image.borderColor
 ): BoxedUIImage {
     checkDslTarget()
-    val rawImage = this.addImage(spritePath, 100f, 100f)
+    val slot = childSlot("Image", spritePath)
+    val rawImage = slot.reused<BoxedUIImage>() ?: this.addImage(spritePath, 100f, 100f)
 
     rawImage.sizeToOriginalSpriteSize()
     val origW = rawImage.width
@@ -193,7 +204,8 @@ fun UIPanelAPI.Image(
     val (initW, initH) = getInitialBounds(size, calcIntrinsic())
     rawImage.setSize(initW, initH)
 
-    registerComponentSizing(rawImage, size, isContainer = false, kind = "Image")
+    registerComponentSizing(rawImage, size, isContainer = false)
+    slot.remember(rawImage.boxedElement, rawImage)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
@@ -236,6 +248,9 @@ fun UIPanelAPI.ShipDisplay(
     subtitle: String? = null
 ): BoxedUIShipPreview {
     checkDslTarget()
+    // Never reused: a ship display snapshots its fleet member or variant when it is made, and those objects are
+    // usually edited in place (the refit screen), so "same arguments" does not mean "same picture".
+    val slot = childSlot("ShipDisplay", Any())
     val (initW, initH) = getInitialBounds(size, Pair(100f, 100f))
 
     val rawShip = this.addShipPreview(initW, initH, fleetMember, style, color)
@@ -256,7 +271,8 @@ fun UIPanelAPI.ShipDisplay(
     if (hideLabels) rawShip.hideLabels()
     labelColor?.let { rawShip.setLabelColor(it) }
 
-    registerComponentSizing(rawShip, size, isContainer = false, kind = "ShipDisplay")
+    registerComponentSizing(rawShip, size, isContainer = false)
+    slot.remember(rawShip.boxedElement, rawShip)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin

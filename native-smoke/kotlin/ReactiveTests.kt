@@ -231,9 +231,10 @@ fun registerReactiveTests() {
         outerState.value = 1
         frame()
         expect(outerBuilds == 2 && innerBuilds == 3, "an outer state rebuilds the outer scope and what is inside it ($outerBuilds, $innerBuilds)")
-        expect(inner !== firstInner, "the inner container is a new one")
-        expect((firstInner.plugin as StarUIPanelPlugin).isDisposed, "the replaced inner container was disposed")
-        expect(innerState.scopeSubscribers.size == 1, "only the live inner scope is subscribed (${innerState.scopeSubscribers.size})")
+        expect(inner === firstInner, "the inner container is reused, not replaced")
+        expect(!(firstInner.plugin as StarUIPanelPlugin).isDisposed, "and not disposed")
+        expect(outer.labelTexts() == listOf("outer 1") && firstInner.labelTexts() == listOf("inner 1"), "both levels show their state")
+        expect(innerState.scopeSubscribers.size == 1, "the inner scope is subscribed once (${innerState.scopeSubscribers.size})")
 
         outerState.value = 2
         innerState.value = 2
@@ -330,12 +331,26 @@ fun registerReactiveTests() {
 
         extra.value = true
         frame()
-        expect(field !== first, "the rebuild made a new field")
-        expect(!first.hasFocus(), "the removed field released keyboard focus (it would keep eating keystrokes)")
-        expect(field.text == "typed", "the new field shows the state's text (${field.text})")
-        expect(col.labelTexts() == listOf("extra line"), "and the new branch is there")
+        expect(field === first, "the rebuild reused the native field")
+        expect(first.hasFocus(), "which keeps keyboard focus through the rebuild")
+        expect(field.text == "typed", "and its text (${field.text})")
+        expect(col.labelTexts() == listOf("extra line"), "the new branch is there")
         expect(text.observers.size == 1, "one text binding, not one per build (${text.observers.size})")
         screenshot("final")
+
+        // A field that the new build no longer declares is removed, and must give up the keyboard.
+        val showField = UIState(true)
+        lateinit var optional: TextFieldAPI
+        root.Column(LayoutSize.exact(300f, 60f), at(40f, 160f).background(PANEL)) {
+            if (showField.value) optional = TextField(text, size = Size.exact(200f, 24f))
+        }
+        frame()
+        optional.grabFocus()
+        expect(optional.hasFocus(), "the optional field has keyboard focus")
+        showField.value = false
+        frame()
+        expect(!optional.hasFocus(), "a removed field releases keyboard focus (it would keep eating keystrokes)")
+        expect(text.observers.size == 1, "and its binding is gone (${text.observers.size})")
     }
 
     StarUITestSuite.group("reactive-outside-add-error") {

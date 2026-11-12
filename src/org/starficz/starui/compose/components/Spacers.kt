@@ -30,12 +30,23 @@ fun UIPanelAPI.Spacer(
 
     val (initW, initH) = getInitialBounds(size)
 
-    val plugin = StarUIPanelPlugin()
-    val panel = Global.getSettings().createCustom(initW, initH, plugin)
-    plugin.customPanel = panel
-    this.addComponent(panel)
+    val slot = childSlot("Spacer")
+    val reused: CustomPanelAPI? = slot.reused()
+    val panel: CustomPanelAPI
+    val plugin: StarUIPanelPlugin
+    if (reused != null) {
+        panel = reused
+        plugin = panel.plugin as StarUIPanelPlugin
+        applyReuseBounds(panel, size)
+    } else {
+        plugin = StarUIPanelPlugin()
+        panel = Global.getSettings().createCustom(initW, initH, plugin)
+        plugin.customPanel = panel
+        this.addComponent(panel)
+    }
 
-    registerComponentSizing(panel, size, isContainer = false, kind = "Spacer")
+    registerComponentSizing(panel, size, isContainer = false)
+    slot.remember(panel, panel)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[panel] = { _, _ -> Pair(initW, initH) }
     }

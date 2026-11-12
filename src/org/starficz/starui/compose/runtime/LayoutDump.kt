@@ -43,7 +43,7 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
     val top = (rootPosition.y + rootPosition.height) - (position.y + position.height)
 
     repeat(depth) { out.append("  ") }
-    out.append(parentPlugin?.childKinds?.get(node) ?: plugin?.kind ?: fallbackKind(node))
+    out.append(parentPlugin?.childRecords?.get(node)?.kind ?: plugin?.kind ?: fallbackKind(node))
     textOf(node)?.let { text ->
         out.append(" \"").append(if (text.length > 40) text.take(37) + "..." else text).append('"')
     }
