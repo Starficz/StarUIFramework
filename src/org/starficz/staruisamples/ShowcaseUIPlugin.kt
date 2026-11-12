@@ -283,14 +283,25 @@ object ShowcaseUIPlugin {
                     }
                 }
             }
-            Text("LazyColumn: 10,000 items; only the rows near the view exist", color = GRAY)
-            LazyColumn(lazyShowcaseItems, Size.fillMaxWidth(height = 130f), Modifier.background(INSET_BG).padding(horizontal = 4f),
-                itemHeight = 22f, key = { it }) { i ->
+            Text("LazyColumn: 10,000 items, only the rows near the view exist. Each row's count is its own state; " +
+                "scroll down, then remove items above: the view stays on the same rows.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
+                Button("Remove the first 5") { lazyItems.value = lazyItems.value.drop(5) }
+                Button("Reset") { lazyItems.value = startLazyItems }
+                Text("${lazyItems.value.size} items", color = GRAY)
+            }
+            LazyColumn(lazyItems.value, Size.fillMaxWidth(height = 130f), Modifier.background(INSET_BG).padding(horizontal = 4f),
+                itemHeight = 24f, key = { it.id }) { item ->
                 Row(Size.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
-                    Text("Item ${i + 1}", color = if (i % 100 == 0) HIGHLIGHT else TEXT)
+                    Text("Item ${item.id}", color = if (item.id % 100 == 0) HIGHLIGHT else TEXT)
                     FlexSpacer()
-                    Text("built when it scrolls near", color = GRAY)
+                    Text("clicked ${item.clicks.value}", color = if (item.clicks.value > 0) POSITIVE else GRAY)
+                    Button("+1", contentPadding = PaddingValues.symmetric(horizontal = 6f, vertical = 1f)) { item.clicks.value++ }
                 }
+            }
+            Text("LazyRow: 2,000 cards (the wheel scrolls it sideways)", color = GRAY)
+            LazyRow(lazyCards, Size.fillMaxWidth(height = 56f), Modifier.background(INSET_BG), itemWidth = 84f, spacing = 6f) { i ->
+                Box(Size.fillMaxSize(), Modifier.background(DARK).padding(4f)) { Text("Card ${i + 1}", color = TEXT) }
             }
         }
     }
@@ -299,7 +310,12 @@ object ShowcaseUIPlugin {
     // Second band, column 2: every control option
     // =================================================================================================================
     private val overflowLines = UIState(2)
-    private val lazyShowcaseItems = (0 until 10_000).toList()
+    private class LazyDemoItem(val id: Int) {
+        val clicks = UIState(0)
+    }
+    private val startLazyItems = (1..10_000).map { LazyDemoItem(it) }
+    private val lazyItems = UIState(startLazyItems)
+    private val lazyCards = (0 until 2_000).toList()
     private val buttonsEnabled = UIState(false)
     private val hullSizes = listOf("Frigate", "Destroyer", "Cruiser", "Capital").map { it to UIState(it == "Frigate") }
     private val shipName = UIState("")
