@@ -142,6 +142,26 @@ fun UIPanelAPI.addSlider(text: String?, rangeMin: Float, rangeMax: Float, width:
 /** Every vanilla [SliderAPI] is a UI component; this is that view, for positioning, modifiers and panel methods. */
 val SliderAPI.asComponent: UIComponentAPI get() = this as UIComponentAPI
 
+/**
+ * A vanilla section heading (`TooltipMakerAPI.addSectionHeading`): a label in [textColor] on a bar of [bgColor] that
+ * the label draws itself, Orbitron 12 condensed, one line plus 3 px tall. Made in a throwaway tooltip and added here,
+ * as [addPara] does for paragraphs. Vanilla's defaults are the player faction's base and dark UI colours.
+ */
+fun UIPanelAPI.addSectionHeading(
+    text: String,
+    textColor: Color = Global.getSettings().basePlayerColor,
+    bgColor: Color = Global.getSettings().darkPlayerColor,
+    alignment: Alignment = Alignment.MID,
+    width: Float = 300f
+): LabelAPI {
+    val tempPanel = Global.getSettings().createCustom(width, 100f, null)
+    val tempTMAPI = tempPanel.createUIElement(width, 100f, false)
+    val heading = tempTMAPI.addSectionHeading(text, textColor, bgColor, alignment, 0f)
+    this.addComponent(heading)
+    heading.position.setSize(width, heading.position.height)
+    return heading
+}
+
 fun UIPanelAPI.addTextField(width: Float, height: Float, font: Font): TextFieldAPI {
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tempTMAPI = tempPanel.createUIElement(width, height, false)

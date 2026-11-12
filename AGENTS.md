@@ -50,6 +50,7 @@ To attach to vanilla screens, use one of these:
 | `Box(size, modifier) { }` | stacked on top of each other; position children with `Modifier.align(Alignment.X)` | wrap |
 | `CustomPanel(size, modifier) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
 | `FramedPanel(...) { }` | a `CustomPanel` with background and border | wrap |
+| `Section(title, size, modifier, bgColor, borderColor, xPadding, yPadding, spacing) { }` | vanilla-style panel: a `SectionHeading` on top, the builder's content in a padded column below, black inside a thin dark border | fill width, wrap height |
 | `ScrollPanel(size, modifier, align, yPadding, xPadding, spacing, ...) { }` | top to bottom, scrollable; **needs a bounded size** | fill |
 | `Theme(theme) { }` | not a panel: overrides `StarUITheme` defaults for the calls inside | |
 
@@ -63,8 +64,14 @@ deprecated aliases that centre by default.
 shortcut) { onClick }`, `TextField(bind: UIState<String>, size, modifier, font, hint)`,
 `Checkbox(text, ..., bind, buttonGroup)`, `AreaCheckbox(text, ..., bind, buttonGroup)`,
 `Slider(bind: UIState<Float>, rangeMin, rangeMax, size, modifier, text, step) { configure }`,
-`ProgressBar(progress, rangeMin, rangeMax, size, modifier, text, animate) { configure }`, `Spacer(size, modifier,
-color)`, `Divider()`, `FlexSpacer(weight)`.
+`ProgressBar(progress, rangeMin, rangeMax, size, modifier, text, animate) { configure }`,
+`SectionHeading(text, size, modifier, textColor, bgColor, alignment)`, `Spacer(size, modifier, color)`, `Divider()`,
+`FlexSpacer(weight)`.
+
+`SectionHeading` is vanilla's own (`TooltipMakerAPI.addSectionHeading`) and returns its `LabelAPI`, which draws its own
+bar; it fills the width by default and its text updates in place. For vanilla's colours use `VanillaColors` (from
+`core`): the player faction's `base`, `dark` and `bright`, `text`, `gray`, `highlight`, `positive`, `negative`, the
+story-point colours and `panel`, each read live. The showcase (`staruisamples/ShowcaseUIPlugin.kt`) is styled with them.
 
 `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return its `SliderAPI`; it holds one
 value (its `min` is a floor, `max` an overflow mark). `configure` takes any `SliderAPI` setter (colours, display mode)
