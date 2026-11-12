@@ -193,6 +193,8 @@ object StarUITestSuite {
         val failedGroups = mutableListOf<String>()
         for (g in groups) {
             if (filter != null && filter.none { g.name.contains(it, ignoreCase = true) }) continue
+            // benchmarks (bench-*) are long: they run only when the filter asks for them (-Filter bench or the name)
+            if (g.name.startsWith("bench-") && (filter == null || filter.none { it.startsWith("bench", ignoreCase = true) })) continue
             NativeSmokeSupport.log("=== GROUP ${g.name}")
             val ctx = TestContext(g.name)
             val error = ctx.thrown { ctx.(g.body)() }

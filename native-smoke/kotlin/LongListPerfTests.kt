@@ -1,4 +1,5 @@
-// Step 5 of docs/scrolling-plan.md: long, text-heavy lists. Each row is what a real mod list holds: an Orbitron
+// Step 5 of docs/scrolling-plan.md: long, text-heavy lists. A benchmark (about a minute): it only runs when asked
+// for, with -Filter bench (or bench-long-lists). Each row is what a real mod list holds: an Orbitron
 // title, plain labels, a wrapped 3-5 line paragraph, a highlighted label, a button, and a label that follows a
 // per-row UIState. Measured per case: first build, a full relayout, one row's state change, a label's text change,
 // idle frames and scrolling frames. Logged as "PERF list ..." lines; the budgets are the plan's.
@@ -190,7 +191,7 @@ private fun TestContext.vanillaReference(name: String, rows: Int, scrolling: Boo
 }
 
 fun registerLongListPerfTests() {
-    StarUITestSuite.group("perf-long-lists") {
+    StarUITestSuite.group("bench-long-lists") {
         NativeSmokeSupport.beginFrame()
         repeat(30) { fullFrame() }
         val empty = idleMs()

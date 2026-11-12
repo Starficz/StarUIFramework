@@ -31,6 +31,9 @@ import kotlin.math.sign
  * - on a panel whose content is only wider than it, the wheel scrolls horizontally, and Shift+wheel does on a panel
  *   that overflows both ways: done here through `setXOffset` (vanilla has no horizontal wheel), and the event is
  *   consumed.
+ * Horizontal wheel scrolling eases like vanilla's vertical one (the content container's own easing, given a target).
+ * A right-button press (right-drag pans) goes to the deepest panel under the cursor with something to pan, not the
+ * outermost one, by hiding it from the panels outside.
  * A panel with nothing nested and nothing wider than it behaves exactly as before (same step, Shift = 5x).
  * StarUI panels whose theme turns the wheel off are skipped; other panels are assumed to take the wheel.
  *
@@ -53,6 +56,27 @@ object ScrollWheelPatch {
     private const val OFF_SCREEN = Int.MAX_VALUE
     private val SET_X = MethodQuery.create().methodName("setX").parameterTypes(Int::class.javaPrimitiveType).build()
     private val SET_Y = MethodQuery.create().methodName("setY").parameterTypes(Int::class.javaPrimitiveType).build()
+    // the content container's own offset methods (readable names on the scroll panel's inner content class)
+    private val FLOAT = Float::class.javaPrimitiveType
+    private val CONTENT_SET_OFFSET = MethodQuery.create().methodName("setOffset").parameterTypes(FLOAT, FLOAT).build()
+    private val CONTENT_FORCE_OFFSET = MethodQuery.create().methodName("forceOffset").parameterTypes(FLOAT, FLOAT).build()
+    private val CONTENT_X_OFFSET = MethodQuery.create().methodName("getXOffset").parameterCount(0).build()
+    private val CONTENT_Y_OFFSET = MethodQuery.create().methodName("getYOffset").parameterCount(0).build()
+
+    /**
+     * Scrolls [panel] to [x] the way vanilla's wheel scrolls vertically: the panel's own offset (what its scrollbar and
+     * clamping read) is set at once, and the content container is given [x] as its target, which its advance eases
+     * towards (vanilla's `amount * (3 * distance + 200)` per frame, on both axes). The API setter also moves the content
+     * at once, so the content is put back where it is drawn before it gets the target.
+     */
+    private fun easeX(context: BeforeContext, panel: ScrollPanelAPI, x: Float) {
+        val content = panel.contentContainer
+        val drawnX = context.getMethod(CONTENT_X_OFFSET, content).call<Float>()
+        val drawnY = context.getMethod(CONTENT_Y_OFFSET, content).call<Float>()
+        panel.setXOffset(x)
+        context.getMethod(CONTENT_FORCE_OFFSET, content).call<Any?>(drawnX, drawnY)
+        context.getMethod(CONTENT_SET_OFFSET, content).call<Any?>(x, panel.yOffset)
+    }
 
     /** Vanilla's wheel step, capped at a third of the panel. */
     private fun step(size: Float): Float = minOf(100f, size * 0.33f)
@@ -61,18 +85,35 @@ object ScrollWheelPatch {
     @Before(target = MethodMatch(methodName = "processScrollInputOnly", parameterCount = 2, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun routeWheel(context: BeforeContext) {
         val events = context.getArg(0) as? List<*> ?: return
-        var hasWheel = false
+        var hasWork = false
         for (e in events) {
             val event = e as? InputEventAPI ?: continue
-            if (!event.isConsumed && event.isMouseScrollEvent) { hasWheel = true; break }
+            if (!event.isConsumed && (event.isMouseScrollEvent || event.isRMBDownEvent)) { hasWork = true; break }
         }
-        if (!hasWheel || !context.isMostDerivedCall) return
+        if (!hasWork || !context.isMostDerivedCall) return
         val self = context.self as? ScrollPanelAPI ?: return
 
         var hidden: ArrayList<Any>? = null
         for (e in events) {
             val event = e as? InputEventAPI ?: continue
-            if (event.isConsumed || !event.isMouseScrollEvent) continue
+            if (event.isConsumed) continue
+            if (event.isRMBDownEvent) {
+                // Right-drag pans the panel that gets the press. Vanilla gives it to the outermost one: hand it to the
+                // deepest panel under the cursor that has anything to pan instead.
+                val x = event.x
+                val y = event.y
+                if (x == OFF_SCREEN || !self.contains(x.toFloat(), y.toFloat())) continue
+                val chain = ArrayList<ScrollPanelAPI>()
+                collectUnder(self.contentContainer, x.toFloat(), y.toFloat(), chain)
+                if (chain.any { overflows(it) }) {
+                    if (hidden == null) hidden = ArrayList()
+                    hidden.add(event); hidden.add(x); hidden.add(y)
+                    context.getMethod(SET_X, event).call<Any?>(OFF_SCREEN)
+                    context.getMethod(SET_Y, event).call<Any?>(OFF_SCREEN)
+                }
+                continue
+            }
+            if (!event.isMouseScrollEvent) continue
             val x = event.x
             val y = event.y
             if (x == OFF_SCREEN || !self.contains(x.toFloat(), y.toFloat())) continue
@@ -101,7 +142,7 @@ object ScrollWheelPatch {
                 val boost = if (shift && content.height <= view.height + 0.5f) 5f else 1f
                 val minX = minOf(0f, view.width - content.width)
                 val newX = (target.xOffset + step(view.width) * boost * sign(notches.toFloat())).coerceIn(minX, 0f)
-                target.setXOffset(newX)
+                easeX(context, target, newX)
                 event.consume()
             } else if (target !== self) {
                 if (hidden == null) hidden = ArrayList()
@@ -155,6 +196,12 @@ object ScrollWheelPatch {
             val canMove = if (notches > 0) panel.yOffset > 0.5f else panel.yOffset < maxY - 0.5f
             if (canMove) false else null
         }
+    }
+
+    private fun overflows(panel: ScrollPanelAPI): Boolean {
+        val view = panel.position
+        val content = panel.contentContainer.position
+        return content.height > view.height + 0.5f || content.width > view.width + 0.5f
     }
 
     /** Adds the scroll panels under (x, y) inside [panel], outermost first, following the topmost child each step. */

@@ -38,7 +38,7 @@ object TableCellScope {
 
     /**
      * StarUI components in the cell: the builder runs in a Box the size of the cell, so place its children with
-     * `Modifier.align(...)`. It is reactive like any builder. A cell cannot make its row taller than `itemHeight`.
+     * `Modifier.align(...)`. It is reactive like any builder. Rows grow to fit the tallest custom cell.
      */
     fun custom(builder: (@StarUIDsl CustomPanelAPI).() -> Unit): TableCell = TableCell.Custom(builder)
 }
@@ -93,7 +93,7 @@ class TableScope<T> internal constructor() {
  * Columns with a `width` are exactly that wide; the others share what is left of the table's width by `weight`. With
  * only exact columns the table is as wide as they are plus vanilla's 3 px frame; with weighted ones give it a fill or
  * exact width. It is as tall
- * as its rows (at least three when empty, where it shows [emptyText]); every row is [itemHeight] tall.
+ * as its rows (at least three when empty, where it shows [emptyText]); every row is [itemHeight] tall, or as tall as the tallest custom cell needs.
  *
  * [rowKey] ties each row's custom cells to its item, like `key(...)`. [rowTooltip] adds a tooltip to every row and
  * [onRowClick] makes rows clickable. The table is made again when the builder that calls it runs again, or when its
@@ -150,10 +150,18 @@ fun <T> UIPanelAPI.Table(
 
         engine.build = { width ->
             val widths = columnWidths(specs, width, exactWidth, weightSum)
+            // Rows are as tall as itemHeight or the tallest custom cell's content at its column's width, whichever
+            // is more: a button in a 20 px row would spill over the next one.
+            var rowHeight = itemHeight
+            for ((_, col, box) in customCells) {
+                val needed = org.starficz.starui.compose.runtime.StarUIPanelPlugin.getAttached(box)
+                    ?.measure(widths[col], Float.MAX_VALUE)?.second ?: continue
+                rowHeight = maxOf(rowHeight, kotlin.math.ceil(needed))
+            }
             val table = buildFromTooltip(width) {
                 val header = ArrayList<Any>()
                 specs.forEachIndexed { i, spec -> header += spec.title; header += widths[i] }
-                beginTable(baseColor, darkColor, brightColor, itemHeight, withBorder, withHeader, *header.toTypedArray())
+                beginTable(baseColor, darkColor, brightColor, rowHeight, withBorder, withHeader, *header.toTypedArray())
                 specs.forEachIndexed { i, spec -> spec.tooltip?.let { addTableHeaderTooltip(i, it) } }
                 if (onRowClick != null) {
                     makeTableItemsClickable()

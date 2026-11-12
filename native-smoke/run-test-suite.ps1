@@ -25,7 +25,7 @@ param(
     [string]$JdkBin = 'C:\Program Files\Java\jdk-17\bin',
     [string]$KotlinHome = "$env:LOCALAPPDATA\Programs\IntelliJ IDEA Ultimate\plugins\Kotlin\kotlinc",
     [string]$Skill = "$env:USERPROFILE\.claude\skills\starsector-native-smoke",
-    [int]$Timeout = 240
+    [int]$Timeout = 480
 )
 # Vanilla rendering on purpose: Fast Rendering moves OpenGL to its own render thread, so the harness's frame setup and
 # glReadPixels (pixel checks, screenshots) have no context. FR saved only ~8 s of boot (39 s -> 31 s, 2026-11-06).

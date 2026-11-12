@@ -253,7 +253,7 @@ and StarUI must not. Measure, don't assume; text is the case to stress, not empt
   rather than the visible rows is a bug to fix in this step.
 - Record the results (table of the cases above) in this plan, then decide step 6.
 
-#### Step 5 results (2026-11-12, `perf-long-lists` in `LongListPerfTests.kt`)
+#### Step 5 results (2026-11-12, `bench-long-lists` in `LongListPerfTests.kt`, run with `-Filter bench`)
 
 Rows: Orbitron title, three labels, a 3-5 line paragraph, a highlighted label, a per-row UIState label, a button.
 700 x 700 scrolling Column. Milliseconds; "idle" and "scrolling" are per frame over an empty screen.

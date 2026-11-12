@@ -84,11 +84,16 @@ fun UIPanelAPI.Text(
         val heightAtWidth = HashMap<Float, Float>(4)
         var labelSizedText: String? = null
         var labelSizedWidth = Float.NaN
-        fun autoSize(str: String, width: Float) {
-            if (str == labelSizedText && width == labelSizedWidth) return
+        var labelSizedHeight = 0f
+        /** Wraps the label at [width] (unless it already is) and returns the wrapped height. */
+        fun autoSize(str: String, width: Float): Float {
+            if (str == labelSizedText && width == labelSizedWidth) return labelSizedHeight
             rawLabel.autoSizeToWidth(width)
             labelSizedText = str
             labelSizedWidth = width
+            // the label's own height changes again when its container sizes it: keep the wrapped one
+            labelSizedHeight = rawLabel.height
+            return labelSizedHeight
         }
 
         parentPlugin.childMeasurables[actual] = { maxW, _ ->
@@ -105,7 +110,7 @@ fun UIPanelAPI.Text(
                 if (unwrappedW <= maxW) {
                     Pair(unwrappedW, singleLineH)
                 } else {
-                    val height = heightAtWidth.getOrPut(maxW) { autoSize(currentStr, maxW); rawLabel.height }
+                    val height = heightAtWidth.getOrPut(maxW) { autoSize(currentStr, maxW) }
                     Pair(maxW, height)
                 }
             }

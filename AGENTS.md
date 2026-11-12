@@ -97,7 +97,7 @@ and last a click handler or builder where there is one.
   color = ...) }` for styled text, `column("", width = 70f) { custom { Button(...) } }` for StarUI components in a cell
   (laid over the cell, reactive like any builder). Columns with `width` are exact; the rest share the leftover by
   `weight`. `rowTooltip`, `onRowClick` and a column's `tooltip` (on its header) work as in vanilla. Rows are all
-  `itemHeight` tall.
+  `itemHeight` tall, or as tall as the tallest custom cell's content needs (a button in a 20 px row would spill).
 - The other TooltipMakerAPI ports (`StatGrid`, `RelationshipBar`, `ShipList`, ...) build vanilla's own component on a
   temporary tooltip at the width they get and hold it in a StarUI panel; they are made again when that width
   changes or their builder runs again. `CostDisplay` and the faction or person `RelationshipBar` need a campaign.
@@ -167,10 +167,11 @@ Box(Size.exact(200f, 60f), overflow = Overflow.Clip) { ... }
   `StarUITheme.scroll`.
 - **The mouse wheel** goes to the deepest scroll panel under the cursor that can still move, and to the next one out
   at its end (game-wide, vanilla's panels too). The plain wheel scrolls vertically, or horizontally when only the
-  width overflows; Shift+wheel scrolls horizontally when both do. Right-drag pans, as in vanilla.
+  width overflows; Shift+wheel scrolls horizontally when both do. Horizontal wheel scrolling eases like vanilla's
+  vertical one. Right-drag pans the deepest panel under the cursor with something to pan.
 - **Cost**: children outside a clipping or scrolling container's visible part are not drawn and get no input; they
   still advance (onAdvance, vanilla animations). A changed row lays out only itself and its ancestors. Measured
-  (`perf-long-lists`): 1000 rows of title, labels and a wrapped paragraph idle at ~5 ms per frame over drawing the
+  (`bench-long-lists`, run with `-Filter bench`: benchmarks are left out of normal runs): 1000 rows of title, labels and a wrapped paragraph idle at ~5 ms per frame over drawing the
   visible text, ~100x cheaper than vanilla's own scroll panel holding the same text.
 - **`LazyColumn` / `LazyRow`** for hundreds or thousands of items, or heavy rows: only the rows within about a screen
   of the view exist, each `itemHeight` tall (`itemWidth` wide), and rows just off screen do not advance. Each row's

@@ -89,7 +89,10 @@ fun registerVanillaElementTests() {
             near(box.position.x, cell.position.x, "custom cell $i sits on its cell's left edge", tolerance = 1f)
             near(box.position.y, cell.position.y, "and its bottom edge", tolerance = 1f)
             near(box.w, cell.w, "at the cell's width", tolerance = 1f)
-            near(box.h, 20f, "and the row's height", tolerance = 1f)
+            near(box.h, cell.h, "and the row's height", tolerance = 1f)
+            val button = box.getChildrenCopy().filterIsInstance<ButtonAPI>().firstOrNull()
+            if (button != null) expect(button.position.height <= cell.h + 0.5f,
+                "rows grow to fit their custom cells: the button (${button.position.height}) fits the row (${cell.h})")
         }
         val button = boxes[1].getChildrenCopy().filterIsInstance<ButtonAPI>().firstOrNull()
         expect(button != null, "the second custom cell holds its button")

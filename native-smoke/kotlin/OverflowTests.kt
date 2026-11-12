@@ -366,4 +366,32 @@ fun registerOverflowTests() {
         screenshot("final")
         root.clearChildren()
     }
+
+    StarUITestSuite.group("text-wrap-no-overlap") {
+        // A wrapped paragraph above a label, laid out at several widths in turn: the paragraph's height must follow
+        // its wrapping every time (a stale cached height made the next label overlap it).
+        val width = UIState(500f)
+        lateinit var para: com.fs.starfarer.api.ui.LabelAPI
+        lateinit var below: com.fs.starfarer.api.ui.LabelAPI
+        root.Column(Size.wrapContent(), overflowAt(40f, 40f), spacing = 4f) {
+            Column(Size.exact(width.value, 300f), spacing = 2f) {
+                para = Text("A Text with a fill width wraps onto as many lines as it needs, and its height follows. " +
+                    "Resize the window and it wraps again.", Size.fillMaxWidth())
+                below = Text("An exact width of 220 wraps here, whatever the column does.", Size.exact(220f, 30f))
+            }
+        }
+        for (w in listOf(500f, 300f, 700f, 300f, 500f, 260f)) {
+            width.value = w
+            frame()
+            val paraBottom = para.position.y
+            val belowTop = below.position.y + below.position.height
+            expect(belowTop <= paraBottom + 0.5f, "at width $w the label below starts under the paragraph (paragraph bottom $paraBottom, label top $belowTop)")
+            expect(para.position.height >= 14f, "at width $w the paragraph has its lines (${para.position.height})")
+        }
+        // and the paragraph's height is what vanilla wraps it to at its width
+        val h = para.position.height
+        para.autoSizeToWidth(para.position.width)
+        near(para.position.height, h, "the laid-out height equals vanilla's wrapped height", 1f)
+        screenshot("final")
+    }
 }

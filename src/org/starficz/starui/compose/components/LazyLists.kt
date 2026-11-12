@@ -150,11 +150,27 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
         return if (vertical) host.position.height else host.position.width
     }
 
-    /** How far the content is scrolled along the list (0 at the start). */
+    /** Where the scroll position is heading along the list (0 at the start): the scroll panel's own offset. */
     private fun offset(): Float {
         pendingOffset?.let { return it }
         val host = plugin.scrollHost ?: return 0f
         return if (vertical) host.yOffset else -host.xOffset
+    }
+
+    /** Where the content is drawn now: vanilla eases the content towards the offset over a few frames. */
+    private fun drawnOffset(): Float {
+        pendingOffset?.let { return it }
+        val host = plugin.scrollHost ?: return 0f
+        val h = host.position
+        val c = host.contentContainer.position
+        return if (vertical) (c.y + c.height) - (h.y + h.height) else h.x - c.x
+    }
+
+    /** The stretch of the list in or about to be in view: from the drawn position to the target, plus the view. */
+    private fun span(view: Float): Pair<Float, Float> {
+        val target = offset()
+        val drawn = drawnOffset()
+        return Pair(minOf(target, drawn) - leadPadding, maxOf(target, drawn) + view - leadPadding)
     }
 
     private val leadPadding get() = if (vertical) plugin.myPadding.top else plugin.myPadding.left
@@ -165,9 +181,9 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
         val view = viewport()
         if (view <= 1f) return 0 until minOf(items.size, 16)   // not laid out yet
         val buffer = ceil(view / stride).toInt()
-        val start = offset() - leadPadding
+        val (start, end) = span(view)
         val first = maxOf(0, floor(start / stride).toInt() - buffer)
-        val last = minOf(items.size - 1, ceil((start + view) / stride).toInt() + buffer)
+        val last = minOf(items.size - 1, ceil(end / stride).toInt() + buffer)
         return if (first > last) IntRange.EMPTY else first..last
     }
 
@@ -175,13 +191,16 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
     fun checkRange() {
         val view = viewport()
         if (items.isNotEmpty() && view > 1f) {
-            val start = offset() - leadPadding
-            val firstVisible = floor(start / stride).toInt().coerceIn(0, items.size - 1)
-            anchorKey = keyOf?.invoke(items[firstVisible])
-            anchorDelta = offset() - firstVisible * stride
-            val lastVisible = minOf(items.size - 1, ceil((start + view) / stride).toInt())
+            val target = offset()
+            val anchorIndex = floor((target - leadPadding) / stride).toInt().coerceIn(0, items.size - 1)
+            anchorKey = keyOf?.invoke(items[anchorIndex])
+            anchorDelta = target - anchorIndex * stride
+            // rebuild when anything between the drawn position and the target is not built
+            val (start, end) = span(view)
+            val firstNeeded = floor(start / stride).toInt().coerceIn(0, items.size - 1)
+            val lastNeeded = minOf(items.size - 1, ceil(end / stride).toInt())
             val built = builtRange
-            if (built.isEmpty() || firstVisible < built.first || lastVisible > built.last) rangeVersion.value++
+            if (built.isEmpty() || firstNeeded < built.first || lastNeeded > built.last) rangeVersion.value++
         }
     }
 
