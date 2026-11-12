@@ -6,6 +6,7 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.AspectWrapImage
 import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.ContentScale
 import org.starficz.starui.compose.ImageSize
@@ -152,9 +153,17 @@ fun UIPanelAPI.Image(
     }
     applyScaleMode()
 
-    fun calcIntrinsic(): Pair<Float, Float> {
+    // The size the image wants in a room of availW x availH (Float.MAX_VALUE where the room is unbounded).
+    fun calcIntrinsic(availW: Float = Float.MAX_VALUE, availH: Float = Float.MAX_VALUE): Pair<Float, Float> {
         var w = origW
         var h = origH
+        if (size is AspectWrapImage && origW > 0f && origH > 0f) {
+            // The largest scale at which the sprite fits the room on both axes; the sprite's own size if unbounded.
+            val fitW = if (availW == Float.MAX_VALUE) Float.MAX_VALUE else availW / origW
+            val fitH = if (availH == Float.MAX_VALUE) Float.MAX_VALUE else availH / origH
+            val scale = minOf(fitW, fitH)
+            if (scale != Float.MAX_VALUE) return Pair(origW * scale, origH * scale)
+        }
         if (size is NativeImage) {
             w *= size.scale
             h *= size.scale
@@ -181,7 +190,7 @@ fun UIPanelAPI.Image(
         val parentPlugin = StarUIContext.currentPlugin
         val actual = rawImage.boxedElement
 
-        parentPlugin.childMeasurables[actual] = { _, _ -> calcIntrinsic() }
+        parentPlugin.childMeasurables[actual] = { availW, availH -> calcIntrinsic(availW, availH) }
         parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
             applyScaleMode()
             rawImage.setSize(assignedW, assignedH)
