@@ -27,7 +27,7 @@ sealed interface BoundedAxis : Axis
 // ==========================================
 // One vocabulary (Compose's words) and three types, each a superset of the one before:
 //   BoundedSize  exact or fill on both axes; for components with no content to wrap (Spacer, ShipDisplay, sliders,
-//                ScrollPanel)
+//                lazy lists)
 //   Size         adds wrap; for everything else
 //   ImageSize    adds the sprite's own size and aspect ratio; for Image
 // Every factory is on Size (image-only ones on ImageSize) and returns the narrowest type it can, so `Size.exact(..)`

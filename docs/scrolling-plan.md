@@ -1,6 +1,6 @@
 # Overflow plan: clipping and scrolling as one per-axis setting, wheel on both axes, long lists
 
-Status: steps 1-5 done (2026-11-12); steps 6-7 to do. Found on the way: a per-pass measure
+Status: all steps done (2026-11-12). Lazy lists: fixed item size only; variable heights are a later option. Found on the way: a per-pass measure
 cache was needed (nesting multiplied measures) and VanillaElementEngine re-laid out every frame; both fixed in 3079e0b.
 Clip on both axes uses vanilla's own `setClipping` (a nesting scissor); one-axis clip is a StarUI GL scissor. Work in the order of the steps below; each step ends with the
 in-game suite passing (`native-smoke/run-test-suite.ps1`, under `smoke-slot.sh run`) and the PNGs looked at.
@@ -315,6 +315,15 @@ LazyColumn(ships.value, Size.fillMaxSize(), key = { it.id }, itemHeight = 40f) {
 - Tests: the step 5 lists as `LazyColumn` (and beat its budgets by a wide margin); scrolling to the end and back keeps
   keyed rows stable; a state change in a visible row rebuilds only that row; removing an item above the viewport
   keeps the visible rows in place.
+
+#### Step 6 results
+
+`LazyColumn` / `LazyRow` (`compose/components/LazyLists.kt`, a `LazyLayoutEngine` inside a scrolling container;
+range checked in the inner panel's advance, rows keyed, off-screen advance paused, the first visible item kept in
+view by key when items change). Same 3000 rows as above, as a `LazyColumn` with a 150 px item height: first build
+33 ms (plain Column 2143), one row's change 1.7 ms (40), idle 3.9 ms over an empty screen with a 3.1 ms drawing floor
+(29.7), scrolling 4.9 ms (37.9). Tests: `LazyListTests.kt` (range, positions, keyed reuse on small scrolls, one row's
+state rebuilds that row only, removing items above the view keeps it in place, a shrunk list, LazyRow).
 
 ### 7. Docs (part of the work, not after it)
 

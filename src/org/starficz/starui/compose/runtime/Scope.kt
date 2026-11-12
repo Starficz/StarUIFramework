@@ -13,7 +13,7 @@ import java.util.IdentityHashMap
 /**
  * One container's builder block, kept so it can run again.
  *
- * Every StarUI container (CustomPanel, Box, Column, Row, ScrollPanel content) owns a Scope. While the builder runs,
+ * Every StarUI container (CustomPanel, Box, Column, Row, lazy list rows) owns a Scope. While the builder runs,
  * each [UIState.value] read is recorded; when one of those states changes the scope is marked dirty, and on the next
  * frame the builder runs again. That is what makes a plain `if` or `for` inside a builder follow its state.
  *

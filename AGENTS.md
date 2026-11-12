@@ -21,7 +21,7 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
   `.compose.runtime` (UIState, `mutableStateOf`, StarUIManager, StarUITheme, ...) and `org.starficz.starui.core`
   (Anchor, Font, ButtonFont, VanillaColors, vanilla helpers).
 - Names follow Jetpack Compose where Compose has one (with Left/Right instead of Start/End: Starsector has no
-  right-to-left layouts), and vanilla's where the component is a vanilla object (`ScrollPanel`, `SectionHeading`,
+  right-to-left layouts), and vanilla's where the component is a vanilla object (`SectionHeading`,
   `AreaCheckbox`, `ShipDisplay`).
 
 ## Getting UI on screen
@@ -49,12 +49,12 @@ To attach to vanilla screens, use one of these:
 
 | Call | Places children | Default size |
 |---|---|---|
-| `Column(size, modifier, grow, horizontalAlignment, spacing) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | fill width, wrap height |
-| `Row(size, modifier, grow, verticalAlignment, spacing) { }` | left to right (`HGrow.Leftwards` reverses) | wrap width, fill height |
-| `Box(size, modifier) { }` | stacked on top of each other; position children with `Modifier.align(Alignment.X)` | wrap |
-| `CustomPanel(size, modifier) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
+| `Column(size, modifier, grow, horizontalAlignment, spacing, overflow) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | fill width, wrap height |
+| `Row(size, modifier, grow, verticalAlignment, spacing, overflow) { }` | left to right (`HGrow.Leftwards` reverses) | wrap width, fill height |
+| `Box(size, modifier, overflow) { }` | stacked on top of each other; position children with `Modifier.align(Alignment.X)` | wrap |
+| `CustomPanel(size, modifier, overflow) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
+| `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item, only those near the view exist; scrolls | fill; exact or fill only |
 | `Section(title, size, modifier, contentPadding, spacing, backgroundColor, borderColor) { }` | vanilla-style panel: a `SectionHeading` on top (none for `title = null`), the content in a padded column below, black inside a thin dark border | fill width, wrap height |
-| `ScrollPanel(size, modifier, horizontalAlignment, spacing, ...) { }` | top to bottom, scrollable | fill; exact or fill only |
 | `Theme(theme) { }` | not a panel: overrides `StarUITheme` defaults for the calls inside | |
 
 Column and Row default to the start (left / top) like Compose. Space inside a container's edges is
@@ -64,7 +64,7 @@ Column and Row default to the start (left / top) like Compose. Space inside a co
 
 - Box children: `Modifier.align(Alignment.TopLeft)`, also `TopCenter`, `TopRight`, `CenterLeft`, `Center`,
   `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight` (`Alignment.entries` lists them).
-- Column / ScrollPanel: `horizontalAlignment = Alignment.Left`, `CenterHorizontally` or `Right`.
+- Column: `horizontalAlignment = Alignment.Left`, `CenterHorizontally` or `Right`.
 - Row: `verticalAlignment = Alignment.Top`, `CenterVertically` or `Bottom`.
 - Text inside its own box: `textAlign = TextAlign.Left`, `Center` or `Right` (Text, Button, SectionHeading).
 
@@ -111,8 +111,8 @@ and last a click handler or builder where there is one.
   `configure` is a named argument taking any `SliderAPI` setter; it runs on every build. Use `slider.asComponent`
   (from `core`) for the `UIComponentAPI` view.
 
-Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `ScrollPanel`
-a `ScrollPanelAPI` (its builder's components go into the scrolling content container), `Button` a `ButtonAPI`.
+Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
+`ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
 `Image` and `ShipDisplay` return `BoxedUIImage` / `BoxedUIShipPreview`, small wrappers for components that have no API;
 pass them to vanilla panel methods freely (StarUI unwraps them).
 
@@ -130,14 +130,54 @@ Compose's words: `Size.wrapContent()`, `fillMaxWidth()`, `fillMaxWidth(height = 
 
 Three types, each a superset of the one before, so the compiler rules out sizes that mean nothing:
 - `BoundedSize`: exact or fill on both axes. Components with no content to wrap take it: `Spacer`, `ShipDisplay`,
-  `ScrollPanel`, `Slider`, `ProgressBar`. `Size.wrapContent()` there is a compile error.
+  `LazyColumn`, `LazyRow`, `Slider`, `ProgressBar`. `Size.wrapContent()` there is a compile error.
 - `Size`: adds wrap. Everything else.
 - `ImageSize`: adds `ImageSize.native(scale, maxWidth, maxHeight)` and `ImageSize.aspectWrap()`. `Image` only.
 
 Layout rules, each of which throws a clear exception when broken:
 - a fill child on a Column's or Row's main axis needs that container to have a known size on that axis (not wrap);
-- nothing can fill inside a ScrollPanel's scrolling direction;
+- a fill child along a scrolling axis gets what is left of the visible size (0 once the content overflows);
 - `Modifier.anchor` is not allowed inside a Column or Row (they place their children themselves).
+
+## Overflow: clipping, scrolling and long lists
+
+What a container does with children that do not fit is its `overflow` argument, per axis, like CSS's `overflow-x` /
+`overflow-y`: `Overflow(horizontal, vertical)` of `AxisOverflow.Visible` (spill out, the default), `Clip` (cut at the
+edge) or `Scroll`. Shorthands: `Overflow.Visible`, `Overflow.Clip`, `Overflow.ScrollVertical` (a list: Clip, Scroll),
+`Overflow.ScrollHorizontal`, `Overflow.Scroll` (a 2D viewport).
+
+```kotlin
+Column(Size.fillMaxSize(), overflow = Overflow.ScrollVertical) { for (s in ships) key(s.id) { ShipRow(s) } }
+Row(Size.fillMaxWidth(height = 120f), overflow = Overflow.ScrollHorizontal) { ... }
+Box(Size.exact(400f, 300f), overflow = Overflow.Scroll) { Image(map) }
+Box(Size.exact(200f, 60f), overflow = Overflow.Clip) { ... }
+```
+
+- **A scroll axis clips both axes** (vanilla's scroll panel cuts on both): `Overflow(Visible, Scroll)` throws.
+- **On a scroll axis** the children get the visible size as their room, and the content is that size or bigger. A
+  fill child along a Column or Row takes what is left (a fill spacer pins a footer to the bottom of a short list; it
+  is 0 once the list overflows); across a Column or Row, and in a Box, a fill child spans the whole content.
+- **On a clip axis** the children are bounded by the container; anything bigger is cut, and clicks on the cut-off
+  part reach nothing. Clip on both axes is vanilla's own clipping (it nests); one axis is a StarUI scissor.
+- **Only an exact or fill axis overflows**: a wrapping axis grows with its children.
+- A scrolling container is a vanilla scroll panel holding the StarUI container; the call still returns the container
+  (its size is the content's). `container.scrollPanel` (from `core`) gives the `ScrollPanelAPI` (`scrollToY`,
+  `ensureVisible`, offsets); null on other panels. The scroll position survives rebuilds; a list that gets shorter is
+  scrolled back into range. Scroll panel looks (left scrollbar, shadows, colours, wheel on or off) come from
+  `StarUITheme.scroll`.
+- **The mouse wheel** goes to the deepest scroll panel under the cursor that can still move, and to the next one out
+  at its end (game-wide, vanilla's panels too). The plain wheel scrolls vertically, or horizontally when only the
+  width overflows; Shift+wheel scrolls horizontally when both do. Right-drag pans, as in vanilla.
+- **Cost**: children outside a clipping or scrolling container's visible part are not drawn and get no input; they
+  still advance (onAdvance, vanilla animations). A changed row lays out only itself and its ancestors. Measured
+  (`perf-long-lists`): 1000 rows of title, labels and a wrapped paragraph idle at ~5 ms per frame over drawing the
+  visible text, ~100x cheaper than vanilla's own scroll panel holding the same text.
+- **`LazyColumn` / `LazyRow`** for hundreds or thousands of items, or heavy rows: only the rows within about a screen
+  of the view exist, each `itemHeight` tall (`itemWidth` wide), and rows just off screen do not advance. Each row's
+  builder is its own scope. With `key = { it.id }` a row keeps its components while it stays near the view, and
+  removing or inserting items above the view keeps what you see in place. A row that scrolls far away is thrown
+  away with its native state (a text field's focus, an inner scroll position), as in Compose: keep what must survive
+  in a `UIState`.
 
 ## Spacing
 
@@ -196,7 +236,7 @@ Column {
 }
 ```
 
-1. **Plain `if`, `for` and `when` just work.** Each container builder (Column, Row, Box, CustomPanel, ScrollPanel)
+1. **Plain `if`, `for` and `when` just work.** Each container builder (Column, Row, Box, CustomPanel, lazy rows)
    records the `UIState`s it reads. When one changes, that builder runs again on the next frame. Nested containers
    are separate: changing a state that only an inner Row reads re-runs only that Row.
 2. **Event handlers change state; they never build UI.** Adding a component to a reactive container from a click
@@ -235,6 +275,8 @@ Column {
   `Modifier.onAdvance` for per-frame work.
 - Sizes are a typed `size` argument (`Size`, `BoundedSize`, `ImageSize`, with Compose's factory names) instead of sizing modifiers, so a size that means nothing for a component is a compile error; `margin` exists.
 - Absolute positioning is anchors in a `CustomPanel`, not `offset`.
+- Clipping and scrolling are the container's `overflow` argument (CSS-style, per axis), not `clipToBounds` /
+  `verticalScroll` modifiers: a scrolling container is a different native object, chosen when it is made.
 - Coordinates in raw Starsector APIs are bottom-left based; StarUI layouts and `dumpLayout()` use top-left, y down.
 
 ## Seeing what you built (no screenshots needed)
@@ -261,7 +303,8 @@ Column {
 
 ```
 src/org/starficz/starui/
-  compose/components/   Containers.kt (Column, Row, Box, CustomPanel, ScrollPanel, key, reuse helpers),
+  compose/components/   Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
+                        LazyLists.kt (LazyColumn, LazyRow),
                         Content.kt (Text, Image, ShipDisplay), Controls.kt (Button, TextField, checkboxes), Spacers.kt
   compose/layout/       LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt
   compose/modifier/     Modifier.kt, LayoutModifiers.kt, EventModifiers.kt, VisualModifiers.kt
@@ -270,9 +313,10 @@ src/org/starficz/starui/
                         (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
   core/                 vanilla helpers, BoxedUIImage / BoxedUIShipPreview (no API for those), Anchor, Font,
                         ReflectionUtils
-  internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt)
+  internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt: lifecycle, culling, clip input;
+                        ScrollWheelPatch.kt: the wheel for nested and horizontal scrolling)
 native-smoke/           in-game test suite (test-only, never shipped)
-docs/                   design notes: reactive-scopes-plan.md
+docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md (overflow, wheel, long-list numbers)
 ```
 
 ## How it works, in one paragraph per piece
@@ -281,8 +325,15 @@ docs/                   design notes: reactive-scopes-plan.md
   as their plugin, wrapping any foreign plugin as `delegate`. PatchLib hooks on the vanilla base component call the
   plugin's render, advance and input methods.
 - **Layout.** Containers have a `LayoutEngine`. The top-level StarUI node runs measure and layout lazily in
-  `renderBelow` when `requestLayout()` has marked it. Stack children are anchored on their previous sibling, so
-  removing one re-pins the rest (`pinChildrenToPanel`).
+  `renderBelow` when `requestLayout()` has marked it; the request marks the path up from the changed node, so
+  measures of unchanged nodes are reused and they are not laid out again (`StarUIPanelPlugin.measure`,
+  `commitChildLayout`). Stack children are placed relative to the container at their running offset (chaining them
+  on siblings made vanilla recompute every later one: quadratic). A scrolling container with an exact or fill size
+  is a layout boundary.
+- **Overflow.** A scrolling container is a vanilla scroll panel whose plugin has a `ViewportLayoutEngine`; the
+  StarUI container sits in its content container. While a clipping or scrolling container's children render, its
+  visible rectangle is on `ClipStack`, and the render hook skips StarUI children entirely outside it (they also skip
+  input; `pausesOffscreenAdvance`, set by lazy lists, skips their advance). `ScrollWheelPatch` routes the wheel.
 - **Scopes.** `attachScope` keeps each container's builder. `UIState` reads subscribe the current scope, and writes
   mark it dirty. A dirty scope is rebuilt from an ancestor's `renderBelow` or `advance` (`Scope.flush`), never
   during input or from scripts. A rebuild hands the old children to a `ReuseCursor`, and each component function

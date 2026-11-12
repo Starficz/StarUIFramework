@@ -104,7 +104,7 @@ internal fun UIPanelAPI.childSlot(kind: String, props: Any? = null): ChildSlot {
 /**
  * Sizes a reused component the way a new one would start, except on an axis only the layout pass can resolve (Fill,
  * or Wrap without a known content size): that axis keeps its current size, so a reused component does not collapse
- * for a moment and a ScrollPanel does not lose its scroll position.
+ * for a moment and a scroll panel does not lose its scroll position.
  */
 internal fun applyReuseBounds(
     component: UIComponentAPI, size: ImageSize, intrinsic: Pair<Float, Float>? = null,
@@ -288,7 +288,7 @@ internal fun UIPanelAPI.containerParts(slot: ChildSlot, size: Size, overflow: Ov
 }
 
 /** Records the sizing, remembers the container for the next rebuild and applies the modifiers. */
-private fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modifier) {
+internal fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modifier) {
     registerComponentSizing(node, size, isContainer = true, containerPlugin = nodePlugin)
     slot.remember(node, panel)
     modifier.operations.forEach { it(node) }

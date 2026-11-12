@@ -10,7 +10,7 @@ import org.starficz.starui.compose.layout.StackDirection
  * - In a Row: `verticalAlignment = Alignment.Top`, `CenterVertically` or `Bottom`.
  */
 class Alignment private constructor(private val name: String, internal val x: Float, internal val y: Float) {
-    /** Where children sit across a Column or ScrollPanel: [Left], [CenterHorizontally] or [Right]. */
+    /** Where children sit across a Column: [Left], [CenterHorizontally] or [Right]. */
     class Horizontal internal constructor(private val name: String, internal val alignValue: Float) {
         override fun toString() = name
     }

@@ -283,6 +283,15 @@ object ShowcaseUIPlugin {
                     }
                 }
             }
+            Text("LazyColumn: 10,000 items; only the rows near the view exist", color = GRAY)
+            LazyColumn(lazyShowcaseItems, Size.fillMaxWidth(height = 130f), Modifier.background(INSET_BG).padding(horizontal = 4f),
+                itemHeight = 22f, key = { it }) { i ->
+                Row(Size.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
+                    Text("Item ${i + 1}", color = if (i % 100 == 0) HIGHLIGHT else TEXT)
+                    FlexSpacer()
+                    Text("built when it scrolls near", color = GRAY)
+                }
+            }
         }
     }
 
@@ -290,6 +299,7 @@ object ShowcaseUIPlugin {
     // Second band, column 2: every control option
     // =================================================================================================================
     private val overflowLines = UIState(2)
+    private val lazyShowcaseItems = (0 until 10_000).toList()
     private val buttonsEnabled = UIState(false)
     private val hullSizes = listOf("Frigate", "Destroyer", "Cruiser", "Capital").map { it to UIState(it == "Frigate") }
     private val shipName = UIState("")

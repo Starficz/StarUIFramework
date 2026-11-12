@@ -6,7 +6,8 @@ A modern UI framework for Starsector built with a Kotlin DSL. Very WIP, has many
 - CustomPanels (absolute/relative anchoring)
 - Columns, Rows and Boxes (Compose-style alignment, weights, margin and padding)
 - Sections (vanilla-style panels with a section heading)
-- ScrollPanels
+- Clipping and scrolling on any container, per axis (`overflow`), with the mouse wheel for nested and horizontal scrolling
+- Lazy lists (LazyColumn, LazyRow) for thousands of rows
   
 Need to do:
 - Grids 
