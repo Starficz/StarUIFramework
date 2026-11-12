@@ -3,7 +3,7 @@
 
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Keyboard
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Text
@@ -35,7 +35,7 @@ fun Modifier.counting(c: Counts): Modifier = this
 /** A 400x300 host panel at (40,40) from the top-left with one centred, instrumented Text. Returns (host, label). */
 private fun TestContext.instrumentedLabel(counts: Counts, text: String = "Input target"): Pair<UIComponentAPI, UIComponentAPI> {
     var label: UIComponentAPI? = null
-    val host = root.CustomPanel(PanelSize.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+    val host = root.CustomPanel(Size.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
         label = Text(text, modifier = Modifier.counting(counts).anchor(Anchor.inside.center.ofParent()))
     }
     frame()
@@ -116,7 +116,7 @@ fun registerInputTests() {
         val bc = Counts()
         var pressed = 0
         var button: UIComponentAPI? = null
-        root.CustomPanel(PanelSize.exact(300f, 120f), Modifier.anchor(Anchor.inside.topRight.ofParent(40f, 40f))) {
+        root.CustomPanel(Size.exact(300f, 120f), Modifier.anchor(Anchor.inside.topRight.ofParent(40f, 40f))) {
             button = Button("Press me", modifier = Modifier.counting(bc).anchor(Anchor.inside.center.ofParent())) { pressed++ }
         }
         frame()

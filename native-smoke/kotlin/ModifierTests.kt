@@ -1,9 +1,10 @@
 // Universal modifiers on native components: visual (pixels), sizing, lifecycle counts.
 
+import org.starficz.starui.compose.modifier.margin
+import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Spacer
@@ -12,12 +13,9 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.border
-import org.starficz.starui.compose.modifier.fillMaxWidth
-import org.starficz.starui.compose.modifier.height
 import org.starficz.starui.compose.modifier.onAdvance
 import org.starficz.starui.compose.modifier.onLayout
 import org.starficz.starui.compose.modifier.onPositionChanged
-import org.starficz.starui.compose.modifier.width
 import org.starficz.starui.core.Anchor
 import java.awt.Color
 
@@ -27,10 +25,10 @@ private fun Rgb.isBlue() = b > 170 && r < 120 && g < 120
 
 fun registerModifierVisualTests() {
     StarUITestSuite.group("modifier-background-border") {
-        val panel = root.CustomPanel(PanelSize.exact(100f, 80f), Modifier.anchor(Anchor.inside.topLeft.ofParent(100f, 100f))
-            .background(Color(220, 40, 40)).border(Color(40, 220, 40), 3f))
+        val panel = root.CustomPanel(Size.exact(100f, 80f), Modifier.anchor(Anchor.inside.topLeft.ofParent(100f, 100f))
+            .background(Color(220, 40, 40)).border(3f, Color(40, 220, 40)))
         lateinit var label: UIComponentAPI
-        root.CustomPanel(PanelSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 100f))) {
+        root.CustomPanel(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 100f))) {
             label = Text("Native label with background", modifier = Modifier.background(Color(40, 40, 220))
                 .anchor(Anchor.inside.center.ofParent()))
         }
@@ -49,25 +47,29 @@ fun registerModifierVisualTests() {
         screenshot("final")
     }
 
-    StarUITestSuite.group("modifier-sizing") {
-        lateinit var fixed: CustomPanelAPI; lateinit var wide: CustomPanelAPI
-        val col = root.Column(LayoutSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), xPadding = 10f) {
-            fixed = Spacer(PanelSize.exact(10f, 10f), Modifier.width(120f).height(25f).background(Color(200, 60, 60)))
-            wide = Spacer(PanelSize.exact(10f, 10f), Modifier.fillMaxWidth().background(Color(60, 200, 60)))
+    StarUITestSuite.group("modifier-spacing-shapes") {
+        // margin, padding and hitBoxPadding take the same three shapes: (all), (horizontal, vertical), sides by name
+        lateinit var all: CustomPanelAPI; lateinit var pair: CustomPanelAPI; lateinit var sides: CustomPanelAPI
+        val col = root.Column(Size.exact(300f, 200f),
+            Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)).padding(left = 10f, top = 4f)) {
+            all = Spacer(Size.exact(50f, 10f), Modifier.margin(3f).background(Color(200, 60, 60)))
+            pair = Spacer(Size.exact(50f, 10f), Modifier.margin(6f, 2f).background(Color(60, 200, 60)))
+            sides = Spacer(Size.exact(50f, 10f), Modifier.margin(left = 20f, bottom = 5f).background(Color(60, 60, 200)))
         }
         frame()
-        near(fixed.w, 120f, "Modifier.width overrides the size argument")
-        near(fixed.h, 25f, "Modifier.height overrides the size argument")
-        near(wide.w, 280f, "Modifier.fillMaxWidth fills the Column's inner width")
-        near(wide.h, 10f, "fillMaxWidth keeps the exact height")
-        near(wide.relTop(col), 25f, "the second child flows below the resized first")
+        near(all.relLeft(col), 10f + 3f, "padding(left =) plus margin(all): left")
+        near(all.relTop(col), 4f + 3f, "padding(top =) plus margin(all): top")
+        near(pair.relLeft(col), 10f + 6f, "margin(horizontal, vertical): left")
+        near(pair.relTop(col), 4f + 3f + 10f + 3f + 2f, "margin(horizontal, vertical): below the first child and both margins")
+        near(sides.relLeft(col), 10f + 20f, "margin(left =): only that side")
+        near(sides.relTop(col), pair.relTop(col) + 10f + 2f, "margin with no top: straight below the second child's bottom margin")
         screenshot("final")
     }
 
     StarUITestSuite.group("modifier-lifecycle-counts") {
         var advances = 0; var layouts = 0; var moves = 0
         lateinit var label: UIComponentAPI
-        root.CustomPanel(PanelSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+        root.CustomPanel(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
             label = Text("lifecycle", modifier = Modifier.onAdvance { advances++ }.onLayout { layouts++ }.onPositionChanged { moves++ }
                 .anchor(Anchor.inside.center.ofParent()))
         }

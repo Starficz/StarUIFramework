@@ -57,6 +57,20 @@ enum class Font {
     VICTOR_21,            // victor21.fnt
 }
 
+/**
+ * The fonts a vanilla button can be made with (TooltipMakerAPI has one setter for each and no other way). A separate
+ * type, so a button cannot be given a font it does not support.
+ */
+enum class ButtonFont(val font: Font) {
+    ORBITRON_12_CONDENSED(Font.ORBITRON_12_CONDENSED),
+    ORBITRON_20(Font.ORBITRON_20),
+    ORBITRON_20_BOLD(Font.ORBITRON_20_BOLD),
+    ORBITRON_24(Font.ORBITRON_24),
+    ORBITRON_24_BOLD(Font.ORBITRON_24_BOLD),
+    VICTOR_10(Font.VICTOR_10),
+    VICTOR_14(Font.VICTOR_14)
+}
+
 fun getFontPath(font: Font): String = fontPathOf(font).also { ensureFontLoaded(it) }
 
 private fun fontPathOf(font: Font): String {

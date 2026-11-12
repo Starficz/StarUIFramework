@@ -1,12 +1,10 @@
 package org.starficz.starui.compose.modifier
 
-import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.layout.Dimension
-import org.starficz.starui.compose.layout.NodeSize
+import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.Anchor
@@ -14,84 +12,81 @@ import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.applyAnchor
 import org.starficz.starui.core.children
 
-private fun UIComponentAPI.applySizeConfig(action: (NodeSize) -> NodeSize) {
-    val actualComponent = this.actual
-    val attached = StarUIPanelPlugin.getAttached(actualComponent)
-    if (attached != null) {
-        attached.myNodeSize = action(attached.myNodeSize)
-    }
-    if (StarUIContext.isManagedByParent) {
-        val plugin = StarUIContext.currentPlugin
-        val currentSize = plugin.childSizing[actualComponent] ?: attached?.myNodeSize ?: NodeSize()
-        plugin.childSizing[actualComponent] = action(currentSize)
-    } else if (attached == null) {
-        val plugin = StarUIPanelPlugin.getOrCreate(actualComponent)
-        plugin.myNodeSize = action(plugin.myNodeSize)
-    }
-}
-
-// ==========================================
-// SIZING MODIFIERS
-// ==========================================
-
-fun Modifier.width(pixels: Float) = this.then { it.applySizeConfig { s -> s.copy(width = Dimension.Exact(pixels)) } }
-fun Modifier.height(pixels: Float) = this.then { it.applySizeConfig { s -> s.copy(height = Dimension.Exact(pixels)) } }
-fun Modifier.size(width: Float, height: Float) = this.width(width).height(height)
-fun Modifier.size(exact: Float) = this.size(exact, exact)
-
-fun Modifier.fillMaxWidth(weight: Float = 1f) = this.then { it.applySizeConfig { s -> s.copy(width = Dimension.FillMax(weight)) } }
-fun Modifier.fillMaxHeight(weight: Float = 1f) = this.then { it.applySizeConfig { s -> s.copy(height = Dimension.FillMax(weight)) } }
-fun Modifier.fillMaxSize(weight: Float = 1f) = this.fillMaxWidth(weight).fillMaxHeight(weight)
-
-fun Modifier.wrapContentWidth() = this.then { it.applySizeConfig { s -> s.copy(width = Dimension.WrapContent) } }
-fun Modifier.wrapContentHeight() = this.then { it.applySizeConfig { s -> s.copy(height = Dimension.WrapContent) } }
-fun Modifier.wrapContentSize() = this.wrapContentWidth().wrapContentHeight()
-
 // ==========================================
 // SPACING MODIFIERS
 // ==========================================
+// Two kinds of space, each a modifier with the same three shapes:
+//   margin   outside the component: between it and its neighbours or its container's edge
+//   padding  inside it: between a container's edge and its children, or around a leaf's content
+// Shapes: (all), (horizontal, vertical), or sides by name: (left = , top = , right = , bottom = ), where
+// horizontal = and vertical = set two sides at once. Sides are named only, so four bare numbers are never guessed at.
+
+/** Makes the parameters after it named-only: nothing can be passed for it. */
+class NamedArgumentsOnly private constructor()
 
 data class Margin(val left: Float = 0f, val right: Float = 0f, val top: Float = 0f, val bottom: Float = 0f) {
     val horizontal get() = left + right
     val vertical get() = top + bottom
 }
 
-// Same side order as padding (and Compose's PaddingValues): left, top, right, bottom.
-fun Modifier.margin(all: Float) = margin(all, all, all, all)
-fun Modifier.margin(horizontal: Float = 0f, vertical: Float = 0f) = margin(horizontal, vertical, horizontal, vertical)
-fun Modifier.margin(left: Float = 0f, top: Float = 0f, right: Float = 0f, bottom: Float = 0f) = this.then { component ->
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMargins[component.actual] = Margin(left, right, top, bottom)
-    }
-}
-
 data class PaddingValues(val left: Float = 0f, val top: Float = 0f, val right: Float = 0f, val bottom: Float = 0f) {
     val horizontal get() = left + right
     val vertical get() = top + bottom
+
+    operator fun plus(other: PaddingValues) =
+        PaddingValues(left + other.left, top + other.top, right + other.right, bottom + other.bottom)
+
+    companion object {
+        val Zero = PaddingValues()
+        fun all(all: Float) = PaddingValues(all, all, all, all)
+        fun symmetric(horizontal: Float = 0f, vertical: Float = 0f) = PaddingValues(horizontal, vertical, horizontal, vertical)
+    }
 }
 
-fun Modifier.padding(all: Float) = padding(all, all, all, all)
-fun Modifier.padding(horizontal: Float = 0f, vertical: Float = 0f) = padding(horizontal, vertical, horizontal, vertical)
-fun Modifier.padding(left: Float = 0f, top: Float = 0f, right: Float = 0f, bottom: Float = 0f) = this.then { component ->
-    val actualComponent = component.actual
+/** Space outside the component on every side. */
+fun Modifier.margin(all: Float) = margin(left = all, top = all, right = all, bottom = all)
+/** Space outside the component: [horizontal] on the left and right, [vertical] on the top and bottom. */
+fun Modifier.margin(horizontal: Float, vertical: Float) = margin(left = horizontal, top = vertical, right = horizontal, bottom = vertical)
+/** Space outside the component, by side. */
+fun Modifier.margin(
+    vararg namedArgumentsOnly: NamedArgumentsOnly,
+    horizontal: Float = 0f, vertical: Float = 0f,
+    left: Float = horizontal, top: Float = vertical, right: Float = horizontal, bottom: Float = vertical
+) = this.then { component ->
+    if (!StarUIContext.isTopLevel) {
+        StarUIContext.currentPlugin.childMargins[component.actual] = Margin(left = left, right = right, top = top, bottom = bottom)
+    }
+}
+
+/** Space inside the component on every side. */
+fun Modifier.padding(all: Float) = padding(PaddingValues.all(all))
+/** Space inside the component: [horizontal] on the left and right, [vertical] on the top and bottom. */
+fun Modifier.padding(horizontal: Float, vertical: Float) = padding(PaddingValues.symmetric(horizontal, vertical))
+/** Space inside the component, by side. */
+fun Modifier.padding(
+    vararg namedArgumentsOnly: NamedArgumentsOnly,
+    horizontal: Float = 0f, vertical: Float = 0f,
+    left: Float = horizontal, top: Float = vertical, right: Float = horizontal, bottom: Float = vertical
+) = padding(PaddingValues(left, top, right, bottom))
+
+/** Space inside the component: between a container's edge and its children, or around a leaf's content. Adds up. */
+fun Modifier.padding(values: PaddingValues) = this.then { component -> component.addPadding(values) }
+
+/** Adds [values] to the padding of a container (its own) or of a leaf (kept by its container). */
+internal fun UIComponentAPI.addPadding(values: PaddingValues) {
+    if (values == PaddingValues.Zero) return
+    val actualComponent = this.actual
     val pluginAsContainer = ((actualComponent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin)
         ?.takeIf { it.layoutEngine != null }
     val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)?.contentContainer
         ?.let { StarUIPanelPlugin.getAttached(it) }
     val containerPlugin = pluginAsContainer ?: scrollContainerPlugin
 
-    // Padding is space INSIDE.
     if (containerPlugin != null) {
-        val existing = containerPlugin.myPadding
-        containerPlugin.myPadding = PaddingValues(
-            left = existing.left + left, top = existing.top + top, right = existing.right + right, bottom = existing.bottom + bottom
-        )
+        containerPlugin.myPadding = containerPlugin.myPadding + values
     } else if (!StarUIContext.isTopLevel) {
         val plugin = StarUIContext.currentPlugin
-        val existing = plugin.childPadding[actualComponent] ?: PaddingValues()
-        plugin.childPadding[actualComponent] = PaddingValues(
-            left = existing.left + left, top = existing.top + top, right = existing.right + right, bottom = existing.bottom + bottom
-        )
+        plugin.childPadding[actualComponent] = (plugin.childPadding[actualComponent] ?: PaddingValues.Zero) + values
     }
 }
 
@@ -99,6 +94,7 @@ fun Modifier.padding(left: Float = 0f, top: Float = 0f, right: Float = 0f, botto
 // POSITIONING MODIFIERS
 // ==========================================
 
+/** Where this child sits in a Box: one of the nine [Alignment] values. */
 fun Modifier.align(alignment: Alignment) = this.then { component ->
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childAlignments[component.actual] = alignment

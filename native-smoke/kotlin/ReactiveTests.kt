@@ -8,8 +8,6 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.AreaCheckbox
 import org.starficz.starui.compose.components.Button
@@ -58,7 +56,7 @@ private fun TestContext.pressOnly(c: UIComponentAPI) {
 /** Builds a reactive Column that is never attached anywhere and returns only a weak reference to it. */
 private fun buildUnattachedScope(state: UIState<Int>): WeakReference<CustomPanelAPI> {
     val host = Global.getSettings().createCustom(200f, 100f, null)
-    val column = host.Column(LayoutSize.wrap()) { Text("n=${state.value}") }
+    val column = host.Column(Size.wrapContent()) { Text("n=${state.value}") }
     return WeakReference(column)
 }
 
@@ -67,7 +65,7 @@ fun registerScopeTests() {
         val flag = UIState(false)
         var clicks = 0; var changes = 0
         lateinit var box: ButtonAPI
-        val panel = root.CustomPanel(PanelSize.exact(300f, 80f), at(40f, 40f).background(PANEL).onClick { clicks++ }) {
+        val panel = root.CustomPanel(Size.exact(300f, 80f), at(40f, 40f).background(PANEL).onClick { clicks++ }) {
             box = Checkbox("bound", bind = flag, modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(10f, 10f)))
             flag.onChange { changes++ }
         }
@@ -99,7 +97,7 @@ fun registerScopeTests() {
         var builds = 0
         val host = Global.getSettings().createCustom(300f, 60f, null)
         root.addComponent(host).inTL(40f, 40f)
-        val inner = host.Column(LayoutSize.wrap()) { builds++; Text("n=${state.value}") }
+        val inner = host.Column(Size.wrapContent()) { builds++; Text("n=${state.value}") }
         val innerPlugin = inner.plugin as StarUIPanelPlugin
         frame()
         expect(state.scopeSubscribers.size == 1, "the builder's read subscribed its scope (${state.scopeSubscribers.size})")
@@ -128,7 +126,7 @@ fun registerScopeTests() {
         val b = Global.getSettings().createCustom(300f, 60f, null)
         root.addComponent(a).inTL(40f, 120f)
         root.addComponent(b).inTL(40f, 200f)
-        val moved = a.Column(LayoutSize.wrap(), Modifier.background(PANEL)) { moveBuilds++; Text("moved ${moveState.value}") }
+        val moved = a.Column(Size.wrapContent(), Modifier.background(PANEL)) { moveBuilds++; Text("moved ${moveState.value}") }
         frame()
         a.removeComponent(moved)
         b.addComponent(moved).inTL(0f, 0f)
@@ -163,10 +161,10 @@ fun registerReactiveTests() {
         val count = UIState(2)
         val unread = UIState(0)
         var builds = 0
-        val col = root.Column(LayoutSize.wrap(), at(40f, 40f).background(PANEL), spacing = 5f) {
+        val col = root.Column(Size.wrapContent(), at(40f, 40f).background(PANEL), spacing = 5f) {
             builds++
             if (flag.value) Text("state A") else Text("state B")
-            for (i in 0 until count.value) Spacer(PanelSize.exact(100f, 20f), Modifier.background(ROW))
+            for (i in 0 until count.value) Spacer(Size.exact(100f, 20f), Modifier.background(ROW))
             if (flag.value && count.value > 100) Text("never")   // reads both states a second time
         }
         frame()
@@ -212,10 +210,10 @@ fun registerReactiveTests() {
         val innerState = UIState(0)
         var outerBuilds = 0; var innerBuilds = 0
         lateinit var inner: CustomPanelAPI
-        val outer = root.Column(LayoutSize.wrap(), at(40f, 40f).background(PANEL), spacing = 5f) {
+        val outer = root.Column(Size.wrapContent(), at(40f, 40f).background(PANEL), spacing = 5f) {
             outerBuilds++
             Text("outer ${outerState.value}")
-            inner = Row(LayoutSize.wrap(), Modifier.background(Color(50, 50, 70))) {
+            inner = Row(Size.wrapContent(), Modifier.background(Color(50, 50, 70))) {
                 innerBuilds++
                 Text("inner ${innerState.value}")
             }
@@ -252,7 +250,7 @@ fun registerReactiveTests() {
         val open = UIState(false)
         var builds = 0
         lateinit var button: ButtonAPI
-        val col = root.Column(LayoutSize.wrap(), at(40f, 40f).background(PANEL), spacing = 5f) {
+        val col = root.Column(Size.wrapContent(), at(40f, 40f).background(PANEL), spacing = 5f) {
             builds++
             button = Button("Toggle", size = Size.exact(120f, 24f)) { open.value = !open.value }
             if (open.value) Text("details")
@@ -276,8 +274,8 @@ fun registerReactiveTests() {
     StarUITestSuite.group("reactive-detached-then-shown") {
         val state = UIState(0)
         var builds = 0
-        val host = root.CustomPanel(PanelSize.exact(300f, 60f), at(40f, 40f).background(PANEL))
-        val col = host.Column(LayoutSize.wrap()) { builds++; Text("v=${state.value}") }
+        val host = root.CustomPanel(Size.exact(300f, 60f), at(40f, 40f).background(PANEL))
+        val col = host.Column(Size.wrapContent()) { builds++; Text("v=${state.value}") }
         frame()
         expect(builds == 1, "built once")
 
@@ -300,7 +298,7 @@ fun registerReactiveTests() {
         var removeBuilds = 0
         var removeNow = false
         lateinit var selfRemoving: CustomPanelAPI
-        selfRemoving = host.Column(LayoutSize.wrap(), Modifier.onAdvance {
+        selfRemoving = host.Column(Size.wrapContent(), Modifier.onAdvance {
             if (removeNow) {
                 removeNow = false
                 removeState.value++
@@ -317,7 +315,7 @@ fun registerReactiveTests() {
     StarUITestSuite.group("reactive-loop-guard") {
         val state = UIState(0)
         var builds = 0
-        val col = root.Column(LayoutSize.wrap(), at(40f, 40f).background(PANEL)) {
+        val col = root.Column(Size.wrapContent(), at(40f, 40f).background(PANEL)) {
             builds++
             Text("n=${state.value}")
             if (state.value > 0) state.value = state.value + 1   // a builder must not do this
@@ -337,7 +335,7 @@ fun registerReactiveTests() {
         val text = UIState("abc")
         val extra = UIState(false)
         lateinit var field: TextFieldAPI
-        val col = root.Column(LayoutSize.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
+        val col = root.Column(Size.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
             field = TextField(text, size = Size.exact(200f, 24f))
             if (extra.value) Text("extra line")
         }
@@ -361,7 +359,7 @@ fun registerReactiveTests() {
         // A field that the new build no longer declares is removed, and must give up the keyboard.
         val showField = UIState(true)
         lateinit var optional: TextFieldAPI
-        root.Column(LayoutSize.exact(300f, 60f), at(40f, 160f).background(PANEL)) {
+        root.Column(Size.exact(300f, 60f), at(40f, 160f).background(PANEL)) {
             if (showField.value) optional = TextField(text, size = Size.exact(200f, 24f))
         }
         frame()
@@ -375,8 +373,8 @@ fun registerReactiveTests() {
 
     StarUITestSuite.group("reactive-outside-add-error") {
         val state = UIState(0)
-        val reactive = root.Column(LayoutSize.wrap(), at(40f, 40f).background(PANEL)) { Text("n=${state.value}") }
-        val static = root.Column(LayoutSize.wrap(), at(40f, 100f).background(PANEL)) { Text("no state read here") }
+        val reactive = root.Column(Size.wrapContent(), at(40f, 40f).background(PANEL)) { Text("n=${state.value}") }
+        val static = root.Column(Size.wrapContent(), at(40f, 100f).background(PANEL)) { Text("no state read here") }
         frame()
         val error = thrown { reactive.Text("added from a handler") }
         expect(error is IllegalStateException && error.message?.contains("reactive container") == true && error.message?.contains("UIState") == true,
@@ -391,7 +389,7 @@ fun registerReactiveTests() {
         val tick = UIState(0)
         val text = UIState("x")
         var changes = 0; var containerAdvances = 0
-        val col = root.Column(LayoutSize.exact(300f, 80f), at(40f, 40f).background(PANEL).onAdvance { containerAdvances++ }, spacing = 5f) {
+        val col = root.Column(Size.exact(300f, 80f), at(40f, 40f).background(PANEL).onAdvance { containerAdvances++ }, spacing = 5f) {
             Text("tick ${tick.value}")
             TextField(text, size = Size.exact(200f, 24f))
             text.onChange { changes++ }
@@ -409,7 +407,7 @@ fun registerReactiveTests() {
         val group = ButtonGroup()
         val a = UIState(true); val b = UIState(false)
         val buttons = mutableListOf<ButtonAPI>()
-        root.Column(LayoutSize.exact(220f, 80f), at(40f, 140f).background(PANEL), spacing = 5f) {
+        root.Column(Size.exact(220f, 80f), at(40f, 140f).background(PANEL), spacing = 5f) {
             tick.value
             buttons.clear()
             buttons += AreaCheckbox("A", size = Size.exact(200f, 30f), bind = a, buttonGroup = group)
@@ -429,8 +427,8 @@ fun registerReactiveTests() {
     StarUITestSuite.group("reactive-scrollpanel-and-theme") {
         val rows = UIState(3)
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(PanelSize.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
-            for (i in 0 until rows.value) Spacer(PanelSize.exact(280f, 30f), Modifier.background(ROW))
+        sp = root.ScrollPanel(Size.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
+            for (i in 0 until rows.value) Spacer(Size.exact(280f, 30f), Modifier.background(ROW))
         }
         frame()
         val content = sp.contentContainer
@@ -447,7 +445,7 @@ fun registerReactiveTests() {
         val label = UIState("themed")
         lateinit var text: LabelAPI
         root.Theme(themed) {
-            Column(LayoutSize.wrap(), at(400f, 40f).background(PANEL)) { text = Text(label.value) }
+            Column(Size.wrapContent(), at(400f, 40f).background(PANEL)) { text = Text(label.value) }
         }
         frame()
         expect(text.color == Color(255, 0, 255), "first build uses the surrounding theme (${text.color})")

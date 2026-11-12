@@ -1,11 +1,11 @@
-// An exact scale for vanilla ship displays (BoxedUIShipPreview.overwriteScale, done by ShipDisplayExactScalePatch):
+// An exact scale for vanilla ship displays (BoxedUIShipPreview.exactScale, done by ShipDisplayExactScalePatch):
 // vanilla always draws at 95% of the fit and 3% of the panel height above centre; with an exact scale the ship
 // draws at that scale, centred, and on whole pixels whatever the panel's size.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.ShipDisplay
 import org.starficz.starui.compose.modifier.Modifier
@@ -48,11 +48,11 @@ fun registerShipDisplayScaleTests() {
         val variant = Global.getSettings().getVariant("hammerhead_Balanced")
         val shown = linkedMapOf<String, BoxedUIShipPreview>()
         fun at(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
-        root.CustomPanel(PanelSize.exact(1280f, 720f), at(0f, 0f)) {
+        root.CustomPanel(Size.exact(1280f, 720f), at(0f, 0f)) {
             fun display(name: String, x: Float, y: Float, w: Float, h: Float, scale: Float?) {
-                val d = ShipDisplay(PanelSize.exact(w, h), at(x, y), variant = variant,
+                val d = ShipDisplay(Size.exact(w, h), at(x, y), variant = variant,
                     style = BoxedUIShipPreview.Style.NONE, showBorder = false)
-                d.overwriteScale = scale
+                d.exactScale = scale
                 shown[name] = d
             }
             display("vanilla", 20f, 40f, 400f, 300f, null)

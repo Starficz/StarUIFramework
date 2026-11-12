@@ -8,8 +8,6 @@ import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.AreaCheckbox
 import org.starficz.starui.compose.components.Box
@@ -52,7 +50,7 @@ fun registerStateTests() {
         var observed = mutableListOf<Boolean>()
         lateinit var box: ButtonAPI
         lateinit var field: TextFieldAPI
-        root.CustomPanel(PanelSize.exact(400f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
+        root.CustomPanel(Size.exact(400f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
             box = Checkbox("Bound checkbox", bind = flag, modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(10f, 10f)))
             field = TextField(text, size = Size.exact(200f, 24f), modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(10f, 60f)))
             flag.onChange { observed += it }
@@ -83,7 +81,7 @@ fun registerStateTests() {
         val group = ButtonGroup()
         val a = UIState(true); val b = UIState(false); val c = UIState(false)
         val buttons = mutableListOf<ButtonAPI>()
-        root.Column(LayoutSize.exact(220f, 140f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
+        root.Column(Size.exact(220f, 140f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
             for ((name, s) in listOf("A" to a, "B" to b, "C" to c)) buttons += AreaCheckbox(name, size = Size.exact(200f, 30f), bind = s, buttonGroup = group)
         }
         frame()
@@ -106,9 +104,9 @@ fun registerDynamicTests() {
     StarUITestSuite.group("dynamic-unmanaged-child-relayout") {
         // A child added outside any builder context is not registered with the container, but it still takes part
         // in the flow (measured by its current size) and the container still re-lays out for it.
-        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(200, 60, 60)))
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(60, 200, 60)))
+        val col = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
+            Spacer(Size.exact(100f, 20f), Modifier.background(Color(200, 60, 60)))
+            Spacer(Size.exact(100f, 20f), Modifier.background(Color(60, 200, 60)))
         }
         frame()
         near(col.h, 45f, "initial wrapped height")
@@ -124,14 +122,14 @@ fun registerDynamicTests() {
     }
 
     StarUITestSuite.group("dynamic-injection") {
-        val host = root.CustomPanel(PanelSize.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)))
+        val host = root.CustomPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)))
         var injections = 0
         val injection = object : DynamicInjection {
             override val id = "starui-test-injection"
             override fun findTarget(): UIPanelAPI = host
             override fun UIPanelAPI.injectUI() {
                 injections++
-                CustomPanel(PanelSize.exact(50f, 50f), Modifier.anchor(Anchor.inside.center.ofParent()).background(Color(200, 140, 60)))
+                CustomPanel(Size.exact(50f, 50f), Modifier.anchor(Anchor.inside.center.ofParent()).background(Color(200, 140, 60)))
             }
         }
         StarUIManager.registerDynamicInjection(injection)
@@ -151,33 +149,33 @@ fun registerGuardTests() {
     StarUITestSuite.group("guards-layout-exceptions") {
         // FillMax on the primary axis of a WrapContent stack has no size to divide.
         var r = scratchRoot()
-        r.Column(LayoutSize.mixed(Axis.Exact(200f), Axis.Wrap())) { Spacer(PanelSize.mixed(Axis.Exact(10f), Axis.Fill())) }
+        r.Column(Size.mixed(Axis.Exact(200f), Axis.Wrap)) { Spacer(Size.fillMaxHeight(width = 10f)) }
         var err = thrown { NativeSmokeSupport.render(r) }
         expect(err is IllegalStateException && err.message?.contains("WrapContent") == true,
             "FillMax child in a WrapContent Column throws IllegalStateException (got $err)")
 
         // FillMax inside a vertical ScrollPanel: the content container wraps its height, so this is rejected.
         r = scratchRoot()
-        r.ScrollPanel(PanelSize.exact(200f, 100f)) { Spacer(PanelSize.mixed(Axis.Exact(10f), Axis.Fill())) }
+        r.ScrollPanel(Size.exact(200f, 100f)) { Spacer(Size.fillMaxHeight(width = 10f)) }
         err = thrown { NativeSmokeSupport.render(r) }
         expect(err is IllegalStateException, "FillMax child inside a ScrollPanel throws IllegalStateException (got $err)")
 
         // FillMax on a truly unconstrained axis: a Fill-height Column whose parent has no height.
         val flat = Global.getSettings().createCustom(screenW, 0f, null).also { it.position.inTL(0f, 0f) }
-        flat.Column(LayoutSize.mixed(Axis.Exact(200f), Axis.Fill())) { Spacer(PanelSize.mixed(Axis.Exact(10f), Axis.Fill())) }
+        flat.Column(Size.fillMaxHeight(width = 200f)) { Spacer(Size.fillMaxHeight(width = 10f)) }
         err = thrown { NativeSmokeSupport.render(flat) }
         expect(err is IllegalStateException && err.message?.contains("unconstrained") == true,
             "FillMax child on an unconstrained axis throws the unconstrained-axis error (got $err)")
 
         // Anchors are meaningless inside a stack: rejected while building.
         r = scratchRoot()
-        err = thrown { r.Column(LayoutSize.exact(100f, 100f)) { Spacer(PanelSize.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
+        err = thrown { r.Column(Size.exact(100f, 100f)) { Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
         expect(err is IllegalStateException && err.message?.contains("StackLayout") == true,
             "Modifier.anchor inside a Column throws while building (got $err)")
 
         // A WrapContent Box holding only FillMax children only warns, and collapses to zero.
         r = scratchRoot()
-        val box = r.Box(LayoutSize.wrap()) { Spacer(PanelSize.fill()) }
+        val box = r.Box(Size.wrapContent()) { Spacer(Size.fillMaxSize()) }
         err = thrown { NativeSmokeSupport.render(r) }
         expect(err == null, "all-FillMax WrapContent Box does not throw (got $err)")
         near(box.w, 0f, "all-FillMax WrapContent Box collapses to width 0")

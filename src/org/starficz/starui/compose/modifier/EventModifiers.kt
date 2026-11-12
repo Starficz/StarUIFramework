@@ -2,9 +2,17 @@ package org.starficz.starui.compose.modifier
 
 import com.fs.starfarer.api.input.InputEventAPI
 
-fun Modifier.hitBoxPadding(pad: Float) = hitBoxPadding(pad, pad, pad, pad)
-fun Modifier.hitBoxPadding(left: Float = 0f, right: Float = 0f, top: Float = 0f, bottom: Float = 0f) = this.then {
-    it.applyToPlugin { setMouseCapturePad(left, right, top, bottom) }
+/** Extends the area that takes mouse input beyond the component, on every side. */
+fun Modifier.hitBoxPadding(all: Float) = hitBoxPadding(left = all, top = all, right = all, bottom = all)
+/** Extends the area that takes mouse input: [horizontal] on the left and right, [vertical] on the top and bottom. */
+fun Modifier.hitBoxPadding(horizontal: Float, vertical: Float) = hitBoxPadding(left = horizontal, top = vertical, right = horizontal, bottom = vertical)
+/** Extends the area that takes mouse input, by side (the same shapes as margin and padding). */
+fun Modifier.hitBoxPadding(
+    vararg namedArgumentsOnly: NamedArgumentsOnly,
+    horizontal: Float = 0f, vertical: Float = 0f,
+    left: Float = horizontal, top: Float = vertical, right: Float = horizontal, bottom: Float = vertical
+) = this.then {
+    it.applyToPlugin { setMouseCapturePad(leftPad = left, rightPad = right, topPad = top, bottomPad = bottom) }
 }
 
 // --- Events (Mouse) ---

@@ -129,3 +129,6 @@ class ButtonGroup {
         }
     }
 }
+
+/** Compose's name for a new [UIState]: `val count = mutableStateOf(0)`. */
+fun <T> mutableStateOf(value: T): UIState<T> = UIState(value)

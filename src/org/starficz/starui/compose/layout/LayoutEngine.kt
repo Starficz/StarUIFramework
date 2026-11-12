@@ -7,7 +7,7 @@ import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
 
-interface LayoutEngine {
+internal interface LayoutEngine {
     fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float>
     fun layout(assignedWidth: Float, assignedHeight: Float)
 }

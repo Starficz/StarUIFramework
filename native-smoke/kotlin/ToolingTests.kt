@@ -1,7 +1,5 @@
 // dumpLayout(): the text view of a UI tree that agents and tests use instead of a screenshot.
 
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Column
@@ -22,13 +20,13 @@ import java.awt.Color
 fun registerToolingTests() {
     StarUITestSuite.group("tooling-layout-dump") {
         val count = UIState(2)
-        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
+        val col = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
             Text("Rows: ${count.value}")
-            for (i in 0 until count.value) Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(200, 140, 60)).onClick { })
-            Row(LayoutSize.wrap(), Modifier.margin(left = 4f), spacing = 5f) {
+            for (i in 0 until count.value) Spacer(Size.exact(100f, 20f), Modifier.background(Color(200, 140, 60)).onClick { })
+            Row(Size.wrapContent(), Modifier.margin(left = 4f), spacing = 5f) {
                 Button("Add", size = Size.exact(60f, 20f)) { count.value++ }
             }
-            ScrollPanel(PanelSize.exact(120f, 40f)) { Spacer(PanelSize.exact(100f, 80f)) }
+            ScrollPanel(Size.exact(120f, 40f)) { Spacer(Size.exact(100f, 80f)) }
         }
         frame()
         val dump = dumpLayout("first", col)

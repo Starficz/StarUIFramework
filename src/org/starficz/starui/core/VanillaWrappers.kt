@@ -102,9 +102,7 @@ class BoxedUIImage(val innerImage: UIComponentAPI) :
 }
 
 interface ShipPreviewAPI : UIPanelAPI {
-    var scaleDownToFitWidth: Float
-    var scaleDownToFitHeight: Float
-    var overwriteScale: Float?
+    var exactScale: Float?
     var isSchematicMode: Boolean
     var showFighters: Boolean
     var showDestroyedFighters: Boolean
@@ -147,21 +145,13 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
         MINI
     }
 
-    override var scaleDownToFitWidth: Float
-        get() = uiShipPreview.invoke("getScaleDownToFitWidth") as Float
-        set(width) { uiShipPreview.invoke("setScaleDownToFitWidth", width) }
-
-    override var scaleDownToFitHeight: Float
-        get() = uiShipPreview.invoke("getScaleDownToFitHeight") as Float
-        set(height) { uiShipPreview.invoke("setScaleDownToFitHeight", height) }
-
     /**
      * An exact scale for the ship (1 = one sprite pixel per UI unit; at a UI scale above 100% use
      * `1f / Global.getSettings().screenScaleMult` for one per screen pixel), centred exactly and pixel aligned.
      * Null (the default) keeps vanilla's fit, which never reaches 1:1 (it always takes 95%). Done by
      * ShipDisplayExactScalePatch.
      */
-    override var overwriteScale: Float?
+    override var exactScale: Float?
         get() = ShipDisplayScale.of(uiShipPreview)
         set(scale) {
             if (ShipDisplayScale.of(uiShipPreview) == scale) return

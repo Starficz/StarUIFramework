@@ -1,12 +1,13 @@
 // SectionHeading (vanilla's addSectionHeading label) and Section (a heading over a bordered, padded column).
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import com.fs.starfarer.api.ui.Alignment
+import org.starficz.starui.compose.TextAlign
+import org.starficz.starui.compose.modifier.background
+import org.starficz.starui.compose.modifier.PaddingValues
+import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Section
@@ -26,16 +27,16 @@ fun registerSectionTests() {
         val title = UIState("Fleet")
         lateinit var full: LabelAPI
         lateinit var wrapped: LabelAPI
-        root.Column(LayoutSize.mixed(Axis.Exact(300f), Axis.Wrap()), sectionAt(40f, 40f), spacing = 6f) {
+        root.Column(Size.mixed(Axis.Exact(300f), Axis.Wrap), sectionAt(40f, 40f), spacing = 6f) {
             full = SectionHeading(title.value)
-            wrapped = SectionHeading("Left", Size.wrap(), alignment = Alignment.LMID)
+            wrapped = SectionHeading("Left", Size.wrapContent(), textAlign = TextAlign.Left)
         }
         frame()
         val first = full
         near(full.w, 300f, "a heading fills its column's width by default")
         expect(full.h in 14f..24f, "and is one line plus 3 px tall (${full.h})")
         expect(full.text == "Fleet", "with its text (${full.text})")
-        expect(wrapped.w in 20f..80f, "Size.wrap() makes it as wide as its text plus vanilla's 5 px a side (${wrapped.w})")
+        expect(wrapped.w in 20f..80f, "Size.wrapContent() makes it as wide as its text plus vanilla's 5 px a side (${wrapped.w})")
         val bar = fraction(full.x + 2f, full.y + 2f, 30f, full.h - 4f) { it.r + it.g + it.b > 15 }
         expect(bar > 0.9f, "the label draws its own bar, even where there is no text (${bar})")
 
@@ -49,9 +50,9 @@ fun registerSectionTests() {
         lateinit var section: CustomPanelAPI
         lateinit var heading: LabelAPI
         lateinit var content: CustomPanelAPI
-        root.Column(LayoutSize.mixed(Axis.Exact(320f), Axis.Wrap()), sectionAt(40f, 40f)) {
-            section = Section("Cargo", xPadding = 10f, yPadding = 8f) {
-                content = Spacer(PanelSize.exact(100f, 40f), color = VanillaColors.base)
+        root.Column(Size.mixed(Axis.Exact(320f), Axis.Wrap), sectionAt(40f, 40f)) {
+            section = Section("Cargo", contentPadding = PaddingValues.symmetric(horizontal = 10f, vertical = 8f)) {
+                content = Spacer(Size.exact(100f, 40f), Modifier.background(VanillaColors.base))
             }
         }
         frame()

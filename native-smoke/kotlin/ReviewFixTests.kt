@@ -7,8 +7,6 @@ import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.AreaCheckbox
 import org.starficz.starui.compose.components.Box
@@ -48,7 +46,7 @@ fun registerReviewFixTests() {
         val tick = UIState(0)
         lateinit var label: LabelAPI
         lateinit var steady: LabelAPI
-        root.Column(LayoutSize.wrap(), at(40f, 40f).background(FIX_BG)) {
+        root.Column(Size.wrapContent(), at(40f, 40f).background(FIX_BG)) {
             label = Text("status ${tick.value}", modifier = if (warn.value) Modifier.tooltip("careful") else Modifier)
             steady = Text("always ${tick.value}", modifier = Modifier.tooltip("always here"))
         }
@@ -76,11 +74,11 @@ fun registerReviewFixTests() {
     StarUITestSuite.group("fix-box-child-margins") {
         lateinit var wrapped: CustomPanelAPI
         lateinit var filled: CustomPanelAPI
-        val wrapBox = root.Box(LayoutSize.wrap(), at(40f, 40f).background(FIX_BG)) {
-            wrapped = Spacer(PanelSize.exact(50f, 30f), Modifier.margin(10f, 5f, 20f, 15f).background(Color.RED))
+        val wrapBox = root.Box(Size.wrapContent(), at(40f, 40f).background(FIX_BG)) {
+            wrapped = Spacer(Size.exact(50f, 30f), Modifier.margin(left = 10f, top = 5f, right = 20f, bottom = 15f).background(Color.RED))
         }
-        val fillBox = root.Box(LayoutSize.exact(200f, 100f), at(40f, 200f).background(FIX_BG)) {
-            filled = Spacer(PanelSize.fill(), Modifier.margin(10f, 5f, 20f, 15f).background(Color.BLUE))
+        val fillBox = root.Box(Size.exact(200f, 100f), at(40f, 200f).background(FIX_BG)) {
+            filled = Spacer(Size.fillMaxSize(), Modifier.margin(left = 10f, top = 5f, right = 20f, bottom = 15f).background(Color.BLUE))
         }
         frame()
         near(wrapBox.w, 50f + 10f + 20f, "a wrap Box is as wide as its child plus the child's left and right margin")
@@ -100,10 +98,10 @@ fun registerReviewFixTests() {
         val a = UIState(true); val b = UIState(true); val c = UIState(true)
         val shown = UIState(listOf("a" to a, "b" to b, "c" to c))
         val buttons = linkedMapOf<String, ButtonAPI>()
-        root.Column(LayoutSize.wrap(), at(40f, 40f).background(FIX_BG), spacing = 4f) {
+        root.Column(Size.wrapContent(), at(40f, 40f).background(FIX_BG), spacing = 4f) {
             buttons.clear()
             for ((name, state) in shown.value) key(name) {
-                buttons[name] = AreaCheckbox(name.uppercase(), Size.exact(120f, 24f), bind = state, buttonGroup = group)
+                buttons[name] = AreaCheckbox(name.uppercase(), state, Size.exact(120f, 24f), buttonGroup = group)
             }
         }
         frame()
@@ -123,8 +121,8 @@ fun registerReviewFixTests() {
     StarUITestSuite.group("fix-emptied-stack-resizes") {
         val items = UIState(listOf("one", "two", "three"))
         lateinit var col: CustomPanelAPI
-        root.CustomPanel(PanelSize.exact(300f, 300f), at(40f, 40f)) {
-            col = Column(LayoutSize.wrap(), Modifier.background(FIX_BG)) {
+        root.CustomPanel(Size.exact(300f, 300f), at(40f, 40f)) {
+            col = Column(Size.wrapContent(), Modifier.background(FIX_BG)) {
                 for (item in items.value) Text(item)
             }
         }

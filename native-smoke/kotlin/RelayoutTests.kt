@@ -2,8 +2,7 @@
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.ScrollPanel
@@ -34,9 +33,9 @@ private fun <T> CustomPanelAPI.build(block: CustomPanelAPI.() -> T): T =
 
 fun registerRelayoutTests() {
     StarUITestSuite.group("relayout-children-added-removed") {
-        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(RED))
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(GREEN))
+        val col = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+            Spacer(Size.exact(100f, 20f), Modifier.background(RED))
+            Spacer(Size.exact(100f, 20f), Modifier.background(GREEN))
         }
         val plugin = col.plugin as StarUIPanelPlugin
         frame()
@@ -45,7 +44,7 @@ fun registerRelayoutTests() {
         frame(); frame()
         expect(plugin.layoutPassCount == 1, "no layout work while nothing changes (${plugin.layoutPassCount})")
 
-        val added = col.build { Spacer(PanelSize.exact(150f, 30f), Modifier.background(BLUE)) }
+        val added = col.build { Spacer(Size.exact(150f, 30f), Modifier.background(BLUE)) }
         near(col.h, 45f, "adding a child does not lay out immediately (it waits for the next rendered frame)")
         frame()
         near(col.h, 80f, "the Column re-wraps all three children without a manual call")
@@ -68,7 +67,7 @@ fun registerRelayoutTests() {
         frame()
         val emptyH = col.h
         expect(emptyH < 45f, "clearChildren() re-lays out the now empty Column (height $emptyH)")
-        val again = col.build { Spacer(PanelSize.exact(60f, 10f), Modifier.background(GREEN)) }
+        val again = col.build { Spacer(Size.exact(60f, 10f), Modifier.background(GREEN)) }
         frame()
         near(col.h, 10f, "re-adding after clearChildren() wraps the new child")
         near(col.w, 60f, "re-adding after clearChildren() wraps the new child width")
@@ -82,10 +81,10 @@ fun registerRelayoutTests() {
         // child anchored on a component that is no longer there, and the engine threw "May only anchor on siblings".
         lateinit var middle: CustomPanelAPI
         lateinit var last: CustomPanelAPI
-        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(RED))
-            middle = Spacer(PanelSize.exact(100f, 20f), Modifier.background(GREEN))
-            last = Spacer(PanelSize.exact(100f, 20f), Modifier.background(BLUE))
+        val col = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+            Spacer(Size.exact(100f, 20f), Modifier.background(RED))
+            middle = Spacer(Size.exact(100f, 20f), Modifier.background(GREEN))
+            last = Spacer(Size.exact(100f, 20f), Modifier.background(BLUE))
         }
         frame()
         near(last.relTop(col), 50f, "the last child starts after two others")
@@ -100,9 +99,9 @@ fun registerRelayoutTests() {
     StarUITestSuite.group("relayout-text-change") {
         lateinit var label: LabelAPI
         lateinit var next: CustomPanelAPI
-        val row = root.Row(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+        val row = root.Row(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
             label = Text("short")
-            next = Spacer(PanelSize.exact(20f, 20f), Modifier.background(RED))
+            next = Spacer(Size.exact(20f, 20f), Modifier.background(RED))
         }
         val plugin = row.plugin as StarUIPanelPlugin
         frame()
@@ -126,16 +125,16 @@ fun registerRelayoutTests() {
 
     StarUITestSuite.group("relayout-nested-propagates-and-reanchors") {
         lateinit var inner: CustomPanelAPI
-        val outer = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.bottomRight.ofParent(20f, 30f)).background(BG), spacing = 5f) {
-            Spacer(PanelSize.exact(100f, 20f), Modifier.background(RED))
-            inner = Row(LayoutSize.wrap(), spacing = 5f) { Spacer(PanelSize.exact(30f, 30f), Modifier.background(GREEN)) }
+        val outer = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.bottomRight.ofParent(20f, 30f)).background(BG), spacing = 5f) {
+            Spacer(Size.exact(100f, 20f), Modifier.background(RED))
+            inner = Row(Size.wrapContent(), spacing = 5f) { Spacer(Size.exact(30f, 30f), Modifier.background(GREEN)) }
         }
         frame()
         near(outer.w, 100f, "initial outer width")
         near(outer.h, 55f, "initial outer height")
         near(outer.position.x + outer.w, screenW - 20f, "initially pinned 20px from the right")
 
-        inner.build { Spacer(PanelSize.exact(200f, 60f), Modifier.background(BLUE)) }
+        inner.build { Spacer(Size.exact(200f, 60f), Modifier.background(BLUE)) }
         frame()
         near(inner.w, 235f, "the inner Row re-wraps its new child")
         near(inner.h, 60f, "the inner Row grows to the taller child")
@@ -149,15 +148,15 @@ fun registerRelayoutTests() {
 
     StarUITestSuite.group("relayout-scrollpanel-content") {
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(PanelSize.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
-            Spacer(PanelSize.exact(280f, 30f), Modifier.background(RED))
+        sp = root.ScrollPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+            Spacer(Size.exact(280f, 30f), Modifier.background(RED))
         }
         frame()
         val content = sp.contentContainer
         near(content.position.height, 30f, "initial content height")
         val contentPlugin = StarUIPanelPlugin.getAttached(content)!!
         StarUIContext.withPlugin(contentPlugin) {
-            for (i in 0 until 5) sp.Spacer(PanelSize.exact(280f, 30f), Modifier.background(if (i % 2 == 0) BLUE else GREEN))
+            for (i in 0 until 5) sp.Spacer(Size.exact(280f, 30f), Modifier.background(if (i % 2 == 0) BLUE else GREEN))
         }
         frame()
         near(content.position.height, 6 * 30f + 5 * 5f, "content added later grows the scrollable content")
@@ -171,10 +170,10 @@ fun registerRelayoutTests() {
     StarUITestSuite.group("relayout-onlayout-semantics") {
         var layouts = 0; var firsts = 0; var leafLayouts = 0; var leafFirsts = 0; var nestedLayouts = 0
         lateinit var label: LabelAPI
-        val col = root.Column(LayoutSize.wrap(),
+        val col = root.Column(Size.wrapContent(),
             Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG).onLayout { layouts++ }.onFirstLayout { firsts++ }) {
             label = Text("leaf", modifier = Modifier.onLayout { leafLayouts++ }.onFirstLayout { leafFirsts++ })
-            Row(LayoutSize.wrap(), Modifier.onLayout { nestedLayouts++ }) { Spacer(PanelSize.exact(30f, 30f), Modifier.background(RED)) }
+            Row(Size.wrapContent(), Modifier.onLayout { nestedLayouts++ }) { Spacer(Size.exact(30f, 30f), Modifier.background(RED)) }
         }
         val plugin = col.plugin as StarUIPanelPlugin
         frame(); frame()
@@ -182,7 +181,7 @@ fun registerRelayoutTests() {
         expect(leafLayouts == 1 && leafFirsts == 1, "leaf: onLayout and onFirstLayout fire once for the first pass ($leafLayouts, $leafFirsts)")
         expect(nestedLayouts == 1, "nested container: onLayout fires once for the first pass ($nestedLayouts)")
 
-        col.build { Spacer(PanelSize.exact(50f, 10f), Modifier.background(GREEN)) }
+        col.build { Spacer(Size.exact(50f, 10f), Modifier.background(GREEN)) }
         frame(); frame()
         expect(layouts == 2 && leafLayouts == 2 && nestedLayouts == 2, "onLayout fires again for the automatic re-layout ($layouts, $leafLayouts, $nestedLayouts)")
         expect(firsts == 1 && leafFirsts == 1, "onFirstLayout does not fire again ($firsts, $leafFirsts)")
@@ -197,7 +196,7 @@ fun registerRelayoutTests() {
         // A callback that changes layout input (a common pattern: a label showing a measured size) settles by itself.
         var passesSeen = 0
         lateinit var sizeLabel: LabelAPI
-        val reporter = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 140f)).background(BG)
+        val reporter = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 140f)).background(BG)
             .onLayout { passesSeen++; sizeLabel.text = "passes so far: at least one" }) {
             sizeLabel = Text("?")
         }

@@ -8,20 +8,15 @@ import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.HorizontalStackLayout
 import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.VerticalStackLayout
-import org.starficz.starui.compose.layout.HorizontalAlignment
-import org.starficz.starui.compose.layout.VerticalAlignment
+import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
@@ -110,31 +105,30 @@ fun registerInteropTests() {
     }
 }
 
-@Suppress("DEPRECATION")
 fun registerApiConsolidationTests() {
-    StarUITestSuite.group("api-margin-order-and-aliases") {
+    StarUITestSuite.group("api-margin-order-and-defaults") {
         // margin now uses padding's side order: left, top, right, bottom.
         lateinit var a: CustomPanelAPI; lateinit var b: CustomPanelAPI
-        val col = root.Column(LayoutSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
-            a = Spacer(PanelSize.exact(100f, 20f), Modifier.margin(1f, 2f, 3f, 4f).background(Color(200, 60, 60)))
-            b = Spacer(PanelSize.exact(100f, 20f), Modifier.background(Color(60, 200, 60)))
+        val col = root.Column(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
+            a = Spacer(Size.exact(100f, 20f), Modifier.margin(left = 1f, top = 2f, right = 3f, bottom = 4f).background(Color(200, 60, 60)))
+            b = Spacer(Size.exact(100f, 20f), Modifier.background(Color(60, 200, 60)))
         }
         frame()
         near(a.relLeft(col), 1f, "margin(1, 2, 3, 4): left = 1")
         near(a.relTop(col), 2f, "margin(1, 2, 3, 4): top = 2")
         near(b.relTop(col), 2f + 20f + 4f + 5f, "margin(1, 2, 3, 4): bottom = 4 pushes the next child")
 
-        // The deprecated aliases keep their centred default, so existing callers do not move.
+        // The defaults follow Compose: a Column starts its children at the left, a Row at the top.
         lateinit var v: CustomPanelAPI; lateinit var c: CustomPanelAPI; lateinit var h: CustomPanelAPI; lateinit var r: CustomPanelAPI
-        val vsl = root.VerticalStackLayout(LayoutSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) { v = Spacer(PanelSize.exact(100f, 20f)) }
-        val colC = root.Column(LayoutSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 120f)), horizontalAlignment = HorizontalAlignment.Center) { c = Spacer(PanelSize.exact(100f, 20f)) }
-        val hsl = root.HorizontalStackLayout(LayoutSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 200f))) { h = Spacer(PanelSize.exact(100f, 20f)) }
-        val rowC = root.Row(LayoutSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 280f)), verticalAlignment = VerticalAlignment.Center) { r = Spacer(PanelSize.exact(100f, 20f)) }
+        val colD = root.Column(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) { v = Spacer(Size.exact(100f, 20f)) }
+        val colC = root.Column(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 120f)), horizontalAlignment = Alignment.CenterHorizontally) { c = Spacer(Size.exact(100f, 20f)) }
+        val rowD = root.Row(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 200f))) { h = Spacer(Size.exact(100f, 20f)) }
+        val rowC = root.Row(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 280f)), verticalAlignment = Alignment.CenterVertically) { r = Spacer(Size.exact(100f, 20f)) }
         frame()
-        near(v.relLeft(vsl), 100f, "VerticalStackLayout still centres by default")
-        near(v.relLeft(vsl), c.relLeft(colC), "VerticalStackLayout == Column(horizontalAlignment = Center)")
-        near(h.relTop(hsl), 20f, "HorizontalStackLayout still centres by default")
-        near(h.relTop(hsl), r.relTop(rowC), "HorizontalStackLayout == Row(verticalAlignment = Center)")
+        near(v.relLeft(colD), 0f, "a Column starts its children at the left by default")
+        near(c.relLeft(colC), 100f, "Alignment.CenterHorizontally centres them")
+        near(h.relTop(rowD), 0f, "a Row starts its children at the top by default")
+        near(r.relTop(rowC), 20f, "Alignment.CenterVertically centres them")
         screenshot("final")
     }
 }
@@ -188,9 +182,9 @@ fun registerPerfTests() {
 
         // 2b. Brute-force scope rebuild: a Column of 100 rows (label + button each), rebuilt and laid out again.
         val perfTick = UIState(0)
-        val list = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(620f, 0f)), spacing = 1f) {
+        val list = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(620f, 0f)), spacing = 1f) {
             val tick = perfTick.value
-            for (i in 0 until 100) Row(LayoutSize.wrap(), spacing = 4f) {
+            for (i in 0 until 100) Row(Size.wrapContent(), spacing = 4f) {
                 Text("Row $i tick $tick")
                 Button("Go", size = Size.exact(40f, 16f)) { }
             }
@@ -207,12 +201,12 @@ fun registerPerfTests() {
         root.removeComponent(list)
 
         // 3. Injection polling: StarUIManager.advance with 20 injections whose element is already present.
-        val targets = (0 until 20).map { i -> root.CustomPanel(PanelSize.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofParent(700f + i * 12f, 600f))) }
+        val targets = (0 until 20).map { i -> root.CustomPanel(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofParent(700f + i * 12f, 600f))) }
         targets.forEachIndexed { i, target ->
             StarUIManager.registerDynamicInjection(object : DynamicInjection {
                 override val id = "perf-injection-$i"
                 override fun findTarget(): UIPanelAPI = target
-                override fun UIPanelAPI.injectUI() { Spacer(PanelSize.exact(4f, 4f)) }
+                override fun UIPanelAPI.injectUI() { Spacer(Size.exact(4f, 4f)) }
             })
         }
         repeat(200) { StarUIManager.advance() }

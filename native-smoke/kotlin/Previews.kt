@@ -6,14 +6,15 @@
 // <OutDir>\example.layout.txt (dumpLayout() text). Add your own with StarUITestSuite.preview("name") { ... } below, or
 // keep this file untouched and pass your own file with -PreviewSource (it must define `fun registerPreviews()`).
 
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.modifier.border
+import org.starficz.starui.compose.modifier.background
+import org.starficz.starui.core.VanillaColors
+import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Checkbox
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Divider
-import org.starficz.starui.compose.components.FramedPanel
 import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.modifier.Modifier
@@ -27,11 +28,11 @@ fun registerPreviews() {
     StarUITestSuite.preview("example") {
         val ships = UIState(listOf("Onslaught", "Eagle", "Wolf"))
         val showHidden = UIState(true)
-        root.FramedPanel(PanelSize.exact(320f, 220f), Modifier.anchor(Anchor.inside.center.ofParent())) {
-            Column(LayoutSize.fill(), Modifier.padding(10f), spacing = 6f) {
+        root.CustomPanel(Size.exact(320f, 220f), Modifier.anchor(Anchor.inside.center.ofParent()).background(VanillaColors.panel).border(1f, VanillaColors.dark)) {
+            Column(Size.fillMaxSize(), Modifier.padding(10f), spacing = 6f) {
                 Text("Fleet (${ships.value.size} ships)")
                 Divider()
-                for (ship in ships.value) Row(LayoutSize.wrap(), spacing = 8f) {
+                for (ship in ships.value) Row(Size.wrapContent(), spacing = 8f) {
                     Text(ship)
                     Button("Remove", size = Size.exact(70f, 18f)) { ships.value = ships.value - ship }
                 }

@@ -7,7 +7,6 @@ import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Keyboard
-import org.starficz.starui.compose.LayoutSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.AreaCheckbox
 import org.starficz.starui.compose.components.Checkbox
@@ -48,7 +47,7 @@ fun registerValueHookTests() {
         val text = UIState("start")
         val tick = UIState(0)
         lateinit var field: TextFieldAPI
-        root.Column(LayoutSize.wrap(), hookAt(40f, 40f).background(HOOK_BG)) {
+        root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG)) {
             Text("tick ${tick.value}")
             field = TextField(text, size = Size.exact(200f, 24f))
         }
@@ -81,11 +80,11 @@ fun registerValueHookTests() {
         lateinit var box: ButtonAPI
         lateinit var areaBox: ButtonAPI
         lateinit var memberB: ButtonAPI
-        root.Column(LayoutSize.wrap(), hookAt(40f, 40f).background(HOOK_BG), spacing = 4f) {
+        root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG), spacing = 4f) {
             box = Checkbox("plain", bind = plain)
-            areaBox = AreaCheckbox("area", Size.exact(120f, 24f), bind = area)
-            AreaCheckbox("A", Size.exact(120f, 24f), bind = groupA, buttonGroup = group)
-            memberB = AreaCheckbox("B", Size.exact(120f, 24f), bind = groupB, buttonGroup = group)
+            areaBox = AreaCheckbox("area", area, Size.exact(120f, 24f))
+            AreaCheckbox("A", groupA, Size.exact(120f, 24f), buttonGroup = group)
+            memberB = AreaCheckbox("B", groupB, Size.exact(120f, 24f), buttonGroup = group)
         }
         frame()
 
@@ -111,10 +110,10 @@ fun registerValueHookTests() {
         var layouts = 0
         lateinit var slider: SliderAPI
         lateinit var snapping: SliderAPI
-        root.Column(LayoutSize.wrap(), hookAt(40f, 40f).background(HOOK_BG).onLayout { layouts++ }, spacing = 10f) {
+        root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG).onLayout { layouts++ }, spacing = 10f) {
             Text("value")
-            slider = Slider(value, 0f, 100f, text = "Value")
-            snapping = Slider(stepped, 0f, 100f, step = 10f)
+            slider = Slider(value, valueRange = 0f..100f, text = "Value")
+            snapping = Slider(stepped, valueRange = 0f..100f, step = 10f)
         }
         frame()
         near(slider.progress, 50f, "the slider starts at the state's value")
@@ -162,7 +161,7 @@ fun registerValueHookTests() {
     StarUITestSuite.group("hook-progressbar-follows-value") {
         val progress = UIState(20f)
         lateinit var bar: SliderAPI
-        root.Column(LayoutSize.wrap(), hookAt(40f, 40f).background(HOOK_BG), spacing = 6f) {
+        root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG), spacing = 6f) {
             Text("progress ${progress.value.toInt()}")
             bar = ProgressBar(progress.value, animate = false)
         }

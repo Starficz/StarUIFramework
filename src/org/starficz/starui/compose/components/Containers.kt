@@ -1,56 +1,43 @@
 package org.starficz.starui.compose.components
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
-import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.apache.log4j.Logger
+import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.AspectWrapImage
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.ExactSize
-import org.starficz.starui.compose.LayoutSize
+import org.starficz.starui.compose.BoundedSize
+import org.starficz.starui.compose.HGrow
+import org.starficz.starui.compose.ImageSize
 import org.starficz.starui.compose.Mixed
 import org.starficz.starui.compose.NativeImage
-import org.starficz.starui.compose.PanelSize
-import org.starficz.starui.compose.StarUISizing
+import org.starficz.starui.compose.Size
+import org.starficz.starui.compose.StarUIDsl
+import org.starficz.starui.compose.VGrow
 import org.starficz.starui.compose.layout.BoxLayoutEngine
 import org.starficz.starui.compose.layout.Dimension
-import org.starficz.starui.compose.layout.HGrow
-import org.starficz.starui.compose.layout.HorizontalAlignment
 import org.starficz.starui.compose.layout.LayoutEngine
 import org.starficz.starui.compose.layout.NodeSize
 import org.starficz.starui.compose.layout.StackDirection
 import org.starficz.starui.compose.layout.StackLayoutEngine
-import org.starficz.starui.compose.layout.VGrow
-import org.starficz.starui.compose.layout.VerticalAlignment
-import org.starficz.starui.compose.layout.XAlign
-import org.starficz.starui.compose.layout.YAlign
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.actual
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.border
 import org.starficz.starui.compose.runtime.ChildSlot
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.toNodeSize
-import org.starficz.starui.compose.wrapPadding
 import org.starficz.starui.core.renderShadows
 import org.starficz.starui.core.shadowColor
 import org.starficz.starui.core.children
-import org.starficz.starui.core.setPlugin
 import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
 import java.awt.Color
-
-@DslMarker
-@Target(AnnotationTarget.TYPE, AnnotationTarget.CLASS)
-annotation class StarUIDsl
 
 private val containerLogger: Logger = Global.getLogger(StarUIPanelPlugin::class.java)
 
@@ -58,23 +45,24 @@ private val containerLogger: Logger = Global.getLogger(StarUIPanelPlugin::class.
 // SIZING HELPER
 // Evaluates Tick-0 dimensions for elements before the 3-Pass Solver runs.
 // =====================================================================
-internal fun getInitialBounds(size: StarUISizing, intrinsic: Pair<Float, Float>? = null): Pair<Float, Float> {
+/** [contentPadding] is a leaf's own inside space (a button's around its label): part of its size on a wrap axis. */
+internal fun getInitialBounds(
+    size: ImageSize, intrinsic: Pair<Float, Float>? = null, contentPadding: PaddingValues = PaddingValues.Zero
+): Pair<Float, Float> {
     val w = when (size) {
-        is ExactSize -> size.width
         is Mixed -> when (val x = size.x) {
             is Axis.Exact -> x.pixels
-            is Axis.Wrap -> (intrinsic?.first ?: 1f) + x.padding * 2f
-            else -> 1f // Fill strictly resolves in Pass 3 Layout
+            is Axis.Wrap -> (intrinsic?.first ?: 1f) + contentPadding.horizontal
+            is Axis.Fill -> 1f // Fill strictly resolves in Pass 3 Layout
         }
         is NativeImage -> size.maxWidth ?: intrinsic?.first ?: 10f
         is AspectWrapImage -> 1f
     }
     val h = when (size) {
-        is ExactSize -> size.height
         is Mixed -> when (val y = size.y) {
             is Axis.Exact -> y.pixels
-            is Axis.Wrap -> (intrinsic?.second ?: 1f) + y.padding * 2f
-            else -> 1f
+            is Axis.Wrap -> (intrinsic?.second ?: 1f) + contentPadding.vertical
+            is Axis.Fill -> 1f
         }
         is NativeImage -> size.maxHeight ?: intrinsic?.second ?: 10f
         is AspectWrapImage -> 1f
@@ -121,8 +109,11 @@ internal fun UIPanelAPI.childSlot(kind: String, props: Any? = null): ChildSlot {
  * or Wrap without a known content size): that axis keeps its current size, so a reused component does not collapse
  * for a moment and a ScrollPanel does not lose its scroll position.
  */
-internal fun applyReuseBounds(component: UIComponentAPI, size: StarUISizing, intrinsic: Pair<Float, Float>? = null) {
-    val (initW, initH) = getInitialBounds(size, intrinsic)
+internal fun applyReuseBounds(
+    component: UIComponentAPI, size: ImageSize, intrinsic: Pair<Float, Float>? = null,
+    contentPadding: PaddingValues = PaddingValues.Zero
+) {
+    val (initW, initH) = getInitialBounds(size, intrinsic, contentPadding)
     val keepW = when (size) {
         is Mixed -> size.x is Axis.Fill || (size.x is Axis.Wrap && intrinsic == null)
         is AspectWrapImage -> true
@@ -139,7 +130,7 @@ internal fun applyReuseBounds(component: UIComponentAPI, size: StarUISizing, int
 }
 
 /** The CustomPanel for a container call: the reused one, or a new one with a fresh plugin added to this panel. */
-private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: StarUISizing): Pair<CustomPanelAPI, StarUIPanelPlugin> {
+private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<CustomPanelAPI, StarUIPanelPlugin> {
     val reused: CustomPanelAPI? = slot.reused()
     if (reused != null) {
         applyReuseBounds(reused, size)
@@ -171,43 +162,33 @@ private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: StarUISizing): Pair
  */
 fun <R> key(id: Any, block: () -> R): R = StarUIContext.withKey(id, block)
 
+/**
+ * Records how [component] is sized, with its container or (top level) on itself. [contentPadding] is a leaf's own
+ * inside space from its component function; `Modifier.padding` adds to it afterwards.
+ */
 internal fun registerComponentSizing(
     component: UIComponentAPI,
-    size: StarUISizing,
+    size: ImageSize,
     isContainer: Boolean,
-    containerPlugin: StarUIPanelPlugin? = null
+    containerPlugin: StarUIPanelPlugin? = null,
+    contentPadding: PaddingValues = PaddingValues.Zero
 ) {
     val actual = component.actual
     val nodeSize = size.toNodeSize()
-    val (wrapPadX, wrapPadY) = size.wrapPadding()
 
     val isManagedByParent = !StarUIContext.isTopLevel && StarUIContext.currentPlugin.layoutEngine != null
 
     if (isContainer && containerPlugin != null) {
         containerPlugin.myNodeSize = nodeSize
         containerPlugin.isTopLevelNode = !isManagedByParent
-        if (wrapPadX != 0f || wrapPadY != 0f) {
-            val existing = containerPlugin.myPadding
-            containerPlugin.myPadding = PaddingValues(
-                left = existing.left + wrapPadX,
-                top = existing.top + wrapPadY,
-                right = existing.right + wrapPadX,
-                bottom = existing.bottom + wrapPadY
-            )
-        }
     }
 
     if (isManagedByParent) {
         val parentPlugin = StarUIContext.currentPlugin
         parentPlugin.childSizing[actual] = nodeSize
-        if (!isContainer && (wrapPadX != 0f || wrapPadY != 0f)) {
-            val existing = parentPlugin.childPadding[actual] ?: PaddingValues()
-            parentPlugin.childPadding[actual] = PaddingValues(
-                left = existing.left + wrapPadX,
-                top = existing.top + wrapPadY,
-                right = existing.right + wrapPadX,
-                bottom = existing.bottom + wrapPadY
-            )
+        if (!isContainer) {
+            if (contentPadding != PaddingValues.Zero) parentPlugin.childPadding[actual] = contentPadding
+            else parentPlugin.childPadding.remove(actual)
         }
     } else if (!isContainer) {
         val selfPlugin = StarUIPanelPlugin.getOrCreate(actual)
@@ -233,8 +214,9 @@ fun UIPanelAPI.Theme(
 // CONTAINERS
 // =====================================================================
 
+/** A panel that places nothing: position its children with `Modifier.anchor(...)`. */
 fun UIPanelAPI.CustomPanel(
-    size: PanelSize = PanelSize.wrap(),
+    size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
@@ -251,42 +233,12 @@ fun UIPanelAPI.CustomPanel(
     return panel
 }
 
-fun UIPanelAPI.FramedPanel(
-    size: PanelSize = PanelSize.wrap(),
-    modifier: Modifier = Modifier,
-    bgColor: Color = Color(15, 20, 28, 240),
-    borderColor: Color = Global.getSettings().basePlayerColor,
-    borderThickness: Float = 1f,
-    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
-): CustomPanelAPI {
-    return CustomPanel(
-        size = size,
-        modifier = Modifier.background(bgColor).border(borderColor, borderThickness).then { c ->
-            modifier.operations.forEach { op -> op(c) }
-        },
-        builder = builder
-    )
-}
-
-@Deprecated(
-    message = "Plugin blocks are deprecated in favor of the Modifier system.",
-    replaceWith = ReplaceWith("modifier = Modifier.plugin { builder() }")
-)
-fun CustomPanelAPI.Plugin(builder: (@StarUIDsl StarUIPanelPlugin).() -> Unit): CustomUIPanelPlugin {
-    val plugin = this.plugin as? StarUIPanelPlugin ?: StarUIPanelPlugin().also {
-        it.customPanel = this
-        this.setPlugin(it)
-    }
-    plugin.builder()
-    return plugin
-}
-
 /**
  * A container that stacks its children on top of each other (Z-axis).
- * Use `Modifier.align(Alignment.MID)` on children to position them within the Box.
+ * Use `Modifier.align(Alignment.Center)` on children to position them within the Box.
  */
 fun UIPanelAPI.Box(
-    size: LayoutSize = LayoutSize.wrap(),
+    size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
@@ -304,13 +256,11 @@ fun UIPanelAPI.Box(
     return panel
 }
 
-internal fun UIPanelAPI.StackLayout(
+private fun UIPanelAPI.StackLayout(
     direction: StackDirection,
     crossAlignValue: Float,
-    size: LayoutSize,
+    size: Size,
     modifier: Modifier,
-    primaryPadding: Float,
-    secondaryPadding: Float,
     spacing: Float,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit
 ): CustomPanelAPI {
@@ -319,10 +269,6 @@ internal fun UIPanelAPI.StackLayout(
     val slot = childSlot(kind)
     val (panel, plugin) = containerPanel(slot, size)
     plugin.isStackLayout = true
-
-    val padX = if (direction.isVertical) secondaryPadding else primaryPadding
-    val padY = if (direction.isVertical) primaryPadding else secondaryPadding
-    plugin.myPadding = PaddingValues(left = padX, top = padY, right = padX, bottom = padY)
 
     plugin.layoutEngine = StackLayoutEngine(
         plugin = plugin,
@@ -341,17 +287,16 @@ internal fun UIPanelAPI.StackLayout(
 }
 
 /**
- * A layout container that places its children in a vertical sequence.
- * Defaults follow Jetpack Compose: children start at the left ([HorizontalAlignment.Left]), the Column fills the
- * available width and wraps its content's height. [grow] = [VGrow.Upwards] stacks from the bottom instead.
+ * A layout container that places its children in a vertical sequence, [spacing] apart.
+ * Defaults follow Jetpack Compose: children start at the left ([Alignment.Left]), the Column fills the available
+ * width and wraps its content's height. [grow] = [VGrow.Upwards] stacks from the bottom instead. Space inside its
+ * edges is `Modifier.padding`.
  */
 fun UIPanelAPI.Column(
-    size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Fill(), yAxis = Axis.Wrap()),
+    size: Size = Size.fillMaxWidth(),
     modifier: Modifier = Modifier,
     grow: VGrow = VGrow.Downwards,
-    horizontalAlignment: HorizontalAlignment = HorizontalAlignment.Left,
-    yPadding: Float = 0f,
-    xPadding: Float = 0f,
+    horizontalAlignment: Alignment.Horizontal = Alignment.Left,
     spacing: Float = 0f,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI = StackLayout(
@@ -359,24 +304,21 @@ fun UIPanelAPI.Column(
     crossAlignValue = horizontalAlignment.alignValue,
     size = size,
     modifier = modifier,
-    primaryPadding = yPadding,
-    secondaryPadding = xPadding,
     spacing = spacing,
     builder = builder
 )
 
 /**
- * A layout container that places its children in a horizontal sequence.
- * Defaults follow Jetpack Compose: children align to the top ([VerticalAlignment.Top]), the Row wraps its content's
- * width and fills the available height. [grow] = [HGrow.Leftwards] stacks from the right instead.
+ * A layout container that places its children in a horizontal sequence, [spacing] apart.
+ * Defaults follow Jetpack Compose: children align to the top ([Alignment.Top]), the Row wraps its content's width
+ * and fills the available height. [grow] = [HGrow.Leftwards] stacks from the right instead. Space inside its edges is
+ * `Modifier.padding`.
  */
 fun UIPanelAPI.Row(
-    size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Wrap(), yAxis = Axis.Fill()),
+    size: Size = Size.fillMaxHeight(),
     modifier: Modifier = Modifier,
     grow: HGrow = HGrow.Rightwards,
-    verticalAlignment: VerticalAlignment = VerticalAlignment.Top,
-    xPadding: Float = 0f,
-    yPadding: Float = 0f,
+    verticalAlignment: Alignment.Vertical = Alignment.Top,
     spacing: Float = 0f,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI = StackLayout(
@@ -384,62 +326,19 @@ fun UIPanelAPI.Row(
     crossAlignValue = verticalAlignment.alignValue,
     size = size,
     modifier = modifier,
-    primaryPadding = xPadding,
-    secondaryPadding = yPadding,
     spacing = spacing,
     builder = builder
 )
 
 /**
- * Old name for [Column]. Same engine, but it centres children by default where [Column] starts them at the left,
- * so the replacement spells the alignment out to keep existing layouts unchanged.
- */
-@Deprecated(
-    message = "Use Column. VerticalStackLayout centres by default; Column defaults to HorizontalAlignment.Left.",
-    replaceWith = ReplaceWith("Column(size = size, modifier = modifier, grow = grow, horizontalAlignment = align, yPadding = yPadding, xPadding = xPadding, spacing = spacing, builder = builder)")
-)
-fun UIPanelAPI.VerticalStackLayout(
-    size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Fill(), yAxis = Axis.Wrap()),
-    modifier: Modifier = Modifier,
-    grow: VGrow = VGrow.Downwards,
-    align: XAlign = XAlign.Center,
-    yPadding: Float = 0f,
-    xPadding: Float = 0f,
-    spacing: Float = 0f,
-    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
-): CustomPanelAPI = Column(size, modifier, grow, align, yPadding, xPadding, spacing, builder)
-
-/**
- * Old name for [Row]. Same engine, but it centres children vertically by default where [Row] aligns them to the top,
- * so the replacement spells the alignment out to keep existing layouts unchanged.
- */
-@Deprecated(
-    message = "Use Row. HorizontalStackLayout centres by default; Row defaults to VerticalAlignment.Top.",
-    replaceWith = ReplaceWith("Row(size = size, modifier = modifier, grow = grow, verticalAlignment = align, xPadding = xPadding, yPadding = yPadding, spacing = spacing, builder = builder)")
-)
-fun UIPanelAPI.HorizontalStackLayout(
-    size: LayoutSize = LayoutSize.mixed(xAxis = Axis.Wrap(), yAxis = Axis.Fill()),
-    modifier: Modifier = Modifier,
-    grow: HGrow = HGrow.Rightwards,
-    align: YAlign = YAlign.Center,
-    xPadding: Float = 0f,
-    yPadding: Float = 0f,
-    spacing: Float = 0f,
-    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
-): CustomPanelAPI = Row(size, modifier, grow, align, xPadding, yPadding, spacing, builder)
-
-typealias StarUIScrollPanel = ScrollPanelAPI
-
-/**
  * Creates a native Starsector [ScrollPanelAPI] with zero wrapper [CustomPanelAPI] nodes. Components called in
- * [builder] go into its content container, which scrolls.
+ * [builder] go into its content container, which scrolls: a column, [spacing] apart. A ScrollPanel has no content
+ * size of its own, so its size is exact or fill. `Modifier.padding` is space inside the scrolling content.
  */
 fun UIPanelAPI.ScrollPanel(
-    size: PanelSize = PanelSize.fill(1f),
+    size: BoundedSize = Size.fillMaxSize(),
     modifier: Modifier = Modifier,
-    align: XAlign = XAlign.Center,
-    yPadding: Float = 0f,
-    xPadding: Float = 0f,
+    horizontalAlignment: Alignment.Horizontal = StarUITheme.current.scrollPanel.horizontalAlignment,
     spacing: Float = 0f,
     isLeftScrollbar: Boolean = false,
     renderShadows: Boolean = StarUITheme.current.scrollPanel.renderShadows,
@@ -488,11 +387,11 @@ fun UIPanelAPI.ScrollPanel(
     if (reused != null) contentPlugin.resetForReuse()
     contentPlugin.isStackLayout = true
     contentPlugin.myNodeSize = NodeSize(Dimension.FillMax(1f), Dimension.WrapContent)
-    contentPlugin.myPadding = PaddingValues(left = xPadding, top = yPadding, right = xPadding, bottom = yPadding)
+    contentPlugin.myPadding = PaddingValues.Zero
     contentPlugin.layoutEngine = StackLayoutEngine(
         plugin = contentPlugin,
         direction = StackDirection.DOWN,
-        crossAlignValue = align.alignValue,
+        crossAlignValue = horizontalAlignment.alignValue,
         spacing = spacing
     )
 

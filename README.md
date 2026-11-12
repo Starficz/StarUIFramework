@@ -4,7 +4,8 @@ A modern UI framework for Starsector built with a Kotlin DSL. Very WIP, has many
 
 ### Currently done for layout:
 - CustomPanels (absolute/relative anchoring)
-- StackLayouts
+- Columns, Rows and Boxes (Compose-style alignment, weights, margin and padding)
+- Sections (vanilla-style panels with a section heading)
 - ScrollPanels
   
 Need to do:
@@ -20,6 +21,7 @@ Need to do:
 - Text Fields
 - Ship Displays
 - Sliders and progress bars (one value; vanilla has no range slider)
+- Section headings (vanilla's own)
   
 Need to do:
 - Large Skill Icons

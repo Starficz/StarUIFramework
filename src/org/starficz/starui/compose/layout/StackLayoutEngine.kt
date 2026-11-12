@@ -18,36 +18,10 @@ import org.starficz.starui.core.width
 // STACK-SPECIFIC ENUMS
 // ==========================================
 
-enum class StackDirection {
+internal enum class StackDirection {
     DOWN, UP, RIGHT, LEFT;
     val isVertical get() = this == DOWN || this == UP
 }
-
-enum class HorizontalAlignment(val alignValue: Float) {
-    Left(0f),
-    Center(0.5f),
-    Right(1f)
-}
-
-/** Used for the cross-axis of a Row */
-enum class VerticalAlignment(val alignValue: Float) {
-    Bottom(0f),
-    Center(0.5f),
-    Top(1f)
-}
-
-enum class VGrow(val direction: StackDirection) {
-    Downwards(StackDirection.DOWN),
-    Upwards(StackDirection.UP)
-}
-
-enum class HGrow(val direction: StackDirection) {
-    Rightwards(StackDirection.RIGHT),
-    Leftwards(StackDirection.LEFT)
-}
-
-typealias XAlign = HorizontalAlignment
-typealias YAlign = VerticalAlignment
 
 // ==========================================
 // STACK LAYOUT ENGINE

@@ -1,7 +1,7 @@
 package org.starficz.staruisamples
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.Alignment
+import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -11,12 +11,11 @@ import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
 import org.starficz.starui.compose.*
 import org.starficz.starui.compose.components.*
-import org.starficz.starui.compose.layout.HorizontalAlignment
-import org.starficz.starui.compose.layout.VGrow
-import org.starficz.starui.compose.layout.VerticalAlignment
+import org.starficz.starui.compose.VGrow
 import org.starficz.starui.compose.modifier.*
 import org.starficz.starui.compose.runtime.*
 import org.starficz.starui.core.Anchor
+import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.VanillaColors.withAlpha
@@ -81,16 +80,16 @@ object ShowcaseUIPlugin {
         val storyDark = VanillaColors.storyDark
         val storyBright = VanillaColors.storyBright
         return StarUITheme.Default.copy(
-            button = StarUITheme.Default.button.copy(baseColor = story, bgColor = storyDark, font = Font.ORBITRON_20),
-            areaCheckbox = StarUITheme.Default.areaCheckbox.copy(baseColor = story, bgColor = storyDark, brightColor = storyBright)
+            button = StarUITheme.Default.button.copy(color = story, backgroundColor = storyDark, font = ButtonFont.ORBITRON_20),
+            areaCheckbox = StarUITheme.Default.areaCheckbox.copy(baseColor = story, darkColor = storyDark, brightColor = storyBright)
         )
     }
 
     private fun CustomPanelAPI.showcase() {
         // A Box filling the screen: the page when open, one small button when hidden.
-        Box(LayoutSize.fill(), Modifier.anchor(Anchor.inside.topLeft.ofParent())) {
+        Box(Size.fillMaxSize(), Modifier.anchor(Anchor.inside.topLeft.ofParent())) {
             if (open.value) page()
-            else Button("StarUI showcase", modifier = Modifier.align(Alignment.BL).margin(20f)) { open.value = true }
+            else Button("StarUI showcase", modifier = Modifier.align(Alignment.BottomLeft).margin(20f)) { open.value = true }
         }
     }
 
@@ -98,8 +97,9 @@ object ShowcaseUIPlugin {
         lateinit var status: LabelAPI
         var sinceStatus = 0f
         Column(
-            LayoutSize.fill(),
+            Size.fillMaxSize(),
             Modifier.background(PAGE_BG)
+                .padding(horizontal = 20f, vertical = 14f)
                 // the page sits over the title menu: input none of its own controls used stops here
                 .plugin { consumeEvents = true }
                 .onRender { if (outlines.peek()) ExampleUIPlugin.drawDebugBorders(panel) }   // render code never subscribes
@@ -111,10 +111,10 @@ object ShowcaseUIPlugin {
                         status.text = "Live scopes: ${StarUIManager.liveScopeCount}"
                     }
                 },
-            xPadding = 20f, yPadding = 14f, spacing = 10f
+            spacing = 10f
         ) {
             // ---------------------------------------- header ----------------------------------------
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 12f) {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 12f) {
                 Text("StarUI Showcase", font = Font.ORBITRON_20_AA_BOLD, color = BASE)
                 Text("Every component, modifier and reactive rule on one page", color = GRAY)
                 FlexSpacer()
@@ -129,10 +129,10 @@ object ShowcaseUIPlugin {
             Divider(color = DARK)
 
             // ---------------------------------------- body: three columns ----------------------------------------
-            Row(LayoutSize.fill(), spacing = 14f) {
-                Column(LayoutSize.fill(), spacing = 10f) { layoutColumn() }
-                Column(LayoutSize.fill(), spacing = 10f) { stateColumn() }
-                Column(LayoutSize.fill(), spacing = 10f) { contentColumn() }
+            Row(Size.fillMaxSize(), spacing = 14f) {
+                Column(Size.fillMaxSize(), spacing = 10f) { layoutColumn() }
+                Column(Size.fillMaxSize(), spacing = 10f) { stateColumn() }
+                Column(Size.fillMaxSize(), spacing = 10f) { contentColumn() }
             }
         }
     }
@@ -142,23 +142,23 @@ object ShowcaseUIPlugin {
     // =================================================================================================================
     private fun UIPanelAPI.layoutColumn() {
         Section("Box: nine alignments and margin") {
-            Box(LayoutSize.mixed(Axis.Fill(), Axis.Exact(92f)), Modifier.background(INSET_BG)) {
-                val corners = listOf(Alignment.TL, Alignment.TMID, Alignment.TR, Alignment.LMID, Alignment.RMID,
-                    Alignment.BL, Alignment.BMID, Alignment.BR)
+            Box(Size.fillMaxWidth(height = 92f), Modifier.background(INSET_BG)) {
+                val corners = listOf(Alignment.TopLeft, Alignment.TopCenter, Alignment.TopRight, Alignment.CenterLeft, Alignment.CenterRight,
+                    Alignment.BottomLeft, Alignment.BottomCenter, Alignment.BottomRight)
                 for (alignment in corners) {
-                    Spacer(PanelSize.exact(14f, 14f), Modifier.align(alignment).margin(5f), color = BASE)
+                    Spacer(Size.exact(14f, 14f), Modifier.align(alignment).margin(5f).background(BASE))
                 }
-                Text("Modifier.align(MID)", color = GRAY, modifier = Modifier.align(Alignment.MID))
+                Text("Modifier.align(Center)", color = GRAY, modifier = Modifier.align(Alignment.Center))
             }
         }
 
         Section("Row: fill weights 1 : 2 : 3 and FlexSpacer") {
-            Row(LayoutSize.mixed(Axis.Fill(), Axis.Exact(20f)), spacing = 4f) {
-                Spacer(PanelSize.fill(1f), color = BASE.withAlpha(70))
-                Spacer(PanelSize.fill(2f), color = BASE.withAlpha(150))
-                Spacer(PanelSize.fill(3f), color = BASE)
+            Row(Size.fillMaxWidth(height = 20f), spacing = 4f) {
+                Spacer(Size.fillMaxSize(1f), Modifier.background(BASE.withAlpha(70)))
+                Spacer(Size.fillMaxSize(2f), Modifier.background(BASE.withAlpha(150)))
+                Spacer(Size.fillMaxSize(3f), Modifier.background(BASE))
             }
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center) {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Left")
                 FlexSpacer()
                 Text("FlexSpacer pushes this right", color = GRAY)
@@ -166,15 +166,15 @@ object ShowcaseUIPlugin {
         }
 
         Section("Column: grow upwards, cross alignment") {
-            Row(LayoutSize.mixed(Axis.Fill(), Axis.Exact(66f)), spacing = 8f) {
-                Column(LayoutSize.fill(), Modifier.background(INSET_BG), grow = VGrow.Upwards,
-                    horizontalAlignment = HorizontalAlignment.Center, spacing = 2f) {
+            Row(Size.fillMaxWidth(height = 66f), spacing = 8f) {
+                Column(Size.fillMaxSize(), Modifier.background(INSET_BG), grow = VGrow.Upwards,
+                    horizontalAlignment = Alignment.CenterHorizontally, spacing = 2f) {
                     Text("1st (bottom)")
                     Text("2nd")
                     Text("3rd")
                 }
-                Column(LayoutSize.fill(), Modifier.background(INSET_BG), horizontalAlignment = HorizontalAlignment.Right,
-                    xPadding = 6f, spacing = 2f) {
+                Column(Size.fillMaxSize(), Modifier.background(INSET_BG).padding(horizontal = 6f),
+                    horizontalAlignment = Alignment.Right, spacing = 2f) {
                     Text("Right")
                     Text("aligned")
                     Text("column", color = GRAY)
@@ -183,7 +183,7 @@ object ShowcaseUIPlugin {
         }
 
         Section("CustomPanel: anchors") {
-            CustomPanel(PanelSize.mixed(Axis.Fill(), Axis.Exact(110f)), Modifier.background(INSET_BG)) {
+            CustomPanel(Size.fillMaxWidth(height = 110f), Modifier.background(INSET_BG)) {
                 val topLeft = Text("inside.topLeft", modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(6f, 6f)))
                 Text("below.sibling(...)", color = GRAY,
                     modifier = Modifier.anchor(Anchor.below.sibling(topLeft).matchingLeftEdge(4f)))
@@ -191,17 +191,17 @@ object ShowcaseUIPlugin {
                     modifier = Modifier.anchor(Anchor.rightOf.previousComponent.matchingTopEdge(10f)))
                 Text("inside.center", modifier = Modifier.anchor(Anchor.inside.center.ofParent(0f, -10f)))
                 Text("inside.bottomRight", modifier = Modifier.anchor(Anchor.inside.bottomRight.ofParent(6f, 6f)))
-                Spacer(PanelSize.exact(12f, 12f), color = BRIGHT,
-                    modifier = Modifier.anchor(Anchor.my.bottomLeft.toBottomLeft.ofParent(6f, 6f)))
+                Spacer(Size.exact(12f, 12f),
+                    Modifier.anchor(Anchor.my.bottomLeft.toBottomLeft.ofParent(6f, 6f)).background(BRIGHT))
             }
         }
 
         Section("Margin (outside) and padding (inside)") {
-            Row(LayoutSize.fillX(), Modifier.background(INSET_BG), verticalAlignment = VerticalAlignment.Center) {
-                Spacer(PanelSize.exact(30f, 16f), Modifier.margin(10f), color = BASE)
+            Row(Size.fillMaxWidth(), Modifier.background(INSET_BG), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Size.exact(30f, 16f), Modifier.margin(10f).background(BASE))
                 Text("margin(10) around the block", color = GRAY)
             }
-            Box(LayoutSize.wrap(), Modifier.background(INSET_BG).padding(12f)) {
+            Box(Size.wrapContent(), Modifier.background(INSET_BG).padding(12f)) {
                 Text("A Box with padding(12)")
             }
         }
@@ -213,8 +213,8 @@ object ShowcaseUIPlugin {
     private fun UIPanelAPI.stateColumn() {
         val filterGroup = ButtonGroup()
         Section("Lists: UIState, for and key()") {
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 6f) {
-                TextField(newTask, Size.mixed(Axis.Fill(), Axis.Exact(26f)), hint = "New task, then Add")
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
+                TextField(newTask, Size.fillMaxWidth(height = 26f), placeholder = "New task, then Add")
                 Button("Add") {
                     val name = newTask.value.trim()
                     if (name.isNotEmpty()) {
@@ -223,26 +223,26 @@ object ShowcaseUIPlugin {
                     }
                 }
             }
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 4f) {
-                AreaCheckbox("Open", Size.exact(70f, 22f), bind = showOpen, buttonGroup = filterGroup,
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                AreaCheckbox("Open", showOpen, Size.exact(70f, 22f), buttonGroup = filterGroup,
                     modifier = Modifier.tooltip("ButtonGroup: click to show only this, click again for all, Shift-click to add"))
-                AreaCheckbox("Done", Size.exact(70f, 22f), bind = showDone, buttonGroup = filterGroup)
+                AreaCheckbox("Done", showDone, Size.exact(70f, 22f), buttonGroup = filterGroup)
                 FlexSpacer()
                 val doneCount = tasks.value.count { it.done.value }
                 val openCount = tasks.value.size - doneCount
                 Text("$openCount open, $doneCount done", color = GRAY,
                     highlightedText = listOf("$openCount" to HIGHLIGHT, "$doneCount" to POSITIVE))
             }
-            ScrollPanel(PanelSize.mixed(Axis.Fill(), Axis.Exact(190f)), xPadding = 4f, yPadding = 4f, spacing = 2f) {
+            ScrollPanel(Size.fillMaxWidth(height = 190f), Modifier.padding(4f), spacing = 2f) {
                 val visible = tasks.value.filter { (showOpen.value && !it.done.value) || (showDone.value && it.done.value) }
                 if (visible.isEmpty()) Text("Nothing to show. Add a task or change the filter.", color = GRAY)
                 for (task in visible) key(task.id) {
-                    Row(LayoutSize.mixed(Axis.Fill(), Axis.Exact(26f)), Modifier.background(INSET_BG),
-                        verticalAlignment = VerticalAlignment.Center, xPadding = 4f, spacing = 6f) {
+                    Row(Size.fillMaxWidth(height = 26f), Modifier.background(INSET_BG).padding(horizontal = 4f),
+                        verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
                         Checkbox(bind = task.done)
                         Text(task.name, color = if (task.done.value) GRAY else TEXT)
                         FlexSpacer()
-                        Button("Remove", Size.wrap(6f, 2f)) { tasks.value = tasks.value - task }
+                        Button("Remove", contentPadding = PaddingValues.symmetric(horizontal = 6f, vertical = 2f)) { tasks.value = tasks.value - task }
                     }
                 }
             }
@@ -266,11 +266,9 @@ object ShowcaseUIPlugin {
 
         Section("Slider and ProgressBar") {
             // Dragging writes `volume`; the bar and the text read it, so this card builds again and both follow.
-            Slider(volume, 0f, 100f, Size.mixed(Axis.Fill(), Axis.Exact(25f)), text = "Volume", step = 5f) {
-                barColor = BASE
-                widgetColor = BRIGHT
-            }
-            ProgressBar(volume.value, size = Size.mixed(Axis.Fill(), Axis.Exact(10f))) { barColor = DARK.brighter() }
+            Slider(volume, Size.fillMaxWidth(height = 25f), valueRange = 0f..100f, text = "Volume",
+                barColor = BASE, widgetColor = BRIGHT, step = 5f)
+            ProgressBar(volume.value, Size.fillMaxWidth(height = 10f), barColor = DARK.brighter())
             Text("step = 5: the state snaps to ${volume.value.toInt()}", color = GRAY,
                 highlightedText = listOf("${volume.value.toInt()}" to HIGHLIGHT))
         }
@@ -285,21 +283,21 @@ object ShowcaseUIPlugin {
             Text("Insignia 21", font = Font.INSIGNIA_21)
             Text("Highlights: 1200 credits, 300 supplies",
                 highlightedText = listOf("1200" to HIGHLIGHT, "300" to POSITIVE))
-            Text("Size.fillX() and TextAlign.Center", Size.fillX(), color = GRAY, textAlign = TextAlign.Center)
-            SectionHeading("SectionHeading, alignment = LMID", alignment = Alignment.LMID)
+            Text("Size.fillMaxWidth() and TextAlign.Center", Size.fillMaxWidth(), color = GRAY, textAlign = TextAlign.Center)
+            SectionHeading("SectionHeading, textAlign = Left", textAlign = TextAlign.Left)
         }
 
         Section("Image and ShipDisplay") {
             // a sprite the game has not loaded yet draws as nothing
             val icons = listOf("graphics/icons/cargo/supplies.png", "graphics/icons/cargo/fuel.png", "graphics/icons/cargo/crew.png")
             for (icon in icons) if (Global.getSettings().getSprite(icon).textureId == 0) runCatching { Global.getSettings().loadTexture(icon) }
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 10f) {
-                Image("graphics/icons/cargo/supplies.png", ImageSize.exact(40f, 40f), Modifier.tooltip("Image"))
-                Image("graphics/icons/cargo/fuel.png", ImageSize.exact(40f, 40f))
-                Image("graphics/icons/cargo/crew.png", ImageSize.exact(40f, 40f), showBorder = true, borderColor = BASE)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 10f) {
+                Image("graphics/icons/cargo/supplies.png", Size.exact(40f, 40f), Modifier.tooltip("Image"))
+                Image("graphics/icons/cargo/fuel.png", Size.exact(40f, 40f))
+                Image("graphics/icons/cargo/crew.png", Size.exact(40f, 40f), showBorder = true, borderColor = BASE)
                 FlexSpacer()
-                ShipDisplay(PanelSize.exact(90f, 90f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
-                ShipDisplay(PanelSize.exact(90f, 90f), variant = Global.getSettings().getVariant("eagle_Assault"),
+                ShipDisplay(Size.exact(90f, 90f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
+                ShipDisplay(Size.exact(90f, 90f), variant = Global.getSettings().getVariant("eagle_Assault"),
                     isSchematicMode = true, modifier = Modifier.tooltip("isSchematicMode = true"))
             }
         }
@@ -310,7 +308,7 @@ object ShowcaseUIPlugin {
             var clicks = 0
             var held = 0f
             CustomPanel(
-                PanelSize.mixed(Axis.Fill(), Axis.Exact(64f)),
+                Size.fillMaxWidth(height = 64f),
                 Modifier
                     .onRenderBelow { alphaMult ->
                         glColor(if (hovered) DARK else INSET_BG, alphaMult, false)
@@ -333,9 +331,9 @@ object ShowcaseUIPlugin {
                 padLabel = Text("Hover, click, hold, click outside, press a key",
                     modifier = Modifier.anchor(Anchor.inside.center.ofParent()))
             }
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 8f) {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
                 lateinit var hitLabel: LabelAPI
-                Button("Tiny", Size.wrap(3f, 0f), Modifier.hitBoxPadding(10f)) { hitLabel.text = "Hit, with 10 px of hitBoxPadding" }
+                Button("Tiny", modifier = Modifier.hitBoxPadding(10f), contentPadding = PaddingValues.symmetric(horizontal = 3f)) { hitLabel.text = "Hit, with 10 px of hitBoxPadding" }
                 hitLabel = Text("hitBoxPadding(10): click near the tiny button", color = GRAY)
             }
         }
@@ -343,7 +341,7 @@ object ShowcaseUIPlugin {
         Section("Theme") {
             Checkbox("Story point theme", bind = altTheme)
             Theme(if (altTheme.value) altTheme() else StarUITheme.Default) {
-                Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 6f) {
+                Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
                     Button("Themed")
                     Button("Buttons")
                     AreaCheckbox("and toggles")
@@ -358,7 +356,7 @@ object ShowcaseUIPlugin {
             var moves = 0
             var sinceUpdate = 0f
             Row(
-                LayoutSize.fillX(),
+                Size.fillMaxWidth(),
                 Modifier.onLayout { layoutPasses++ }
                     .onFirstLayout { firstLayouts++ }
                     .onPositionChanged { moves++ }
@@ -370,15 +368,15 @@ object ShowcaseUIPlugin {
                             lifecycle.text = "onLayout x $layoutPasses, onFirstLayout x $firstLayouts, moved x $moves"
                         }
                     },
-                verticalAlignment = VerticalAlignment.Center, spacing = 8f
+                verticalAlignment = Alignment.CenterVertically, spacing = 8f
             ) {
                 lifecycle = Text("onLayout, onFirstLayout, onPositionChanged", color = GRAY)
             }
-            Row(LayoutSize.fillX(), verticalAlignment = VerticalAlignment.Center, spacing = 8f) {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
                 lateinit var dumpLabel: LabelAPI
-                Button("dumpLayout() to log") { button ->
-                    // the page: the outermost StarUI container above this button
-                    val page = generateSequence(button.parent) { it.parent }
+                Button("dumpLayout() to log") {
+                    // the page: the outermost StarUI container above this row
+                    val page = generateSequence(dumpLabel.parent) { it.parent }
                         .lastOrNull { StarUIPanelPlugin.getAttached(it) != null } ?: return@Button
                     val dump = page.dumpLayout()
                     log.info("StarUI showcase layout:\n$dump")

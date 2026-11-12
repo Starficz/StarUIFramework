@@ -2,6 +2,7 @@
 // them, and key(...) keeps list items attached to their own native objects.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
+import org.starficz.starui.core.ButtonFont
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -9,8 +10,6 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Column
@@ -53,10 +52,10 @@ fun registerReuseTests() {
         lateinit var label: LabelAPI
         lateinit var spacer: CustomPanelAPI
         lateinit var inner: CustomPanelAPI
-        val col = root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
+        val col = root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             label = Text("tick ${tick.value}")
-            spacer = Spacer(PanelSize.exact(60f + tick.value * 20f, 20f), Modifier.background(Color(200, 140, 60)))
-            inner = Row(LayoutSize.wrap()) { Text("inner") }
+            spacer = Spacer(Size.exact(60f + tick.value * 20f, 20f), Modifier.background(Color(200, 140, 60)))
+            inner = Row(Size.wrapContent()) { Text("inner") }
         }
         frame()
         val first = Triple(label, spacer, inner)
@@ -80,8 +79,8 @@ fun registerReuseTests() {
         // anything outside the rebuilt container: a blinking caret in Refit Filters hoisted the whole weapon picker
         // above vanilla tooltips and the console overlay twice a second.
         val tick = UIState(0)
-        val host = root.CustomPanel(PanelSize.exact(400f, 200f), origin(40f, 40f).background(REUSE_BG))
-        val reactive = host.Column(LayoutSize.wrap(), Modifier.background(Color(50, 50, 70))) {
+        val host = root.CustomPanel(Size.exact(400f, 200f), origin(40f, 40f).background(REUSE_BG))
+        val reactive = host.Column(Size.wrapContent(), Modifier.background(Color(50, 50, 70))) {
             Text("a ${tick.value}")
             Text("b")
             if (tick.value % 2 == 1) Text("c")
@@ -109,8 +108,8 @@ fun registerReuseTests() {
         lateinit var button: ButtonAPI
         lateinit var colored: LabelAPI
         lateinit var plain: LabelAPI
-        val col = root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
-            button = Button("Font", font = if (big.value) Font.ORBITRON_20 else Font.ORBITRON_12_CONDENSED)
+        val col = root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
+            button = Button("Font", font = if (big.value) ButtonFont.ORBITRON_20 else ButtonFont.ORBITRON_12_CONDENSED)
             colored = Text("Colour", color = if (big.value) Color(255, 80, 80) else Color(255, 255, 255))
             plain = Text("unchanged")
         }
@@ -134,9 +133,9 @@ fun registerReuseTests() {
         var spacerClicks = 0
         lateinit var button: ButtonAPI
         lateinit var spacer: CustomPanelAPI
-        root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
+        root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             button = Button("Clicked ${tick.value}", size = Size.exact(140f, 24f)) { buttonClicks++ }
-            spacer = Spacer(PanelSize.exact(140f, 24f), Modifier.background(Color(60, 60, 200)).onClick { spacerClicks++ })
+            spacer = Spacer(Size.exact(140f, 24f), Modifier.background(Color(60, 60, 200)).onClick { spacerClicks++ })
         }
         frame()
         val firstButton = button
@@ -159,9 +158,9 @@ fun registerReuseTests() {
         val notes = (0..9).associateWith { UIState("note $it") }
         val rowsById = mutableMapOf<Int, CustomPanelAPI>()
         val fieldsById = mutableMapOf<Int, TextFieldAPI>()
-        val col = root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
+        val col = root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             for (id in ids.value) key(id) {
-                rowsById[id] = Row(LayoutSize.wrap(), spacing = 5f) {
+                rowsById[id] = Row(Size.wrapContent(), spacing = 5f) {
                     Text("row $id")
                     fieldsById[id] = TextField(notes.getValue(id), size = Size.exact(150f, 22f))
                 }
@@ -198,7 +197,7 @@ fun registerReuseTests() {
 
         // Without keys, calls are matched by position: the same native objects show whichever item is now there.
         val names = UIState(listOf("a", "b", "c"))
-        val unkeyed = root.Column(LayoutSize.wrap(), origin(40f, 200f).background(REUSE_BG)) {
+        val unkeyed = root.Column(Size.wrapContent(), origin(40f, 200f).background(REUSE_BG)) {
             for (n in names.value) Text("item $n")
         }
         frame()
@@ -213,10 +212,10 @@ fun registerReuseTests() {
         val header = UIState(0)
         val rows = UIState(20)
         lateinit var sp: ScrollPanelAPI
-        root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
+        root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             Text("header ${header.value}")
-            sp = ScrollPanel(PanelSize.exact(300f, 100f)) {
-                for (i in 0 until rows.value) Spacer(PanelSize.exact(280f, 30f),
+            sp = ScrollPanel(Size.exact(300f, 100f)) {
+                for (i in 0 until rows.value) Spacer(Size.exact(280f, 30f),
                     Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))
             }
         }

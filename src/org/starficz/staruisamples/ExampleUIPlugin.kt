@@ -4,6 +4,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -18,19 +19,19 @@ import org.starficz.starui.compose.components.Image
 import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.ShipDisplay
 import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.StarUIScrollPanel
 import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.components.TextAlign
+import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.components.Theme
 import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.layout.XAlign
-import org.starficz.starui.compose.layout.YAlign
+import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.border
 import org.starficz.starui.compose.modifier.hitBoxPadding
+import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.margin
+import org.starficz.starui.compose.modifier.padding
 import org.starficz.starui.compose.modifier.onHoverEnter
 import org.starficz.starui.compose.modifier.onRender
 import org.starficz.starui.compose.runtime.StarUIBuilder
@@ -74,15 +75,15 @@ object ExampleUIPlugin {
             val showDebug = UIState(false)
 
             // We will capture these references to test the ScrollPanelStateAPI later!
-            var myScroller: StarUIScrollPanel? = null
+            var myScroller: ScrollPanelAPI? = null
             var targetListItem: UIComponentAPI? = null
 
             // --- THEME OVERRIDE ---
             // We create a custom theme to prove context-passing works!
             val myCyberTheme = StarUITheme.Default.copy(
                 button = StarUITheme.Default.button.copy(
-                    size = Size.wrap(xPadding = 15f, yPadding = 8f), // Fat buttons
-                    font = Font.ORBITRON_12_CONDENSED
+                    contentPadding = PaddingValues.symmetric(horizontal = 15f, vertical = 8f), // Fat buttons
+                    font = ButtonFont.ORBITRON_12_CONDENSED
                 ),
                 scrollPanel = StarUITheme.Default.scrollPanel.copy(
                     shadowColor = Color(0, 50, 100, 200) // Cool blue gradient shadows!
@@ -96,20 +97,21 @@ object ExampleUIPlugin {
             // ROOT CONTAINER
             Theme(myCyberTheme) {
                 Column(
-                    size = LayoutSize.exact(1200f, 800f),
+                    size = Size.exact(1200f, 800f),
                     modifier = Modifier
                         .anchor(Anchor.inside.center.ofParent())
+                        .padding(20f)
                         .background(Color(10, 10, 15, 240))
-                        .border(Color(80, 80, 100, 255), 2f)
+                        .border(2f, Color(80, 80, 100, 255))
                         .onRender { if (showDebug.value) drawDebugBorders(customPanel) },
-                    horizontalAlignment = XAlign.Center,
-                    xPadding = 20f, yPadding = 20f, spacing = 15f
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    spacing = 15f
                 ) {
 
                     // ==========================================
                     // HEADER
                     // ==========================================
-                    Row(size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), verticalAlignment = YAlign.Center) {
+                    Row(size = Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text("StarUI Unified Architecture Test", font = Font.ORBITRON_24_BOLD, color = Color.CYAN)
                         FlexSpacer(1f)
                         Checkbox("Draw Debug Outlines", bind = showDebug, color = Color.YELLOW)
@@ -120,15 +122,15 @@ object ExampleUIPlugin {
                     // ==========================================
                     // MAIN BODY (Two Columns)
                     // ==========================================
-                    Row(size = LayoutSize.fill(1f), spacing = 20f, verticalAlignment = YAlign.Top) {
+                    Row(size = Size.fillMaxSize(1f), spacing = 20f, verticalAlignment = Alignment.Top) {
 
                         // ---------------------------------------------------------
                         // COLUMN A: ADVANCED CONTROLLERS & SCROLL COMMANDS
                         // ---------------------------------------------------------
                         Column(
-                            size = LayoutSize.mixed(Axis.Exact(350f), Axis.Fill()),
+                            size = Size.fillMaxHeight(width = 350f),
                             spacing = 15f,
-                            horizontalAlignment = XAlign.Center
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
 
                             // TEXT WRAPPER TEST
@@ -138,41 +140,41 @@ object ExampleUIPlugin {
                             // and the inner text centers perfectly within it!
                             Text(
                                 "I am a Full-Width Centered Banner!",
-                                size = Size.fillX(),
+                                size = Size.fillMaxWidth(),
                                 textAlign = TextAlign.Center,
                                 color = Color.WHITE,
                                 modifier = Modifier
                                     .background(Color(100, 0, 0, 200))
-                                    .border(Color.RED)
+                                    .border(1f, Color.RED)
                                     .margin(bottom = 10f)
                             )
 
                             // IMAGE WRAPPER TEST
                             Text("2. Image API Features", font = Font.INSIGNIA_21, color = Color.WHITE)
-                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 10f, verticalAlignment = YAlign.Bottom) {
+                            Row(Size.fillMaxWidth(), spacing = 10f, verticalAlignment = Alignment.Bottom) {
                                 // Outline Test
-                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
+                                Column(Size.fillMaxWidth(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Image("graphics/icons/cargo/supplies.png", withOutline = true)
                                     Text("Outline", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                                 // Schematic Test
-                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
+                                Column(Size.fillMaxWidth(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Image("graphics/icons/cargo/supplies.png", renderSchematic = true)
                                     Text("Schematic", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                                 // Border Test
-                                Column(LayoutSize.fillX(1f), horizontalAlignment = XAlign.Center) {
+                                Column(Size.fillMaxWidth(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Image("graphics/icons/cargo/supplies.png", showBorder = true, borderColor = Color.GREEN)
                                     Text("Border", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                 }
                             }
 
-                            Spacer(PanelSize.exact(1f, 10f))
+                            Spacer(Size.exact(1f, 10f))
 
                             // SHIP DISPLAY TEST
                             Text("3. Ship Display API", font = Font.INSIGNIA_21, color = Color.WHITE)
                             ShipDisplay(
-                                size = PanelSize.fill(1f), // Fills the remaining vertical space of Column A
+                                size = Size.fillMaxSize(1f), // Fills the remaining vertical space of Column A
                                 variant = Global.getSettings().getVariant("hammerhead_Balanced"),
                                 showFighters = true,
                                 scaleSmallerShips = 0.5f,
@@ -180,23 +182,23 @@ object ExampleUIPlugin {
                                 modifier = Modifier.background(Color(0, 0, 20, 100))
                             )
 
-                            Spacer(PanelSize.exact(1f, 10f))
+                            Spacer(Size.exact(1f, 10f))
 
                             // SCROLL API COMMANDS
                             Text("4. Scroll API Interaction", font = Font.INSIGNIA_21, color = Color.WHITE)
-                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f, verticalAlignment = YAlign.Center) {
-                                Button("Jump to Item #75", baseColor = Color.GREEN) {
+                            Row(Size.fillMaxWidth(), spacing = 5f, verticalAlignment = Alignment.CenterVertically) {
+                                Button("Jump to Item #75", color = Color.GREEN) {
                                     // Notice how we don't need to cast or unwrap manually!
                                     // ensureVisible automatically passes the Kotlin Proxy into the vanilla method!
                                     if (myScroller != null && targetListItem != null) {
                                         myScroller!!.ensureVisible(targetListItem!!)
                                     }
                                 }
-                                Button("Scroll to Top", baseColor = Color.YELLOW) {
+                                Button("Scroll to Top", color = Color.YELLOW) {
                                     myScroller?.scrollToY(0f)
                                 }
                             }
-                            Row(LayoutSize.mixed(Axis.Fill(), Axis.Wrap()), spacing = 5f, verticalAlignment = YAlign.Center) {
+                            Row(Size.fillMaxWidth(), spacing = 5f, verticalAlignment = Alignment.CenterVertically) {
                                 Button("Save State") { myScroller?.saveVerticalScrollState() }
                                 Button("Restore State") { myScroller?.restoreVerticalScrollState() }
                             }
@@ -209,35 +211,33 @@ object ExampleUIPlugin {
 
                         // We capture the returned StarUIScrollPanel controller directly!
                         myScroller = ScrollPanel(
-                            size = PanelSize.fill(1f), // Fills the rest of the HorizontalStack width
+                            size = Size.fillMaxSize(1f), // Fills the rest of the HorizontalStack width
                             spacing = 10f,
-                            xPadding = 10f,
-                            yPadding = 10f,
                             // Notice we don't pass shadowColor here, it inherently gets the Blue color from our Theme!
-                            modifier = Modifier.background(Color(5, 5, 5, 200)).border(Color.DARK_GRAY)
+                            modifier = Modifier.padding(10f).background(Color(5, 5, 5, 200)).border(1f, Color.DARK_GRAY)
                         ) {
 
                             Text("Massive Scrollable List", font = Font.ORBITRON_20_BOLD, color = Color.WHITE)
                             Text("Try clicking 'Save State', scrolling, and clicking 'Restore'.", font = Font.INSIGNIA_15, color = Color.GRAY)
-                            Spacer(PanelSize.exact(1f, 10f))
+                            Spacer(Size.exact(1f, 10f))
 
                             for (i in 1..100) {
                                 // Create the row
                                 val row = Row(
-                                    size = LayoutSize.mixed(Axis.Fill(), Axis.Wrap()),
-                                    verticalAlignment = YAlign.Center,
+                                    size = Size.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
                                     spacing = 15f,
                                     modifier = Modifier
                                         .background(if (i == 75) Color(0, 50, 0, 200) else Color(20, 20, 20, 255))
-                                        .border(if (i == 75) Color.GREEN else Color.DARK_GRAY)
+                                        .border(1f, if (i == 75) Color.GREEN else Color.DARK_GRAY)
                                         .margin(bottom = 5f)
                                         .hitBoxPadding(5f)
                                         .onHoverEnter { Global.getSoundPlayer().playUISound("ui_button_mouseover", 1f, 1f) }
                                 ) {
                                     Text("#$i", font = Font.ORBITRON_12_CONDENSED, color = if (i == 75) Color.GREEN else Color.CYAN)
-                                    Image("graphics/ships/hound/hound_base.png", size = ImageSize.exact(40f, 40f))
+                                    Image("graphics/ships/hound/hound_base.png", size = Size.exact(40f, 40f))
 
-                                    Column(LayoutSize.fill(1f), horizontalAlignment = XAlign.Left) {
+                                    Column(Size.fillMaxSize(1f), horizontalAlignment = Alignment.Left) {
                                         Text(if (i == 75) "TARGET ACQUIRED" else "Standard Hound Variant", font = Font.INSIGNIA_15, color = Color.WHITE)
                                         Text("A cheap, readily available frigate.", font = Font.SMALL_FONTS_8, color = Color.GRAY)
                                     }

@@ -230,6 +230,7 @@ object StarUITestSuite {
         registerValueHookTests()
         registerShipDisplayScaleTests()
         registerSectionTests()
+        registerApiShapeTests()
         registerPerfTests()   // last: it registers 20 permanent dynamic injections
     }
 }

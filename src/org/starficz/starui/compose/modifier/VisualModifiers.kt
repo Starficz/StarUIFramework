@@ -3,7 +3,7 @@ package org.starficz.starui.compose.modifier
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lazywizard.lazylib.opengl.ColorUtils
 import org.lwjgl.opengl.GL11
-import org.starficz.starui.compose.components.StarUIDsl
+import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.addTooltip
 import org.starficz.starui.core.bottom
@@ -37,12 +37,13 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
     GL11.glEnable(GL11.GL_TEXTURE_2D)
 }
 
-fun Modifier.border(color: Color, thickness: Float = 1f) = onRender { alphaMult ->
+/** A border line [width] pixels thick around the component (Compose's argument order). */
+fun Modifier.border(width: Float, color: Color) = onRender { alphaMult ->
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)
     GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
     ColorUtils.glColor(color, alphaMult, false)
-    GL11.glLineWidth(thickness)
+    GL11.glLineWidth(width)
     GL11.glBegin(GL11.GL_LINE_LOOP)
     GL11.glVertex2f(left, bottom)
     GL11.glVertex2f(right, bottom)

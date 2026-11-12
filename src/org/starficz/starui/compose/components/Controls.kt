@@ -1,19 +1,22 @@
 package org.starficz.starui.compose.components
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CutStyle
 import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.Size
+import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.modifier.Modifier
+import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.runtime.ButtonGroup
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.runtime.UIState
+import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.addAreaCheckbox
@@ -27,35 +30,41 @@ import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.onClick
 import java.awt.Color
 
+// Argument order for every control: what it shows or edits (text, bind), then size, modifier, the optional settings,
+// and last a click handler where there is one. `contentPadding` is the control's own space between its edge and its
+// content (themeable); `Modifier.padding` adds to it.
+
+/** A vanilla text field editing [bind]: typing writes the state, writing the state changes the text. */
 fun UIPanelAPI.TextField(
     bind: UIState<String>,
     size: Size = StarUITheme.current.textField.size,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = StarUITheme.current.textField.contentPadding,
     font: Font = StarUITheme.current.textField.font,
-    hint: String? = null
+    placeholder: String? = null
 ): TextFieldAPI {
     checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
-        val textToMeasure = bind.peek().ifEmpty { hint ?: "" }
+        val textToMeasure = bind.peek().ifEmpty { placeholder ?: "" }
         val (tw, th) = measureTextSize(textToMeasure, font)
         return Pair(maxOf(tw, 50f), maxOf(th, 20f))
     }
 
-    // A reused field keeps its caret, selection and keyboard focus; font and hint are fixed when it is made.
-    val slot = childSlot("TextField", listOf(font, hint))
+    // A reused field keeps its caret, selection and keyboard focus; font and placeholder are fixed when it is made.
+    val slot = childSlot("TextField", listOf(font, placeholder))
     val reused: TextFieldAPI? = slot.reused()
     val textField: TextFieldAPI
     if (reused != null) {
         textField = reused
-        applyReuseBounds(textField, size, calcIntrinsic())
+        applyReuseBounds(textField, size, calcIntrinsic(), contentPadding)
     } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         textField = this.addTextField(initW, initH, font)
-        if (hint != null) textField.invoke("setHint", hint)
+        if (placeholder != null) textField.invoke("setHint", placeholder)
     }
 
-    registerComponentSizing(textField, size, isContainer = false)
+    registerComponentSizing(textField, size, isContainer = false, contentPadding = contentPadding)
     slot.remember(textField, textField)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[textField] = { _, _ -> calcIntrinsic() }
@@ -76,124 +85,112 @@ fun UIPanelAPI.TextField(
     return textField
 }
 
+/** A vanilla button. [font] is a [ButtonFont]: the only fonts a vanilla button can use. */
 fun UIPanelAPI.Button(
     text: String,
     size: Size = StarUITheme.current.button.size,
     modifier: Modifier = Modifier,
-    baseColor: Color = StarUITheme.current.button.baseColor ?: Global.getSettings().basePlayerColor,
-    bgColor: Color = StarUITheme.current.button.bgColor ?: Global.getSettings().darkPlayerColor,
-    font: Font = StarUITheme.current.button.font,
-    align: Alignment = StarUITheme.current.button.align,
+    contentPadding: PaddingValues = StarUITheme.current.button.contentPadding,
+    color: Color = StarUITheme.current.button.color ?: Global.getSettings().basePlayerColor,
+    backgroundColor: Color = StarUITheme.current.button.backgroundColor ?: Global.getSettings().darkPlayerColor,
+    font: ButtonFont = StarUITheme.current.button.font,
+    textAlign: TextAlign = StarUITheme.current.button.textAlign,
     cutStyle: CutStyle = StarUITheme.current.button.cutStyle,
     shortcut: Int? = null,
-    onClick: ((ButtonAPI) -> Unit)? = null
+    onClick: (() -> Unit)? = null
 ): ButtonAPI {
     checkDslTarget()
 
     fun calcIntrinsic(): Pair<Float, Float> {
-        return measureTextSize(text, font)
+        return measureTextSize(text, font.font)
     }
 
     // Colours, font, alignment, cut style and shortcut are fixed when a native button is made; the label is not.
-    val slot = childSlot("Button", listOf(baseColor, bgColor, font, align, cutStyle, shortcut))
+    val slot = childSlot("Button", listOf(color, backgroundColor, font, textAlign, cutStyle, shortcut))
     val reused: ButtonAPI? = slot.reused()
     val btn: ButtonAPI
     if (reused != null) {
         btn = reused
         if (btn.text != text) btn.text = text
         btn.clearOnClick()
-        applyReuseBounds(btn, size, calcIntrinsic())
+        applyReuseBounds(btn, size, calcIntrinsic(), contentPadding)
     } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
-        btn = this.addButton(text, null, baseColor, bgColor, align, cutStyle, initW, initH, font, shortcut)
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
+        btn = this.addButton(text, null, color, backgroundColor, textAlign.toVanilla(), cutStyle, initW, initH, font.font, shortcut)
     }
 
-    registerComponentSizing(btn, size, isContainer = false)
+    registerComponentSizing(btn, size, isContainer = false, contentPadding = contentPadding)
     slot.remember(btn, btn)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[btn] = { _, _ -> calcIntrinsic() }
     }
 
     modifier.operations.forEach { it(btn) }
-    if (onClick != null) btn.onClick { onClick.invoke(btn) }
+    if (onClick != null) btn.onClick(onClick)
 
     return btn
 }
 
+/** A vanilla area checkbox (a toggle button), in vanilla's three tones. With [bind] it follows and writes the state. */
 fun UIPanelAPI.AreaCheckbox(
     text: String,
+    bind: UIState<Boolean>? = null,
     size: Size = StarUITheme.current.areaCheckbox.size,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = StarUITheme.current.areaCheckbox.contentPadding,
     baseColor: Color = StarUITheme.current.areaCheckbox.baseColor ?: Global.getSettings().basePlayerColor,
-    bgColor: Color = StarUITheme.current.areaCheckbox.bgColor ?: Global.getSettings().darkPlayerColor,
+    darkColor: Color = StarUITheme.current.areaCheckbox.darkColor ?: Global.getSettings().darkPlayerColor,
     brightColor: Color = StarUITheme.current.areaCheckbox.brightColor ?: Global.getSettings().brightPlayerColor,
     font: Font? = StarUITheme.current.areaCheckbox.font,
     leftAlign: Boolean = StarUITheme.current.areaCheckbox.leftAlign,
-    bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null
 ): ButtonAPI {
     checkDslTarget()
+    requireBindFor(buttonGroup, bind, "AreaCheckbox")
 
     fun calcIntrinsic(): Pair<Float, Float> {
         return measureTextSize(text, font)
     }
 
-    val validGroup = (buttonGroup != null && bind != null)
-
-    val slot = childSlot("AreaCheckbox", listOf(text, baseColor, bgColor, brightColor, font, leftAlign))
+    val slot = childSlot("AreaCheckbox", listOf(text, baseColor, darkColor, brightColor, font, leftAlign))
     val reused: ButtonAPI? = slot.reused()
     val button: ButtonAPI
     if (reused != null) {
         button = reused
         button.clearOnClick()
-        applyReuseBounds(button, size, calcIntrinsic())
+        applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         button = this.addAreaCheckbox(
-            text, null, baseColor, bgColor, brightColor, initW, initH, font, leftAlign
+            text, null, baseColor, darkColor, brightColor, initW, initH, font, leftAlign
         )
     }
 
-    registerComponentSizing(button, size, isContainer = false)
+    registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
     slot.remember(button, button)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }
 
     modifier.operations.forEach { it(button) }
-
-    if (validGroup) {
-        buttonGroup.addButtonToGroup(button, bind)
-    } else if (bind != null) {
-        button.isChecked = bind.peek()
-        button.onClick { bind.value = button.isChecked }
-    }
-
-    val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(button)
-    bind?.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
-    if (bind != null) followCheckedFromCode(button, bind)
-
+    bindChecked(button, bind, buttonGroup)
     return button
 }
 
-/** A setChecked call from code (vanilla, another mod, whoever holds the ButtonAPI) updates [bind]; see ButtonCheckedPatch. */
-private fun followCheckedFromCode(button: ButtonAPI, bind: UIState<Boolean>) {
-    StarUIPanelPlugin.getOrCreate(button).onNativeValueChanged {
-        if (bind.peek() != button.isChecked) bind.value = button.isChecked
-    }
-}
-
+/** A vanilla checkbox, with an optional label. With [bind] it follows and writes the state. */
 fun UIPanelAPI.Checkbox(
     text: String? = null,
+    bind: UIState<Boolean>? = null,
     size: Size = StarUITheme.current.checkbox.size,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = StarUITheme.current.checkbox.contentPadding,
     checkboxSize: ButtonAPI.UICheckboxSize? = StarUITheme.current.checkbox.checkboxSize,
     font: Font = StarUITheme.current.checkbox.font,
     color: Color = StarUITheme.current.checkbox.color ?: Global.getSettings().basePlayerColor,
-    bind: UIState<Boolean>? = null,
     buttonGroup: ButtonGroup? = null
 ): ButtonAPI {
     checkDslTarget()
+    requireBindFor(buttonGroup, bind, "Checkbox")
 
     fun calcIntrinsic(): Pair<Float, Float> {
         val (tw, th) = if (text != null) measureTextSize(text, font) else Pair(0f, 0f)
@@ -201,63 +198,79 @@ fun UIPanelAPI.Checkbox(
         return Pair(tw + boxSize, maxOf(th, boxSize))
     }
 
-    val validGroup = (buttonGroup != null && bind != null)
-
     val slot = childSlot("Checkbox", listOf(text, checkboxSize, font, color))
     val reused: ButtonAPI? = slot.reused()
     val button: ButtonAPI
     if (reused != null) {
         button = reused
         button.clearOnClick()
-        applyReuseBounds(button, size, calcIntrinsic())
+        applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic())
+        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         button = this.addCheckbox(initW, initH, text, null, font, color, checkboxSize)
     }
 
-    registerComponentSizing(button, size, isContainer = false)
+    registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
     slot.remember(button, button)
     if (!StarUIContext.isTopLevel) {
         StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
     }
 
     modifier.operations.forEach { it(button) }
+    bindChecked(button, bind, buttonGroup)
+    return button
+}
 
-    if (validGroup) {
+/** A group works on the states of its buttons, so a button in a group needs one. */
+private fun requireBindFor(buttonGroup: ButtonGroup?, bind: UIState<Boolean>?, component: String) {
+    require(buttonGroup == null || bind != null) {
+        "StarUI: $component(buttonGroup = ...) needs bind = a UIState<Boolean>: a ButtonGroup selects and clears its " +
+        "buttons through their states, so a button without one cannot take part."
+    }
+}
+
+/** Ties a checkbox to its state: clicks (through the group when there is one), state changes, and setChecked calls. */
+private fun bindChecked(button: ButtonAPI, bind: UIState<Boolean>?, buttonGroup: ButtonGroup?) {
+    if (bind == null) return
+    if (buttonGroup != null) {
         buttonGroup.addButtonToGroup(button, bind)
-    } else if (bind != null) {
+    } else {
         button.isChecked = bind.peek()
         button.onClick { bind.value = button.isChecked }
     }
-
     val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(button)
-    bind?.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
-    if (bind != null) followCheckedFromCode(button, bind)
-
-    return button
+    bind.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
+    // A setChecked call from code (vanilla, another mod, whoever holds the ButtonAPI): see ButtonCheckedPatch.
+    StarUIPanelPlugin.getOrCreate(button).onNativeValueChanged {
+        if (bind.peek() != button.isChecked) bind.value = button.isChecked
+    }
 }
 
 /**
  * A vanilla slider the player can drag, bound to [bind]. Dragging writes [bind]; writing [bind] moves the slider.
- * Values outside [rangeMin]..[rangeMax] are shown clamped (the state is left as it is). With [step], dragged values snap
- * to `rangeMin + k * step`.
+ * Values outside [valueRange] are shown clamped (the state is left as it is). With [step], dragged values snap to
+ * `valueRange.start + k * step` (a step size; Compose's `steps` is a count).
  *
  * The vanilla slider holds one value. Its `min` is a floor the value can't go below and its `max` an overflow mark
- * (both left at the range ends here); set them, colours and the display mode in [configure], which runs on every build.
+ * (both left at the range ends here); set them and the display mode in [configure], a named argument that runs on
+ * every build: `Slider(volume, configure = { setShowValueOnly(true) })`.
  */
 fun UIPanelAPI.Slider(
     bind: UIState<Float>,
-    rangeMin: Float = 0f,
-    rangeMax: Float = 100f,
-    size: Size = Size.exact(200f, 25f),
+    size: BoundedSize = StarUITheme.current.slider.size,
     modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     text: String? = null,
-    step: Float? = null,
-    configure: (SliderAPI.() -> Unit)? = null
+    barColor: Color? = StarUITheme.current.slider.barColor,
+    widgetColor: Color? = StarUITheme.current.slider.widgetColor,
+    configure: (SliderAPI.() -> Unit)? = null,
+    step: Float? = null
 ): SliderAPI {
-    val slider = nativeSlider("Slider", text, rangeMin, rangeMax, size, modifier)
+    val slider = nativeSlider("Slider", text, valueRange, size, modifier)
     slider.setUserAdjustable(true)
     slider.isShowAdjustableIndicator = true
+    barColor?.let { slider.barColor = it }
+    widgetColor?.let { slider.widgetColor = it }
     configure?.invoke(slider)
 
     // Showing the state (clamped to the range) goes through setProgress too; the hook must not write that back.
@@ -288,26 +301,27 @@ fun UIPanelAPI.Slider(
 }
 
 /**
- * A vanilla bar showing [progress] between [rangeMin] and [rangeMax]; the player can't change it. Pass a state's value
- * and the bar follows it (the builder runs again and the bar is reused). With [animate] it slides to a new value the
- * way vanilla bars do; otherwise it jumps. Colours and the display mode go in [configure], which runs on every build.
+ * A vanilla bar showing [progress] within [valueRange]; the player can't change it. Pass a state's value and the bar
+ * follows it (the builder runs again and the bar is reused). With [animate] it slides to a new value the way vanilla
+ * bars do; otherwise it jumps. The display mode goes in [configure], a named argument that runs on every build.
  */
 fun UIPanelAPI.ProgressBar(
     progress: Float,
-    rangeMin: Float = 0f,
-    rangeMax: Float = 100f,
-    size: Size = Size.exact(200f, 12f),
+    size: BoundedSize = StarUITheme.current.progressBar.size,
     modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..100f,
     text: String? = null,
-    animate: Boolean = true,
-    configure: (SliderAPI.() -> Unit)? = null
+    barColor: Color? = StarUITheme.current.progressBar.barColor,
+    configure: (SliderAPI.() -> Unit)? = null,
+    animate: Boolean = true
 ): SliderAPI {
-    val bar = nativeSlider("ProgressBar", text, rangeMin, rangeMax, size, modifier)
+    val bar = nativeSlider("ProgressBar", text, valueRange, size, modifier)
     bar.setUserAdjustable(false)
     bar.isShowAdjustableIndicator = false
     if (text == null) bar.isShowNoText = true
+    barColor?.let { bar.barColor = it }
     configure?.invoke(bar)
-    val shown = progress.coerceIn(rangeMin, rangeMax)
+    val shown = progress.coerceIn(valueRange.start, valueRange.endInclusive)
     if (bar.progress != shown) {
         bar.progress = shown
         if (!animate) bar.forceSync()
@@ -317,30 +331,29 @@ fun UIPanelAPI.ProgressBar(
 
 /** Makes or reuses the vanilla slider behind [Slider] and [ProgressBar]; every setting has a setter, so none is fixed. */
 private fun UIPanelAPI.nativeSlider(
-    kind: String, text: String?, rangeMin: Float, rangeMax: Float, size: Size, modifier: Modifier
+    kind: String, text: String?, valueRange: ClosedFloatingPointRange<Float>, size: BoundedSize, modifier: Modifier
 ): SliderAPI {
     checkDslTarget()
-    val intrinsic = Pair(200f, 25f)
     val slot = childSlot(kind)
     val reused: SliderAPI? = slot.reused()
     val slider: SliderAPI
     if (reused != null) {
         slider = reused
-        applyReuseBounds(slider.asComponent, size, intrinsic)
+        applyReuseBounds(slider.asComponent, size)
         slider.setText(text)
     } else {
-        val (initW, initH) = getInitialBounds(size, intrinsic)
-        slider = this.addSlider(text, rangeMin, rangeMax, initW, initH)
+        val (initW, initH) = getInitialBounds(size)
+        slider = this.addSlider(text, valueRange.start, valueRange.endInclusive, initW, initH)
     }
-    slider.rangeMin = rangeMin
-    slider.rangeMax = rangeMax
-    slider.max = rangeMax
+    slider.rangeMin = valueRange.start
+    slider.rangeMax = valueRange.endInclusive
+    slider.max = valueRange.endInclusive
 
     val component = slider.asComponent
     registerComponentSizing(component, size, isContainer = false)
     slot.remember(component, slider)
     if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[component] = { _, _ -> intrinsic }
+        StarUIContext.currentPlugin.childMeasurables[component] = { _, _ -> Pair(1f, 1f) }
     }
     modifier.operations.forEach { it(component) }
     return slider

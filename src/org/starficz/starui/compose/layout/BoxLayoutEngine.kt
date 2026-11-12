@@ -1,7 +1,7 @@
 package org.starficz.starui.compose.layout
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.Alignment
+import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
@@ -9,21 +9,6 @@ import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.relativeToBase
 import org.starficz.starui.core.getChildrenCopy
-
-internal val Alignment.xAnchor: Float
-    get() = when (this) {
-        Alignment.TL, Alignment.LMID, Alignment.BL -> 0f
-        Alignment.TMID, Alignment.MID, Alignment.BMID -> 0.5f
-        Alignment.TR, Alignment.RMID, Alignment.BR -> 1f
-    }
-
-// Maps Vanilla Alignment to the Y Anchor (0f = Bottom, 0.5f = Center, 1f = Top)
-internal val Alignment.yAnchor: Float
-    get() = when (this) {
-        Alignment.BL, Alignment.BMID, Alignment.BR -> 0f
-        Alignment.LMID, Alignment.MID, Alignment.RMID -> 0.5f
-        Alignment.TL, Alignment.TMID, Alignment.TR -> 1f
-    }
 
 internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEngine {
 
@@ -184,7 +169,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
             // ==========================================
             // POSITIONING
             // ==========================================
-            val alignment = plugin.childAlignments[child] ?: Alignment.TL
+            val alignment = plugin.childAlignments[child] ?: Alignment.TopLeft
             applyBoxAlignment(child, alignment, containerPadding, debugId, i)
         }
 
@@ -195,8 +180,8 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         var offsetX = 0f
         var offsetY = 0f
 
-        val alignX = alignment.xAnchor
-        val alignY = alignment.yAnchor
+        val alignX = alignment.x
+        val alignY = alignment.y
 
         // 1. Margins push the child away from its aligned edge
         plugin.childMargins[child]?.let { margin ->

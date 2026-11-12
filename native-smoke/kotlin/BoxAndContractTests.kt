@@ -1,7 +1,7 @@
 // BoxLayoutEngine geometry, and the zero-wrapper / BoxedUIElement contracts.
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.Alignment
+import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
@@ -9,8 +9,7 @@ import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.Axis
 import org.starficz.starui.compose.ImageSize
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Box
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Checkbox
@@ -41,20 +40,20 @@ fun registerBoxTests() {
     StarUITestSuite.group("box-nine-alignments") {
         // Box 300x200 with asymmetric padding l10 t20 r30 b40; nine 20x20 children.
         val placed = mutableMapOf<Alignment, CustomPanelAPI>()
-        val box = root.Box(LayoutSize.exact(300f, 200f),
+        val box = root.Box(Size.exact(300f, 200f),
             Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))
                 .padding(left = 10f, top = 20f, right = 30f, bottom = 40f)) {
-            for (a in Alignment.values()) placed[a] = Spacer(PanelSize.exact(20f, 20f), Modifier.align(a).background(Color(200, 140, 60)))
+            for (a in Alignment.entries) placed[a] = Spacer(Size.exact(20f, 20f), Modifier.align(a).background(Color(200, 140, 60)))
         }
         frame()
         fun left(a: Alignment) = when (a) {
-            Alignment.TL, Alignment.LMID, Alignment.BL -> 10f
-            Alignment.TMID, Alignment.MID, Alignment.BMID -> 130f   // centre 150 shifted by (10-30)/2
+            Alignment.TopLeft, Alignment.CenterLeft, Alignment.BottomLeft -> 10f
+            Alignment.TopCenter, Alignment.Center, Alignment.BottomCenter -> 130f   // centre 150 shifted by (10-30)/2
             else -> 250f
         }
         fun top(a: Alignment) = when (a) {
-            Alignment.TL, Alignment.TMID, Alignment.TR -> 20f
-            Alignment.LMID, Alignment.MID, Alignment.RMID -> 80f    // centre 100 shifted up by (40-20)/2
+            Alignment.TopLeft, Alignment.TopCenter, Alignment.TopRight -> 20f
+            Alignment.CenterLeft, Alignment.Center, Alignment.CenterRight -> 80f    // centre 100 shifted up by (40-20)/2
             else -> 140f
         }
         for ((a, c) in placed) expectRect(c, box, left(a), top(a), 20f, 20f, "align $a")
@@ -63,10 +62,10 @@ fun registerBoxTests() {
 
     StarUITestSuite.group("box-wrap-and-fill") {
         lateinit var wide: CustomPanelAPI; lateinit var tall: CustomPanelAPI; lateinit var filler: CustomPanelAPI
-        val box = root.Box(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
-            wide = Spacer(PanelSize.exact(80f, 20f), Modifier.background(Color(200, 60, 60)))
-            tall = Spacer(PanelSize.exact(30f, 60f), Modifier.align(Alignment.BR).background(Color(60, 200, 60)))
-            filler = Spacer(PanelSize.fill(), Modifier.background(Color(60, 60, 200, 80)))
+        val box = root.Box(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
+            wide = Spacer(Size.exact(80f, 20f), Modifier.background(Color(200, 60, 60)))
+            tall = Spacer(Size.exact(30f, 60f), Modifier.align(Alignment.BottomRight).background(Color(60, 200, 60)))
+            filler = Spacer(Size.fillMaxSize(), Modifier.background(Color(60, 60, 200, 80)))
         }
         frame()
         near(box.w, 80f, "WrapContent Box width = widest child")
@@ -83,14 +82,14 @@ fun registerContractTests() {
         val state = UIState("typed")
         val flag = UIState(false)
         val made = linkedMapOf<String, UIComponentAPI>()
-        val col = root.Column(LayoutSize.exact(400f, 700f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 4f) {
+        val col = root.Column(Size.exact(400f, 700f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 4f) {
             made["Text"] = Text("Plain text")
-            made["Image"] = Image("graphics/icons/cargo/supplies.png", ImageSize.exact(40f, 40f))
+            made["Image"] = Image("graphics/icons/cargo/supplies.png", Size.exact(40f, 40f))
             made["Button"] = Button("Button")
             made["Checkbox"] = Checkbox("Checkbox", bind = flag)
             made["TextField"] = TextField(state, size = org.starficz.starui.compose.Size.exact(200f, 24f))
-            made["ShipDisplay"] = ShipDisplay(PanelSize.exact(120f, 120f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
-            made["ScrollPanel"] = ScrollPanel(PanelSize.mixed(Axis.Fill(), Axis.Exact(120f))) { Text("inside scroll") }
+            made["ShipDisplay"] = ShipDisplay(Size.exact(120f, 120f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
+            made["ScrollPanel"] = ScrollPanel(Size.fillMaxWidth(height = 120f)) { Text("inside scroll") }
         }
         frame()
         val direct = col.children
@@ -109,10 +108,7 @@ fun registerContractTests() {
     StarUITestSuite.group("contract-all-fonts") {
         // Regression: Combat AI Tweaks' "AI Config" Button(font = ORBITRON_20) crashed the game (NPE in the vanilla
         // label's setText) because measureTextSize used a font Starsector had never loaded as a paragraph font.
-        val buttonFonts = setOf(org.starficz.starui.core.Font.ORBITRON_12_CONDENSED, org.starficz.starui.core.Font.VICTOR_10,
-            org.starficz.starui.core.Font.VICTOR_14, org.starficz.starui.core.Font.ORBITRON_20, org.starficz.starui.core.Font.ORBITRON_20_BOLD,
-            org.starficz.starui.core.Font.ORBITRON_24, org.starficz.starui.core.Font.ORBITRON_24_BOLD)
-        val col = root.Column(LayoutSize.exact(900f, 760f), Modifier.anchor(Anchor.inside.topLeft.ofParent(20f, 20f)), spacing = 2f) {
+        val col = root.Column(Size.exact(900f, 760f), Modifier.anchor(Anchor.inside.topLeft.ofParent(20f, 20f)), spacing = 2f) {
             for (f in org.starficz.starui.core.Font.values()) {
                 val err = thrown {
                     val (w, h) = org.starficz.starui.core.measureTextSize("Font $f", f)
@@ -120,10 +116,11 @@ fun registerContractTests() {
                     Text("Font $f", font = f)
                 }
                 expect(err == null, "Text/measure with $f does not throw ($err)")
-                if (f in buttonFonts) {
-                    val berr = thrown { Button("Button $f", font = f) }
-                    expect(berr == null, "Button with $f does not throw ($berr)")
-                }
+            }
+            // every ButtonFont is a font a vanilla button can be made with (any other is a compile error now)
+            for (f in org.starficz.starui.core.ButtonFont.values()) {
+                val berr = thrown { Button("Button $f", font = f) }
+                expect(berr == null, "Button with $f does not throw ($berr)")
             }
         }
         val err = thrown { frame() }
@@ -135,10 +132,10 @@ fun registerContractTests() {
     StarUITestSuite.group("contract-boxed-container-ops") {
         // UIPanelContainerPatch must unwrap BoxedUIElements (images, ship previews) passed to vanilla container methods.
         lateinit var a: UIComponentAPI; lateinit var boxed: org.starficz.starui.core.BoxedUIImage; lateinit var c: UIComponentAPI
-        val host = root.CustomPanel(PanelSize.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
-            a = Spacer(PanelSize.exact(10f, 10f))
-            boxed = Image("graphics/icons/cargo/supplies.png", ImageSize.exact(20f, 20f))
-            c = Spacer(PanelSize.exact(10f, 10f))
+        val host = root.CustomPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+            a = Spacer(Size.exact(10f, 10f))
+            boxed = Image("graphics/icons/cargo/supplies.png", Size.exact(20f, 20f))
+            c = Spacer(Size.exact(10f, 10f))
         }
         frame()
         val raw = boxed.boxedElement
@@ -170,12 +167,12 @@ fun registerContractTests() {
 
     StarUITestSuite.group("contract-api-0985") {
         // children is UIPanelAPI.getChildrenCopy2: a snapshot that later changes to the panel do not touch.
-        val col = root.Column(LayoutSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
-            Spacer(PanelSize.exact(10f, 10f))
+        val col = root.Column(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+            Spacer(Size.exact(10f, 10f))
         }
         frame()
         val before = col.children
-        col.Spacer(PanelSize.exact(10f, 10f))
+        col.Spacer(Size.exact(10f, 10f))
         expect(before.size == 1 && col.children.size == 2, "an earlier children list stays as it was (${before.size}, ${col.children.size})")
 
         // A label StarUI did not make (a plain vanilla para, moved into the Column) still asks the Column to lay out
@@ -196,8 +193,8 @@ fun registerContractTests() {
 
         // The ScrollPanel extras that ScrollPanelAPI still leaves out.
         lateinit var sp: ScrollPanelAPI
-        root.CustomPanel(PanelSize.exact(200f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) {
-            sp = ScrollPanel(PanelSize.exact(200f, 100f), renderShadows = false, shadowColor = Color.RED) { Text("in") }
+        root.CustomPanel(Size.exact(200f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) {
+            sp = ScrollPanel(Size.exact(200f, 100f), renderShadows = false, shadowColor = Color.RED) { Text("in") }
         }
         frame()
         expect(!sp.renderShadows, "renderShadows reads back false")

@@ -6,8 +6,6 @@
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Row
@@ -28,16 +26,16 @@ private fun placeAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.
 fun registerFillMeasureTests() {
     StarUITestSuite.group("fix-fill-children-measured-at-their-share") {
         lateinit var oneLine: LabelAPI
-        root.Column(LayoutSize.wrap(), placeAt(40f, 20f)) { oneLine = Text("One line") }
+        root.Column(Size.wrapContent(), placeAt(40f, 20f)) { oneLine = Text("One line") }
 
         val texts = mutableListOf<LabelAPI>()
         val columns = mutableListOf<CustomPanelAPI>()
         // The fixed spacer comes last: the fill columns must not be measured as if it took no room.
-        val row = root.Row(LayoutSize.mixed(Axis.Exact(600f), Axis.Wrap()), placeAt(40f, 60f).background(MEASURE_BG), spacing = 10f) {
+        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.Wrap), placeAt(40f, 60f).background(MEASURE_BG), spacing = 10f) {
             repeat(3) {
                 columns += Column(modifier = Modifier.background(Color(60, 40, 40))) { texts += Text(LONG_TEXT) }
             }
-            Spacer(PanelSize.exact(60f, 10f), Modifier.background(Color.GRAY))
+            Spacer(Size.exact(60f, 10f), Modifier.background(Color.GRAY))
         }
         frame()
         val share = (600f - 60f - 3 * 10f) / 3f
@@ -53,11 +51,11 @@ fun registerFillMeasureTests() {
 
     StarUITestSuite.group("fix-exact-children-measured-at-their-size") {
         lateinit var oneLine: LabelAPI
-        root.Column(LayoutSize.wrap(), placeAt(40f, 20f)) { oneLine = Text("One line") }
+        root.Column(Size.wrapContent(), placeAt(40f, 20f)) { oneLine = Text("One line") }
 
         lateinit var text: LabelAPI
-        val row = root.Row(LayoutSize.mixed(Axis.Exact(600f), Axis.Wrap()), placeAt(40f, 60f).background(MEASURE_BG)) {
-            text = Text(LONG_TEXT, Size.mixed(Axis.Exact(150f), Axis.Wrap()))
+        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.Wrap), placeAt(40f, 60f).background(MEASURE_BG)) {
+            text = Text(LONG_TEXT, Size.mixed(Axis.Exact(150f), Axis.Wrap))
         }
         frame()
         near(text.w, 150f, "the text is its exact width")
@@ -68,12 +66,12 @@ fun registerFillMeasureTests() {
 
     StarUITestSuite.group("fix-cross-fill-does-not-widen-wrap-container") {
         lateinit var oneLine: LabelAPI
-        root.Column(LayoutSize.wrap(), placeAt(40f, 20f)) { oneLine = Text("One line") }
+        root.Column(Size.wrapContent(), placeAt(40f, 20f)) { oneLine = Text("One line") }
 
         lateinit var text: LabelAPI
-        val col = root.Column(LayoutSize.wrap(), placeAt(40f, 60f).background(MEASURE_BG)) {
-            Spacer(PanelSize.exact(200f, 10f), Modifier.background(Color.GRAY))
-            text = Text(LONG_TEXT, Size.fillX())
+        val col = root.Column(Size.wrapContent(), placeAt(40f, 60f).background(MEASURE_BG)) {
+            Spacer(Size.exact(200f, 10f), Modifier.background(Color.GRAY))
+            text = Text(LONG_TEXT, Size.fillMaxWidth())
         }
         frame()
         near(col.w, 200f, "the wrap Column is as wide as its widest non-fill child")
@@ -82,7 +80,7 @@ fun registerFillMeasureTests() {
         near(col.h, 10f + text.h, "the Column is as tall as the spacer plus the wrapped text")
 
         // Only fill children: nothing to take the width from, so the Column still collapses (and warns), as before.
-        val allFill = root.Column(LayoutSize.wrap(), placeAt(300f, 60f)) { Text("only fill", Size.fillX()) }
+        val allFill = root.Column(Size.wrapContent(), placeAt(300f, 60f)) { Text("only fill", Size.fillMaxWidth()) }
         frame()
         near(allFill.w, 0f, "a wrap Column of only fill children has no width to give them")
         screenshot("final")

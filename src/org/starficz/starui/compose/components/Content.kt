@@ -3,20 +3,20 @@ package org.starficz.starui.compose.components
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
-import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.BoundedSize
+import org.starficz.starui.compose.ContentScale
 import org.starficz.starui.compose.ImageSize
 import org.starficz.starui.compose.NativeImage
-import org.starficz.starui.compose.PanelSize
 import org.starficz.starui.compose.Size
+import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.BoxedUIImage
-
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.addImage
@@ -28,29 +28,12 @@ import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
 import java.awt.Color
 
-enum class TextAlign {
-    Left,
-    Center,
-    Right;
-
-    companion object {
-        val Start = Left
-        val End = Right
-    }
+/** The vanilla label alignment for [this], vertically centred as vanilla text is. */
+internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (this) {
+    TextAlign.Left -> com.fs.starfarer.api.ui.Alignment.LMID
+    TextAlign.Center -> com.fs.starfarer.api.ui.Alignment.MID
+    TextAlign.Right -> com.fs.starfarer.api.ui.Alignment.RMID
 }
-
-enum class ContentScale {
-    /** Scales the image uniformly (maintaining aspect ratio) so both dimensions fit inside the box. */
-    Fit,
-    /** Stretches the image non-uniformly to fill the exact bounds of the box. */
-    FillBounds,
-    /** Keeps the image at its native pixel resolution, centered inside the box. */
-    None
-}
-
-typealias StarUIText = LabelAPI
-typealias StarUIImage = BoxedUIImage
-typealias StarUIShipDisplay = BoxedUIShipPreview
 
 /**
  * Creates a native Starsector label ([LabelAPI]) directly in this panel with zero wrapper
@@ -74,15 +57,7 @@ fun UIPanelAPI.Text(
     val rawLabel = reused ?: this.addPara(text, font, color, highlightedText)
     if (reused != null && rawLabel.text != text) rawLabel.text = text
 
-    fun applyTextAlign() {
-        rawLabel.setAlignment(
-            when (textAlign) {
-                TextAlign.Left -> Alignment.LMID
-                TextAlign.Center -> Alignment.MID
-                TextAlign.Right -> Alignment.RMID
-            }
-        )
-    }
+    fun applyTextAlign() = rawLabel.setAlignment(textAlign.toVanilla())
     applyTextAlign()
 
     if (reused != null) {
@@ -126,17 +101,6 @@ fun UIPanelAPI.Text(
     modifier.operations.forEach { it(rawLabel) }
     return rawLabel
 }
-
-/** Alias for [Text] for Gen 3 compatibility. */
-fun UIPanelAPI.Label(
-    text: String,
-    size: Size = StarUITheme.current.text.size,
-    modifier: Modifier = Modifier,
-    font: Font? = StarUITheme.current.text.font,
-    color: Color? = StarUITheme.current.text.color,
-    align: TextAlign = StarUITheme.current.text.textAlign,
-    highlightedText: Collection<Pair<String, Color>>? = null
-): LabelAPI = Text(text, size, modifier, font, color, align, highlightedText)
 
 /**
  * Creates a native Starsector [BoxedUIImage] directly in this panel with zero wrapper [com.fs.starfarer.api.ui.CustomPanelAPI] nodes.
@@ -227,10 +191,15 @@ fun UIPanelAPI.Image(
 }
 
 /**
- * Creates a native Starsector [BoxedUIShipPreview] directly in this panel with zero wrapper [com.fs.starfarer.api.ui.CustomPanelAPI] nodes.
+ * Creates a native Starsector [BoxedUIShipPreview] directly in this panel with zero wrapper
+ * [com.fs.starfarer.api.ui.CustomPanelAPI] nodes. A ship display has no size of its own, so its size is exact or fill.
+ *
+ * Vanilla fits the ship into the display and then always shrinks it to 95%, 3% above centre. [exactScale] draws it at
+ * exactly that scale instead (1 = one sprite pixel per UI unit; `1f / Global.getSettings().screenScaleMult` for one
+ * per screen pixel), centred and on whole pixels.
  */
 fun UIPanelAPI.ShipDisplay(
-    size: PanelSize = StarUITheme.current.shipDisplay.size,
+    size: BoundedSize = StarUITheme.current.shipDisplay.size,
     modifier: Modifier = Modifier,
     fleetMember: FleetMemberAPI? = null,
     variant: ShipVariantAPI? = null,
@@ -243,6 +212,7 @@ fun UIPanelAPI.ShipDisplay(
     borderNewStyle: Boolean = StarUITheme.current.shipDisplay.newBorderStyle,
     borderColor: Color? = null,
     scaleSmallerShips: Float? = StarUITheme.current.shipDisplay.scaleSmallerShips,
+    exactScale: Float? = null,
     scanlineAlpha: Float? = null,
     tintAlpha: Float? = null,
     isDisabled: Boolean = false,
@@ -270,6 +240,7 @@ fun UIPanelAPI.ShipDisplay(
     rawShip.setBorderNewStyle(borderNewStyle)
     borderColor?.let { rawShip.borderColor = it }
     scaleSmallerShips?.let { rawShip.setScaleDownSmallerShipsMagnitude(it) }
+    rawShip.exactScale = exactScale
     if (scanlineAlpha != null && tintAlpha != null) rawShip.adjustOverlay(scanlineAlpha, tintAlpha)
     if (isDisabled) rawShip.makeLookDisabled()
     if (hideLabels) rawShip.hideLabels()
@@ -296,20 +267,3 @@ fun UIPanelAPI.ShipDisplay(
     modifier.operations.forEach { it(rawShip) }
     return rawShip
 }
-
-/** Alias for [ShipDisplay] for Gen 3 compatibility. */
-fun UIPanelAPI.ShipPreview(
-    size: PanelSize = StarUITheme.current.shipDisplay.size,
-    modifier: Modifier = Modifier,
-    fleetMember: FleetMemberAPI? = null,
-    variant: ShipVariantAPI? = null,
-    style: BoxedUIShipPreview.Style = StarUITheme.current.shipDisplay.vanillaStyle,
-    isSchematicMode: Boolean = false
-): BoxedUIShipPreview = ShipDisplay(
-    size = size,
-    modifier = modifier,
-    fleetMember = fleetMember,
-    variant = variant,
-    style = style,
-    isSchematicMode = isSchematicMode
-)

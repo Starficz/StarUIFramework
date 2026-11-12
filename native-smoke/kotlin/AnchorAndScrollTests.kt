@@ -1,10 +1,11 @@
 // Anchor system (inside / relative / my), top-level WrapContent re-anchoring, and ScrollPanel behaviour.
 
+import org.starficz.starui.compose.Alignment
+import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.LayoutSize
-import org.starficz.starui.compose.PanelSize
+import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.ScrollPanel
@@ -33,8 +34,8 @@ fun registerAnchorTests() {
             "bottomRight" to (Anchor.inside.bottomRight.ofParent(10f, 15f) to (350f to 265f)),
         )
         val made = linkedMapOf<String, CustomPanelAPI>()
-        val host = root.CustomPanel(PanelSize.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
-            for ((name, v) in placed) made[name] = Spacer(PanelSize.exact(40f, 20f), Modifier.anchor(v.first).background(CHILD))
+        val host = root.CustomPanel(Size.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
+            for ((name, v) in placed) made[name] = Spacer(Size.exact(40f, 20f), Modifier.anchor(v.first).background(CHILD))
         }
         frame()
         for ((name, v) in placed) expectRect(made[name]!!, host, v.second.first, v.second.second, 40f, 20f, "inside.$name")
@@ -44,14 +45,14 @@ fun registerAnchorTests() {
     StarUITestSuite.group("anchor-relative") {
         lateinit var ref: CustomPanelAPI
         val got = linkedMapOf<String, CustomPanelAPI>()
-        val host = root.CustomPanel(PanelSize.exact(500f, 400f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
-            ref = Spacer(PanelSize.exact(100f, 60f), Modifier.anchor(Anchor.inside.center.ofParent()).background(Color(60, 60, 200)))
-            got["above.left"] = Spacer(PanelSize.exact(40f, 20f), Modifier.anchor(Anchor.above.sibling(ref).matchingLeftEdge(5f)).background(CHILD))
-            got["below.center"] = Spacer(PanelSize.exact(40f, 20f), Modifier.anchor(Anchor.below.sibling(ref).matchingCenter(5f)).background(CHILD))
-            got["leftOf.top"] = Spacer(PanelSize.exact(40f, 20f), Modifier.anchor(Anchor.leftOf.sibling(ref).matchingTopEdge(5f)).background(CHILD))
-            got["rightOf.bottom"] = Spacer(PanelSize.exact(40f, 20f), Modifier.anchor(Anchor.rightOf.sibling(ref).matchingBottomEdge(5f)).background(CHILD))
-            got["insidePrev.topLeft"] = Spacer(PanelSize.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofPreviousComponent(3f, 4f)).background(Color(220, 220, 60)))
-            got["my.bottomRight.toTopLeft"] = Spacer(PanelSize.exact(30f, 30f), Modifier.anchor(Anchor.my.bottomRight.toTopLeft.ofParent()).background(Color(220, 60, 220)))
+        val host = root.CustomPanel(Size.exact(500f, 400f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40))) {
+            ref = Spacer(Size.exact(100f, 60f), Modifier.anchor(Anchor.inside.center.ofParent()).background(Color(60, 60, 200)))
+            got["above.left"] = Spacer(Size.exact(40f, 20f), Modifier.anchor(Anchor.above.sibling(ref).matchingLeftEdge(5f)).background(CHILD))
+            got["below.center"] = Spacer(Size.exact(40f, 20f), Modifier.anchor(Anchor.below.sibling(ref).matchingCenter(5f)).background(CHILD))
+            got["leftOf.top"] = Spacer(Size.exact(40f, 20f), Modifier.anchor(Anchor.leftOf.sibling(ref).matchingTopEdge(5f)).background(CHILD))
+            got["rightOf.bottom"] = Spacer(Size.exact(40f, 20f), Modifier.anchor(Anchor.rightOf.sibling(ref).matchingBottomEdge(5f)).background(CHILD))
+            got["insidePrev.topLeft"] = Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofPreviousComponent(3f, 4f)).background(Color(220, 220, 60)))
+            got["my.bottomRight.toTopLeft"] = Spacer(Size.exact(30f, 30f), Modifier.anchor(Anchor.my.bottomRight.toTopLeft.ofParent()).background(Color(220, 60, 220)))
         }
         frame()
         val rl = ref.relLeft(host); val rt = ref.relTop(host)
@@ -70,9 +71,9 @@ fun registerAnchorTests() {
 
     StarUITestSuite.group("anchor-toplevel-wrap-reanchor") {
         // A top-level WrapContent Column only knows its size after measuring, so its anchor must be re-applied.
-        val col = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.bottomRight.ofParent(20f, 30f)).background(Color(30, 30, 40))) {
-            Spacer(PanelSize.exact(120f, 40f), Modifier.background(Color(200, 60, 60)))
-            Spacer(PanelSize.exact(80f, 50f), Modifier.background(Color(60, 200, 60)))
+        val col = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.bottomRight.ofParent(20f, 30f)).background(Color(30, 30, 40))) {
+            Spacer(Size.exact(120f, 40f), Modifier.background(Color(200, 60, 60)))
+            Spacer(Size.exact(80f, 50f), Modifier.background(Color(60, 200, 60)))
         }
         frame()
         near(col.w, 120f, "wrapped width")
@@ -87,9 +88,9 @@ fun registerScrollTests() {
     StarUITestSuite.group("scrollpanel-measure-and-scroll") {
         val items = mutableListOf<CustomPanelAPI>()
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(PanelSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)),
-            spacing = 5f, yPadding = 10f) {
-            for (i in 0 until 20) items += Spacer(PanelSize.exact(280f, 30f), Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))
+        sp = root.ScrollPanel(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)).padding(horizontal = 0f, vertical = 10f),
+            horizontalAlignment = Alignment.CenterHorizontally, spacing = 5f) {
+            for (i in 0 until 20) items += Spacer(Size.exact(280f, 30f), Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))
         }
         frame()
         val content = sp.contentContainer
