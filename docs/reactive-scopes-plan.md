@@ -1,10 +1,10 @@
 # StarUIFramework: reactive scopes plan
 
-Status (2026-11-11): Phases 0-5 done on branch `reactive-scopes` (609/609 checks), plus AGENTS.md. Remaining:
-Phase 6 (Refit Filters port and live acceptance). Decisions taken: onLayout fires every pass (onFirstLayout is
-once), every container is a scope, Step 1 kept simple and Step 2 built on it. Found while building Step 2: stack
-children are anchored on their previous sibling, so removing one now re-pins the rest. Originally written
-2026-11-11 so the work could start in a fresh context.
+Status (2026-11-11): Phases 0-6 done. StarUI on branch `reactive-scopes` (612/612 checks), AGENTS.md added.
+Refit Filters ported on its branch `starui-port` and checked live in the mission refit weapon picker (Fast Rendering):
+filters render, search, reset and reactive damage-type toggles work, live scope count steady across picker refreshes,
+no log errors. Not yet exercised live: the range slider drag (needs a held mouse button, which background input cannot
+send), the fighter picker, the cargo-screen buttons, and Combat AI Tweaks / Scy Nation on the new build.
 
 **Goal.** Make plain Kotlin `if` / `for` / `when` inside StarUI builders update automatically when state changes,
 without a virtual-node layer (keep "zero wrapper": DSL calls create real Starsector objects), and make the library
