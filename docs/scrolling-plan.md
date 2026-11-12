@@ -1,6 +1,8 @@
 # Overflow plan: clipping and scrolling as one per-axis setting, wheel on both axes, long lists
 
-Status: agreed with the user (2026-11-12), not started. Work in the order of the steps below; each step ends with the
+Status: steps 1-4 done (2026-11-12: 9dffb54, 3079e0b); steps 5-7 to do. Found on the way: a per-pass measure
+cache was needed (nesting multiplied measures) and VanillaElementEngine re-laid out every frame; both fixed in 3079e0b.
+Clip on both axes uses vanilla's own `setClipping` (a nesting scissor); one-axis clip is a StarUI GL scissor. Work in the order of the steps below; each step ends with the
 in-game suite passing (`native-smoke/run-test-suite.ps1`, under `smoke-slot.sh run`) and the PNGs looked at.
 
 ## The design
