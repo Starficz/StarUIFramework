@@ -13,14 +13,15 @@ import org.starficz.starui.core.top
 import java.awt.Color
 
 // --- Tooltips ---
+/** A tooltip with one paragraph of [text], shown while the cursor is over the component. */
 fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE) = this.then {
     it.actual.addTooltip(location, width, null) { tm -> tm.addPara(text, 0f) }
     StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 
 /**
- * A tooltip on this component. In a builder that runs again, a reused component whose call no longer has a tooltip
- * loses the one it had.
+ * A tooltip built with vanilla's [TooltipMakerAPI], shown while the cursor is over the component:
+ * `tooltip { addPara("Cost: %s", 0f, Misc.getHighlightColor(), "100") }`.
  */
 fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null, builder: (@StarUIDsl TooltipMakerAPI).() -> Unit) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.builder() }
@@ -28,6 +29,7 @@ fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocat
 }
 
 // --- Convenience Rendering ---
+/** Fills the component's area with [color], under its content. */
 fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)
@@ -37,7 +39,7 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
     GL11.glEnable(GL11.GL_TEXTURE_2D)
 }
 
-/** A border line [width] pixels thick around the component (Compose's argument order). */
+/** A line [width] pixels thick around the component's edge. */
 fun Modifier.border(width: Float, color: Color) = onRender { alphaMult ->
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)

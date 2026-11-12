@@ -3,20 +3,19 @@ package org.starficz.starui.compose
 import org.starficz.starui.compose.layout.StackDirection
 
 /**
- * Where a child sits in its container, in Compose's words with Left and Right (Starsector has no right-to-left
- * layouts), the same words the anchors use.
+ * Where a child sits in its container.
  *
- * - `Modifier.align(Alignment.TopLeft)` on a child of a Box: one of the nine [Alignment] values.
- * - `Column(horizontalAlignment = Alignment.CenterHorizontally)`: an [Alignment.Horizontal].
- * - `Row(verticalAlignment = Alignment.CenterVertically)`: an [Alignment.Vertical].
+ * - In a Box: `Modifier.align(Alignment.TopLeft)`, one of the nine positions.
+ * - In a Column: `horizontalAlignment = Alignment.Left`, `CenterHorizontally` or `Right`.
+ * - In a Row: `verticalAlignment = Alignment.Top`, `CenterVertically` or `Bottom`.
  */
 class Alignment private constructor(private val name: String, internal val x: Float, internal val y: Float) {
-    /** Across a Column or ScrollPanel: [Left], [CenterHorizontally] or [Right]. */
+    /** Where children sit across a Column or ScrollPanel: [Left], [CenterHorizontally] or [Right]. */
     class Horizontal internal constructor(private val name: String, internal val alignValue: Float) {
         override fun toString() = name
     }
 
-    /** Across a Row: [Top], [CenterVertically] or [Bottom]. */
+    /** Where children sit across a Row: [Top], [CenterVertically] or [Bottom]. */
     class Vertical internal constructor(private val name: String, internal val alignValue: Float) {
         override fun toString() = name
     }
@@ -50,16 +49,16 @@ class Alignment private constructor(private val name: String, internal val x: Fl
     }
 }
 
-/** How text sits in its own box. */
+/** Where text sits inside its component when the component is wider than the text. */
 enum class TextAlign { Left, Center, Right }
 
-/** Which way a Column stacks its children. */
+/** Which way a Column stacks its children: [Downwards] (the default) or [Upwards]. */
 enum class VGrow(internal val direction: StackDirection) {
     Downwards(StackDirection.DOWN),
     Upwards(StackDirection.UP)
 }
 
-/** Which way a Row stacks its children. */
+/** Which way a Row stacks its children: [Rightwards] (the default) or [Leftwards]. */
 enum class HGrow(internal val direction: StackDirection) {
     Rightwards(StackDirection.RIGHT),
     Leftwards(StackDirection.LEFT)
@@ -67,10 +66,10 @@ enum class HGrow(internal val direction: StackDirection) {
 
 /** How an [org.starficz.starui.compose.components.Image]'s sprite fills its box. */
 enum class ContentScale {
-    /** Scales the image uniformly (maintaining aspect ratio) so both dimensions fit inside the box. */
+    /** Scales the sprite to fit inside the box, keeping its shape. */
     Fit,
-    /** Stretches the image non-uniformly to fill the exact bounds of the box. */
+    /** Stretches the sprite to the box's exact shape. */
     FillBounds,
-    /** Keeps the image at its native pixel resolution, centered inside the box. */
+    /** Draws the sprite at its own size, centred in the box. */
     None
 }

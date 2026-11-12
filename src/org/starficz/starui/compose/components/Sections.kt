@@ -22,9 +22,8 @@ import org.starficz.starui.core.measureTextSize
 import java.awt.Color
 
 /**
- * Vanilla's section heading (`TooltipMakerAPI.addSectionHeading`): [text] on a bar the heading's width, Orbitron 12
- * condensed, one line plus 3 px tall. Fills the width by default. Returns the vanilla label, which draws its own bar;
- * its text updates in place on a rebuild, its colours and alignment are fixed when it is made.
+ * Vanilla's section heading: [text] on a coloured bar, as on vanilla's own panels. Fills the width by default.
+ * Returns the vanilla [LabelAPI].
  */
 fun UIPanelAPI.SectionHeading(
     text: String,
@@ -56,10 +55,9 @@ fun UIPanelAPI.SectionHeading(
 }
 
 /**
- * A panel the way vanilla lays its own out: a [SectionHeading] across the top (none when [title] is null), the
- * builder's components in a column below, [spacing] apart and [contentPadding] in from the border, on vanilla's panel
- * black inside a thin border in the faction's dark colour. Fills the width and wraps its content by default; with a
- * fill height the content column fills too.
+ * A vanilla-style panel: a [SectionHeading] with [title] on top (none when null), then the builder's components in a
+ * column, [spacing] apart and [contentPadding] in from a thin border. Fills the width and wraps its content by
+ * default.
  */
 fun UIPanelAPI.Section(
     title: String?,

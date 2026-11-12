@@ -14,8 +14,8 @@ import org.starficz.starui.compose.runtime.StarUITheme
 import java.awt.Color
 
 /**
- * Empty space. It has no content, so its size is exact or fill. To draw something there, give it
- * `Modifier.background(color)`.
+ * Empty space of [size] (exact or fill). Fills the space it is given by default. Draws nothing; add
+ * `Modifier.background(color)` for a coloured block.
  */
 fun UIPanelAPI.Spacer(
     size: BoundedSize = Size.fillMaxSize(),
@@ -48,7 +48,7 @@ fun UIPanelAPI.Spacer(
     return panel
 }
 
-/** A horizontal line across the full width. */
+/** A horizontal line [thickness] pixels tall across the full width. */
 fun UIPanelAPI.Divider(
     modifier: Modifier = Modifier,
     thickness: Float = StarUITheme.current.divider.thickness,
@@ -58,7 +58,10 @@ fun UIPanelAPI.Divider(
     modifier = Modifier.background(color).then { c -> modifier.operations.forEach { it(c) } }
 )
 
-/** A gap that takes the space left over on its container's main axis, pushing its neighbours apart. */
+/**
+ * Takes all space left over in a Row or Column, pushing what comes after it to the far end. Several share the space
+ * by [weight].
+ */
 fun UIPanelAPI.FlexSpacer(
     weight: Float = 1f,
     modifier: Modifier = Modifier

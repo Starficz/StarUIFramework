@@ -13,9 +13,9 @@ internal inline fun UIComponentAPI.applyToPlugin(action: StarUIPanelPlugin.() ->
 }
 
 /**
- * Asks StarUI to measure and lay out this component's container again on the next rendered frame. StarUI does this
- * by itself for added or removed children and for [org.starficz.starui.compose.components.Text] changes; call it
- * after changing something it cannot see.
+ * Lays out this component's container again on the next frame. Rarely needed: StarUI already does it when children
+ * are added or removed and when a Text changes. Call it after changing something StarUI can't see, such as a native
+ * component's size.
  */
 fun UIComponentAPI.requestLayout() {
     val target = this.actual
@@ -24,9 +24,10 @@ fun UIComponentAPI.requestLayout() {
     else target.parent?.let { StarUIPanelPlugin.getAttached(it) }?.requestLayout()
 }
 
-// ==========================================
-// CORE MODIFIER INTERFACE
-// ==========================================
+/**
+ * Extra behaviour for a component: spacing, events, drawing, tooltips. Start from `Modifier` and chain calls:
+ * `Modifier.padding(4f).background(color).onClick { ... }`. Each component takes one as its `modifier` argument.
+ */
 interface Modifier {
     val operations: List<(UIComponentAPI) -> Unit>
 
@@ -44,17 +45,28 @@ private class ModifierImpl(
 ) : Modifier
 
 // --- Lifecycle & Escape Hatches ---
+/** Runs every frame with the seconds since the last one. */
 fun Modifier.onAdvance(action: (Float) -> Unit) = this.then { it.applyToPlugin { advance(action) } }
-/** Runs after every layout pass that sizes and positions the component (the first one, and each automatic re-layout). */
+/** Runs each time the component is laid out (sized and placed), the first time included. */
 fun Modifier.onLayout(action: () -> Unit) = this.then { it.applyToPlugin { onLayout(action) } }
-/** Runs once, after the component's first layout pass. */
+/** Runs once, the first time the component is laid out. */
 fun Modifier.onFirstLayout(action: () -> Unit) = this.then { it.applyToPlugin { onFirstLayout(action) } }
+/** Runs when the component moves or changes size. */
 fun Modifier.onPositionChanged(action: (PositionAPI) -> Unit) = this.then { it.applyToPlugin { onPositionChanged(action) } }
 
+/**
+ * Draws with OpenGL over the component's own content, every frame. `left`, `right`, `top` and `bottom` give its
+ * edges in UI coordinates; multiply alpha by [alphaMult] so it fades with the panel.
+ */
 fun Modifier.onRender(action: StarUIPanelPlugin.(alphaMult: Float) -> Unit) = this.then {
     it.applyToPlugin { render { alpha -> action(alpha) } }
 }
+/** Like [onRender], but draws under the component's content. */
 fun Modifier.onRenderBelow(action: StarUIPanelPlugin.(alphaMult: Float) -> Unit) = this.then {
     it.applyToPlugin { renderBelow { alpha -> action(alpha) } }
 }
+/**
+ * Direct access to the component's [StarUIPanelPlugin], for what no modifier covers:
+ * `.plugin { consumeEvents = true }` stops mouse and key events from passing through to what is behind it.
+ */
 fun Modifier.plugin(action: StarUIPanelPlugin.() -> Unit) = this.then { it.applyToPlugin { action() } }

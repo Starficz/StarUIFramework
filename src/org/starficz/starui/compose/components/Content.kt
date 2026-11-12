@@ -36,9 +36,9 @@ internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (th
 }
 
 /**
- * Creates a native Starsector label ([LabelAPI]) directly in this panel with zero wrapper
- * [com.fs.starfarer.api.ui.CustomPanelAPI] nodes. Changing its text later (`label.text = ...`) re-lays out the
- * surrounding StarUI layout on the next frame.
+ * A line or paragraph of text. Wraps the text by default; with a fill or exact width it wraps lines to fit.
+ * [highlightedText] colours parts of it: `listOf("1200" to Color.YELLOW)`.
+ * Returns the vanilla [LabelAPI]. Setting `label.text` later is fine: the layout around it updates.
  */
 fun UIPanelAPI.Text(
     text: String,
@@ -103,7 +103,9 @@ fun UIPanelAPI.Text(
 }
 
 /**
- * Creates a native Starsector [BoxedUIImage] directly in this panel with zero wrapper [com.fs.starfarer.api.ui.CustomPanelAPI] nodes.
+ * A sprite, by its path (`"graphics/icons/cargo/supplies.png"`). [size] also takes `ImageSize.native()` (the
+ * sprite's own size) and `ImageSize.aspectWrap()`; [contentScale] says how the sprite fills a box of another shape.
+ * The sprite must be loaded, or it draws nothing.
  */
 fun UIPanelAPI.Image(
     spritePath: String,
@@ -191,12 +193,11 @@ fun UIPanelAPI.Image(
 }
 
 /**
- * Creates a native Starsector [BoxedUIShipPreview] directly in this panel with zero wrapper
- * [com.fs.starfarer.api.ui.CustomPanelAPI] nodes. A ship display has no size of its own, so its size is exact or fill.
+ * Vanilla's ship display, showing [fleetMember] or [variant]. Its size is exact or fill (it has no content size).
  *
- * Vanilla fits the ship into the display and then always shrinks it to 95%, 3% above centre. [exactScale] draws it at
- * exactly that scale instead (1 = one sprite pixel per UI unit; `1f / Global.getSettings().screenScaleMult` for one
- * per screen pixel), centred and on whole pixels.
+ * Vanilla shrinks the ship to 95% of the space and draws it 3% above centre. `exactScale = 1f` draws it at its real
+ * size instead, centred and pixel-sharp (`1f / Global.getSettings().screenScaleMult` for one sprite pixel per screen
+ * pixel). It is made new on every rebuild, since the ship it shows may have changed.
  */
 fun UIPanelAPI.ShipDisplay(
     size: BoundedSize = StarUITheme.current.shipDisplay.size,

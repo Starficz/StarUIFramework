@@ -34,7 +34,10 @@ import java.awt.Color
 // and last a click handler where there is one. `contentPadding` is the control's own space between its edge and its
 // content (themeable); `Modifier.padding` adds to it.
 
-/** A vanilla text field editing [bind]: typing writes the state, writing the state changes the text. */
+/**
+ * A text box for [bind]. Typing writes the state; writing the state changes the text. [placeholder] shows while it
+ * is empty. Keeps its caret and focus across rebuilds.
+ */
 fun UIPanelAPI.TextField(
     bind: UIState<String>,
     size: Size = StarUITheme.current.textField.size,
@@ -85,7 +88,11 @@ fun UIPanelAPI.TextField(
     return textField
 }
 
-/** A vanilla button. [font] is a [ButtonFont]: the only fonts a vanilla button can use. */
+/**
+ * A button that runs [onClick] when clicked. As large as its text plus [contentPadding] by default.
+ * [shortcut] is a `Keyboard.KEY_*` code that presses it too. [font] is a [ButtonFont], the fonts a vanilla button
+ * can use. Returns the vanilla [ButtonAPI].
+ */
 fun UIPanelAPI.Button(
     text: String,
     size: Size = StarUITheme.current.button.size,
@@ -131,7 +138,10 @@ fun UIPanelAPI.Button(
     return btn
 }
 
-/** A vanilla area checkbox (a toggle button), in vanilla's three tones. With [bind] it follows and writes the state. */
+/**
+ * A button that stays pressed or unpressed: on while [bind] is true. Clicking flips the state. In a [buttonGroup] it
+ * acts as a filter or radio button (see [ButtonGroup]), which needs [bind].
+ */
 fun UIPanelAPI.AreaCheckbox(
     text: String,
     bind: UIState<Boolean>? = null,
@@ -177,7 +187,10 @@ fun UIPanelAPI.AreaCheckbox(
     return button
 }
 
-/** A vanilla checkbox, with an optional label. With [bind] it follows and writes the state. */
+/**
+ * A tick box with an optional label: ticked while [bind] is true. Clicking flips the state. In a [buttonGroup] it
+ * acts as a filter or radio button (see [ButtonGroup]), which needs [bind].
+ */
 fun UIPanelAPI.Checkbox(
     text: String? = null,
     bind: UIState<Boolean>? = null,
@@ -247,13 +260,11 @@ private fun bindChecked(button: ButtonAPI, bind: UIState<Boolean>?, buttonGroup:
 }
 
 /**
- * A vanilla slider the player can drag, bound to [bind]. Dragging writes [bind]; writing [bind] moves the slider.
- * Values outside [valueRange] are shown clamped (the state is left as it is). With [step], dragged values snap to
- * `valueRange.start + k * step` (a step size; Compose's `steps` is a count).
+ * A bar the player drags to set [bind] within [valueRange]. Dragging writes the state; writing the state moves the
+ * bar. [step] snaps dragged values to multiples of it from the range start (a step size, not Compose's step count).
+ * Its size is exact or fill.
  *
- * The vanilla slider holds one value. Its `min` is a floor the value can't go below and its `max` an overflow mark
- * (both left at the range ends here); set them and the display mode in [configure], a named argument that runs on
- * every build: `Slider(volume, configure = { setShowValueOnly(true) })`.
+ * [configure] runs any other [SliderAPI] setter on it each build: `configure = { setShowValueOnly(true) }`.
  */
 fun UIPanelAPI.Slider(
     bind: UIState<Float>,
@@ -301,9 +312,10 @@ fun UIPanelAPI.Slider(
 }
 
 /**
- * A vanilla bar showing [progress] within [valueRange]; the player can't change it. Pass a state's value and the bar
- * follows it (the builder runs again and the bar is reused). With [animate] it slides to a new value the way vanilla
- * bars do; otherwise it jumps. The display mode goes in [configure], a named argument that runs on every build.
+ * A bar showing [progress] within [valueRange], which the player can't change. Pass `state.value` and it follows the
+ * state. [animate] slides it to a new value instead of jumping. Its size is exact or fill.
+ *
+ * [configure] runs any other [SliderAPI] setter on it each build.
  */
 fun UIPanelAPI.ProgressBar(
     progress: Float,

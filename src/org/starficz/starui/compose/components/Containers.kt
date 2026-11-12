@@ -145,12 +145,10 @@ private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<Cu
 }
 
 /**
- * Gives the components emitted directly inside [block] a stable identity within their container.
+ * Ties the components in [block] to [id], so they stay with their item when a list changes.
  *
- * When a builder runs again, StarUI matches each component call to an old child of the same kind in order. That is
- * right for fixed layouts, but in a list whose items are inserted, removed or reordered it hands an item the native
- * objects of a different item (a text field keeps the focus of the row that used to be there, a ScrollPanel its
- * scroll position). Wrap each item in `key(item.id) { ... }` and its components follow the item:
+ * Without keys, a rebuild reuses components by position: remove the first row and the second row gets the first
+ * row's text field, focus included. Wrap each list item in a key:
  *
  * ```
  * for (ship in ships.value) key(ship.id) {
@@ -158,7 +156,7 @@ private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<Cu
  * }
  * ```
  *
- * Keys must be unique within one container and should have a stable `equals` (ids, strings, numbers).
+ * Keys must be unique within one container. Use ids, strings or numbers.
  */
 fun <R> key(id: Any, block: () -> R): R = StarUIContext.withKey(id, block)
 
@@ -198,8 +196,8 @@ internal fun registerComponentSizing(
 }
 
 /**
- * Overrides the current StarUITheme for all components instantiated inside this block.
- * This does not create a physical UI panel.
+ * Uses [theme] for the default arguments of every component called in [builder]. Adds no panel: the components go
+ * straight into this one.
  */
 fun UIPanelAPI.Theme(
     theme: StarUITheme,
@@ -214,7 +212,10 @@ fun UIPanelAPI.Theme(
 // CONTAINERS
 // =====================================================================
 
-/** A panel that places nothing: position its children with `Modifier.anchor(...)`. */
+/**
+ * A panel that does not place its children: position each one with `Modifier.anchor(...)`. Wraps its children by
+ * default.
+ */
 fun UIPanelAPI.CustomPanel(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
@@ -234,8 +235,8 @@ fun UIPanelAPI.CustomPanel(
 }
 
 /**
- * A container that stacks its children on top of each other (Z-axis).
- * Use `Modifier.align(Alignment.Center)` on children to position them within the Box.
+ * Puts its children on top of each other, later ones drawn over earlier ones. Place each child with
+ * `Modifier.align(...)` (top left by default). Wraps its largest child by default.
  */
 fun UIPanelAPI.Box(
     size: Size = Size.wrapContent(),
@@ -287,10 +288,8 @@ private fun UIPanelAPI.StackLayout(
 }
 
 /**
- * A layout container that places its children in a vertical sequence, [spacing] apart.
- * Defaults follow Jetpack Compose: children start at the left ([Alignment.Left]), the Column fills the available
- * width and wraps its content's height. [grow] = [VGrow.Upwards] stacks from the bottom instead. Space inside its
- * edges is `Modifier.padding`.
+ * Places its children top to bottom, [spacing] apart, aligned by [horizontalAlignment] (left by default).
+ * Fills the width and wraps its children's height by default. `grow = VGrow.Upwards` stacks bottom to top instead.
  */
 fun UIPanelAPI.Column(
     size: Size = Size.fillMaxWidth(),
@@ -309,10 +308,8 @@ fun UIPanelAPI.Column(
 )
 
 /**
- * A layout container that places its children in a horizontal sequence, [spacing] apart.
- * Defaults follow Jetpack Compose: children align to the top ([Alignment.Top]), the Row wraps its content's width
- * and fills the available height. [grow] = [HGrow.Leftwards] stacks from the right instead. Space inside its edges is
- * `Modifier.padding`.
+ * Places its children left to right, [spacing] apart, aligned by [verticalAlignment] (top by default).
+ * Wraps its children's width and fills the height by default. `grow = HGrow.Leftwards` stacks right to left instead.
  */
 fun UIPanelAPI.Row(
     size: Size = Size.fillMaxHeight(),
@@ -331,9 +328,9 @@ fun UIPanelAPI.Row(
 )
 
 /**
- * Creates a native Starsector [ScrollPanelAPI] with zero wrapper [CustomPanelAPI] nodes. Components called in
- * [builder] go into its content container, which scrolls: a column, [spacing] apart. A ScrollPanel has no content
- * size of its own, so its size is exact or fill. `Modifier.padding` is space inside the scrolling content.
+ * Vanilla's scroll panel. Its children go top to bottom like a [Column], [spacing] apart, and scroll when they are
+ * taller than the panel. Its size is exact or fill (it has no content size), and its children cannot fill its height.
+ * Returns the vanilla [ScrollPanelAPI]; it keeps its scroll position across rebuilds.
  */
 fun UIPanelAPI.ScrollPanel(
     size: BoundedSize = Size.fillMaxSize(),

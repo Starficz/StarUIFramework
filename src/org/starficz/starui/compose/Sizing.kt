@@ -39,7 +39,7 @@ sealed interface ImageSize {
         /** The sprite's own size, times [scale], shrunk to fit [maxWidth] / [maxHeight] when given. */
         fun native(scale: Float = 1f, maxWidth: Float? = null, maxHeight: Float? = null): ImageSize = NativeImage(scale, maxWidth, maxHeight)
 
-        /** As large as the space allows at the sprite's aspect ratio (no letterboxing). */
+        /** As large as the space allows, keeping the sprite's shape. */
         fun aspectWrap(): ImageSize = AspectWrapImage()
     }
 }
@@ -66,9 +66,9 @@ sealed interface Size : ImageSize {
         /** Exactly [width] by [height]. */
         fun exact(width: Float, height: Float): BoundedSize = Mixed(Axis.Exact(width), Axis.Exact(height))
 
-        /** Any pair of axes. */
+        /** Any [width] and [height]: `mixed(Axis.Exact(100f), Axis.Fill(2f))`. */
         fun mixed(width: Axis, height: Axis): Size = Mixed(width, height)
-        /** Any pair of axes that do not wrap. */
+        /** Any [width] and [height] that are each exact or fill. */
         fun mixed(width: BoundedAxis, height: BoundedAxis): BoundedSize = Mixed(width, height)
     }
 }
