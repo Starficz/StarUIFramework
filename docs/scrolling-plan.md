@@ -1,4 +1,4 @@
-# Overflow plan: clipping and scrolling as one per-axis setting, wheel on both axes
+# Overflow plan: clipping and scrolling as one per-axis setting, wheel on both axes, long lists
 
 Status: agreed with the user (2026-11-12), not started. Work in the order of the steps below; each step ends with the
 in-game suite passing (`native-smoke/run-test-suite.ps1`, under `smoke-slot.sh run`) and the PNGs looked at.
@@ -89,6 +89,12 @@ vanilla's wheel feel and fixes nesting for every panel, StarUI's or not.
 
 - Text overflow (`maxLines`, ellipsis): a `Text` setting like Compose's `TextOverflow`, later.
 
+### Performance is part of it
+
+Long, text-heavy lists must stay smooth (the user: LunaLib's UI has this problem, StarUI must not). Scrolling
+containers cull off-screen children (step 1), a text-heavy 1000- and 3000-row benchmark with budgets is part of the
+suite (step 5), and lazy lists (`LazyColumn` / `LazyRow`, step 6) follow if the numbers call for them.
+
 ## What vanilla does (0.98.5a decompile, `C:\Users\starf\starsector-reference-0.98.5a`)
 
 The scroll panel is `obf/com/fs/starfarer/ui/g.java` (`class g extends z implements ScrollPanelAPI`). Line numbers are
@@ -143,6 +149,16 @@ from that decompile; names are obfuscated unless they are API or readable.
   container out at that size, then `clampOffset()` so a shrunk list does not stay scrolled past its end. Per `Clip`
   axis: bounded by the viewport. Change `StackLayoutEngine` (and `BoxLayoutEngine`) so a fill child on a scrolled axis
   gets the viewport's leftover instead of the unbounded-axis error.
+- **Render culling (required, not an optimisation to do later).** Vanilla's content container only renders its
+  *direct* children that intersect the viewport (inner class `oo` of `ui/g.java`, its `renderImpl`: children whose
+  position does not intersect the scroll panel are skipped with `notifyDidNotRender`). Today's `ScrollPanel` puts the
+  items directly in the content container, so off-screen items are not drawn. In the new design the content
+  container holds one child, the StarUI Column, which always intersects: nothing would be culled and a scrolling
+  Column would be slower than today's ScrollPanel. So a StarUI container with any non-`Visible` axis skips rendering
+  (renderBelow, render) of children whose rectangle does not intersect its visible rectangle, and so do containers
+  nested in it (they know the clip/viewport rectangle from the stack in step 2). Vanilla's culling skips rendering
+  only (advance and input still run for every child); check how far StarUI can skip per-frame work for off-screen
+  children without breaking hover-exit and `onAdvance` semantics (likely: render culled, advance kept).
 - `core`: `val CustomPanelAPI.scrollPanel: ScrollPanelAPI?`; `dumpLayout` shows `overflow=ScrollVertical` etc.
 - Remove `ScrollPanel`; theme `scrollPanel` -> `scroll` (drop `horizontalAlignment`). Migrate the samples.
 - Tests (extend `AnchorAndScrollTests.kt` or a new `OverflowTests.kt`):
@@ -208,7 +224,60 @@ Read the patchlib skill's `SKILL.md`, `references/guidelines.md`, `references/li
 - Check in the test game (`scratchpad/live-showcase`, staged jar in `scratchpad/stage-pl`), then offer a play-mode boot
   (`smoke.sh play ... --jar` with the showcase-registering build from `scratchpad/play-showcase`).
 
-### 5. Docs (part of the work, not after it)
+### 5. Performance: long, text-heavy lists
+
+The user's requirement: long lists full of text must stay smooth. LunaLib's UI has this problem (reported by the user)
+and StarUI must not. Measure, don't assume; text is the case to stress, not empty rows.
+
+- **The test list**: 1000 rows (and a 3000-row run), each row a `Row` with a `Section`-like background, a title
+  `Text` (Orbitron), two or three plain `Text` labels, one wrapped multi-line paragraph (`Size.fillMaxWidth()`, 3-5
+  lines), one `highlightedText` label, and a small `Button`. Plus a variant with a `StatGrid` per row. That is
+  thousands of vanilla labels, most of them off-screen.
+- **Measure, in the suite's perf style** (`InteropAndPerfTests.kt` `perf-*` groups: warm up, median of repeated
+  frames, report ms; and the JFR profile the suite records), for each of:
+  1. today's `ScrollPanel` (items direct children of the content container: vanilla culls them);
+  2. the new `Column(overflow = ScrollVertical)` without StarUI culling (expected to be the worst);
+  3. the same with StarUI culling;
+  4. (later) `LazyColumn`.
+- **Numbers to record per case**: first build (ms), a full relayout (ms), a rebuild of one row's state (ms; must not
+  relayout or re-measure every other row's text: check that text measurement is cached per label and only redone
+  when its text or width changes), steady per-frame cost while idle (ms/frame), per-frame cost while scrolling (ms),
+  and changing one label's text in a visible row (ms).
+- **Budgets** (fail the group, like the existing perf checks): idle per-frame cost of the 1000-row list under
+  1 ms over an empty screen once culling is in; a one-row state change under 2 ms; scrolling frames under 2 ms.
+  Adjust the numbers once the first measurements are in, and write the chosen budgets into the test.
+- Look at the JFR top frames for text: label measurement (`measureTextSize`, `computeTextHeight`, vanilla's
+  `autoSize`), StarUI's layout passes and per-frame plugin dispatch. Anything that scales with the total row count
+  rather than the visible rows is a bug to fix in this step.
+- Record the results (table of the cases above) in this plan, then decide step 6.
+
+### 6. Lazy lists (after step 5, if its numbers call for it)
+
+`LazyColumn` / `LazyRow`, Compose's names: only the rows near the viewport exist.
+
+```kotlin
+LazyColumn(ships.value, Size.fillMaxSize(), key = { it.id }, itemHeight = 40f) { ship ->
+    Row { ShipDisplay(...); Text(ship.name); Button("Sell") { ... } }
+}
+```
+
+- A vanilla scroll panel (step 1's scrolling container) with `setContentSize` set to the whole list (row count x
+  item height + spacing), so the scrollbar, drag and wheel are vanilla's and the wheel patch's.
+- A scope whose builder emits only the rows in the visible range plus a small buffer (a screen above and below), each
+  placed at its position in the whole list. The range is checked in `advance` (cheap: offset / item height) and the
+  scope rebuilds only when it changes; `key` reuse keeps rows that stay visible, creates the ones scrolling in,
+  disposes the ones leaving.
+- First version: fixed `itemHeight` (exact scrollbar, exact positions). Variable heights later: measure rows as they
+  are made, estimate the rest from the average, correct the content size as measurements arrive (Compose does the
+  same; the bar moves a little).
+- Documented consequences: a row's native state (text field focus, inner scroll position, hover) is lost when it
+  scrolls out, as in Compose; anything that must survive goes in `UIState`. Rows with heavy content (`ShipDisplay`
+  builds a ship) may stutter on fast scrolls: measure with the step 5 list plus a ShipDisplay per row.
+- Tests: the step 5 lists as `LazyColumn` (and beat its budgets by a wide margin); scrolling to the end and back keeps
+  keyed rows stable; a state change in a visible row rebuilds only that row; removing an item above the viewport
+  keeps the visible rows in place.
+
+### 7. Docs (part of the work, not after it)
 
 - KDoc on `AxisOverflow`, `Overflow` and each shorthand, on the `overflow` parameter of every container, and on
   `CustomPanelAPI.scrollPanel`: what each value does, that a scroll axis clips both axes (and why: vanilla's scroll
@@ -219,7 +288,11 @@ Read the patchlib skill's `SKILL.md`, `references/guidelines.md`, `references/li
   inside a ScrollPanel's scrolling direction" becomes the fill-what-is-left rule) and the "Where StarUI differs from
   Jetpack Compose" list (overflow is a parameter, CSS-style, not `clipToBounds` / `verticalScroll` modifiers, because
   the native object changes). Part 2: the wheel patch in the source layout and "how it works" lists.
-- README: "Clipping and scrolling on any container, both axes" under layout; drop "ScrollPanels".
+- README: "Clipping and scrolling on any container, both axes" under layout; drop "ScrollPanels"; "Lazy lists" once
+  step 6 is done.
+- AGENTS.md: that scrolling containers draw only what is in view, the step 5 budgets (what a long list costs), and,
+  with step 6, when to use `LazyColumn` instead of `Column(overflow = ...)` (thousands of rows, or heavy rows) and that
+  a lazy row loses its native state when it scrolls out.
 
 ## Risks and open points
 
