@@ -1,5 +1,7 @@
 // Anchor system (inside / relative / my), top-level WrapContent re-anchoring, and ScrollPanel behaviour.
 
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -8,7 +10,6 @@ import org.starficz.starui.compose.Axis
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
@@ -88,12 +89,12 @@ fun registerScrollTests() {
     StarUITestSuite.group("scrollpanel-measure-and-scroll") {
         val items = mutableListOf<CustomPanelAPI>()
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)).padding(horizontal = 0f, vertical = 10f),
-            horizontalAlignment = Alignment.CenterHorizontally, spacing = 5f) {
+        val content = root.Column(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)).padding(horizontal = 0f, vertical = 10f),
+            horizontalAlignment = Alignment.CenterHorizontally, spacing = 5f, overflow = Overflow.ScrollVertical) {
             for (i in 0 until 20) items += Spacer(Size.exact(280f, 30f), Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))
         }
+        sp = content.scrollPanel!!
         frame()
-        val content = sp.contentContainer
         near(sp.position.width, 300f, "ScrollPanel width")
         near(sp.position.height, 200f, "ScrollPanel height")
         near(content.position.height, 20 * 30f + 19 * 5f + 20f, "content height = items + spacing + padding")

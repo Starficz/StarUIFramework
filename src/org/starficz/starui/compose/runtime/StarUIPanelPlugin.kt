@@ -7,10 +7,13 @@ import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.PositionAPI
+import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.lwjgl.input.Mouse
 import org.lwjgl.opengl.GL11
+import org.starficz.starui.compose.AxisOverflow
+import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.LayoutEngine
 import org.starficz.starui.compose.layout.NodeSize
@@ -146,6 +149,51 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal var myNodeSize: NodeSize = NodeSize(Dimension.WrapContent, Dimension.WrapContent)
     internal var myPadding: PaddingValues = PaddingValues()
     internal var myAnchor: Anchor.AnchorData? = null
+
+    // ==========================================
+    // OVERFLOW
+    // ==========================================
+    /** This container's `overflow` argument. */
+    internal var overflow: Overflow = Overflow.Visible
+    /** On a scrolling container: the vanilla scroll panel it sits in (the node its parent lays out). */
+    internal var scrollHost: ScrollPanelAPI? = null
+    /** On a scroll host's plugin: the StarUI container inside it. */
+    internal var scrollContent: StarUIPanelPlugin? = null
+    /** On a scroll host's plugin: whether it takes the mouse wheel (the theme's `useMouseWheel`). */
+    internal var wheelEnabled = true
+    /** The [ClipStack] depth to restore after the children rendered, or -1 when nothing was pushed. */
+    private var clipRestoreDepth = -1
+
+    private fun pushClip() {
+        if (!overflow.clips) return
+        val rect = (scrollHost ?: component).position
+        val x = rect.x
+        val y = rect.y
+        val clipsX = overflow.horizontal != AxisOverflow.Visible
+        val clipsY = overflow.vertical != AxisOverflow.Visible
+        val l = if (clipsX) x else -Float.MAX_VALUE
+        val b = if (clipsY) y else -Float.MAX_VALUE
+        val r = if (clipsX) x + rect.width else Float.MAX_VALUE
+        val t = if (clipsY) y + rect.height else Float.MAX_VALUE
+        clipRestoreDepth = ClipStack.push(l, b, r, t)
+        // Clip on both axes is vanilla's own scissor (setClipping), scrolling is the scroll panel's; one axis is ours.
+        if (scrollHost == null && clipsX != clipsY) {
+            ClipStack.pushScissor(this, l, b, r, t)
+            ownsScissor = true
+        }
+    }
+
+    private var ownsScissor = false
+
+    private fun popClip() {
+        if (clipRestoreDepth < 0) return
+        if (ownsScissor) {
+            ClipStack.popScissor()
+            ownsScissor = false
+        }
+        ClipStack.restore(clipRestoreDepth)
+        clipRestoreDepth = -1
+    }
 
     // ==========================================
     // CHILD LAYOUT TRACKING MAPS
@@ -523,6 +571,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             GL11.glPopMatrix()
         }
         delegate?.renderBelow(alphaMult)
+        // last: the children render next, and only they are culled against this container's visible rectangle
+        pushClip()
     }
 
     /** Runs after every layout pass that sizes and positions this node. Use [onFirstLayout] for one-time setup. */
@@ -535,6 +585,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
     fun render(function: (alphaMult: Float) -> Unit) { register(renderFunctions, function) }
     override fun render(alphaMult: Float) {
+        popClip()
         runLayout()
         delegate?.render(alphaMult)
 

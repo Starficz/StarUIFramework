@@ -2,6 +2,8 @@
 // them, and key(...) keeps list items attached to their own native objects.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import org.starficz.starui.core.ButtonFont
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
@@ -15,7 +17,6 @@ import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.components.TextField
@@ -214,10 +215,10 @@ fun registerReuseTests() {
         lateinit var sp: ScrollPanelAPI
         root.Column(Size.wrapContent(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             Text("header ${header.value}")
-            sp = ScrollPanel(Size.exact(300f, 100f)) {
+            sp = Column(Size.exact(300f, 100f), overflow = Overflow.ScrollVertical) {
                 for (i in 0 until rows.value) Spacer(Size.exact(280f, 30f),
                     Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))
-            }
+            }.scrollPanel!!
         }
         frame()
         val first = sp
@@ -226,14 +227,15 @@ fun registerReuseTests() {
 
         header.value = 1
         frame()
-        expect(sp === first, "rebuilding the enclosing Column reuses the ScrollPanel")
+        expect(sp === first, "rebuilding the enclosing Column reuses the scroll panel")
         near(sp.yOffset, 200f, "which keeps its scroll position")
 
         rows.value = 25
         frame()
-        near(sp.contentContainer.position.height, 25 * 30f, "new rows extend the content")
+        val list = sp.contentContainer.children[0] as CustomPanelAPI
+        near(list.position.height, 25 * 30f, "new rows extend the content")
         near(sp.yOffset, 200f, "and the scroll position survives the content rebuild")
-        expect(sp.contentContainer.children.size == 25, "25 rows (${sp.contentContainer.children.size})")
+        expect(list.children.size == 25, "25 rows (${list.children.size})")
         frame()
         screenshot("final")
     }

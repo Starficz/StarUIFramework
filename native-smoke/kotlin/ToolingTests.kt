@@ -1,10 +1,10 @@
 // dumpLayout(): the text view of a UI tree that agents and tests use instead of a screenshot.
 
+import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Button
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.modifier.Modifier
@@ -26,7 +26,7 @@ fun registerToolingTests() {
             Row(Size.wrapContent(), Modifier.margin(left = 4f), spacing = 5f) {
                 Button("Add", size = Size.exact(60f, 20f)) { count.value++ }
             }
-            ScrollPanel(Size.exact(120f, 40f)) { Spacer(Size.exact(100f, 80f)) }
+            Column(Size.exact(120f, 40f), overflow = Overflow.ScrollVertical) { Spacer(Size.exact(100f, 80f)) }
         }
         frame()
         val dump = dumpLayout("first", col)
@@ -40,7 +40,8 @@ fun registerToolingTests() {
             "both Spacers appear with their size, sizing and handlers")
         expect(lines.any { it.trim().startsWith("Row ") && "margin=(4, 0, 0, 0)" in it }, "the Row shows its margin")
         expect(lines.any { it.startsWith("    Button \"Add\" 60x20") }, "the Button is nested under the Row with its label")
-        expect(lines.any { it.trim().startsWith("ScrollPanel 120x40") }, "the ScrollPanel is listed")
+        expect(lines.any { it.trim().startsWith("Column 120x40") && "overflow=ScrollVertical" in it && "content=120x80" in it },
+            "the scrolling Column is listed with its overflow and content size")
         expect(lines.last().startsWith("    Spacer 100x80"), "and its content is nested under it (${lines.last()})")
         val spacerLines = lines.filter { it.trim().startsWith("Spacer 100x20") }
         expect("at (0, 20)" in spacerLines[0] || "at (0, 2" in spacerLines[0], "positions are relative to the dumped component, y downwards (${spacerLines[0]})")

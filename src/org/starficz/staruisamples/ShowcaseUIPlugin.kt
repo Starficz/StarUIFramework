@@ -1,5 +1,8 @@
 package org.starficz.staruisamples
 
+import org.starficz.starui.compose.components.Theme
+import org.starficz.starui.compose.runtime.StarUITheme
+import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
 import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.campaign.PersonImportance
@@ -139,8 +142,8 @@ object ShowcaseUIPlugin {
             Divider(color = DARK)
 
             // ---------------------------------------- body: scrolls under the header ----------------------------------------
-            // Nothing fills a ScrollPanel's height, so the columns wrap theirs; the right padding keeps the scrollbar clear.
-            ScrollPanel(Size.fillMaxSize()) {
+            // A scrolling Column fills what is left; the right padding keeps the scrollbar clear.
+            Column(Size.fillMaxSize(), overflow = Overflow.ScrollVertical) {
                 Column(Size.fillMaxWidth(), Modifier.padding(right = 14f), spacing = 10f) {
                     Row(Size.fillMaxWidth(), spacing = 14f) {
                         Column(Size.fillMaxWidth(), spacing = 10f) { layoutColumn() }
@@ -239,16 +242,20 @@ object ShowcaseUIPlugin {
 
         Section("ScrollPanel options") {
             Row(Size.fillMaxWidth(height = 110f), spacing = 8f) {
-                ScrollPanel(Size.fillMaxSize(), Modifier.background(INSET_BG), horizontalAlignment = Alignment.CenterHorizontally,
-                    isLeftScrollbar = true, scrollWidgetColor = BRIGHT, spacing = 2f) {
-                    Text("isLeftScrollbar, centred,", color = HIGHLIGHT)
-                    Text("scrollWidgetColor", color = HIGHLIGHT)
-                    for (i in 1..12) Text("Line $i")
+                Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(isLeftScrollbar = true, scrollWidgetColor = BRIGHT))) {
+                    Column(Size.fillMaxSize(), Modifier.background(INSET_BG), horizontalAlignment = Alignment.CenterHorizontally,
+                        spacing = 2f, overflow = Overflow.ScrollVertical) {
+                        Text("isLeftScrollbar, centred,", color = HIGHLIGHT)
+                        Text("scrollWidgetColor", color = HIGHLIGHT)
+                        for (i in 1..12) Text("Line $i")
+                    }
                 }
-                ScrollPanel(Size.fillMaxSize(), Modifier.background(INSET_BG), renderShadows = false, showScrollbars = false, spacing = 2f) {
-                    Text("no shadows, no scrollbar", color = HIGHLIGHT)
-                    Text("(the wheel still scrolls)", color = GRAY)
-                    for (i in 1..12) Text("Line $i")
+                Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(renderShadows = false, showScrollbars = false))) {
+                    Column(Size.fillMaxSize(), Modifier.background(INSET_BG), spacing = 2f, overflow = Overflow.ScrollVertical) {
+                        Text("no shadows, no scrollbar", color = HIGHLIGHT)
+                        Text("(the wheel still scrolls)", color = GRAY)
+                        for (i in 1..12) Text("Line $i")
+                    }
                 }
             }
         }
@@ -643,7 +650,7 @@ object ShowcaseUIPlugin {
                 Text("$openCount open, $doneCount done", color = GRAY,
                     highlightedText = listOf("$openCount" to HIGHLIGHT, "$doneCount" to POSITIVE))
             }
-            ScrollPanel(Size.fillMaxWidth(height = 190f), Modifier.padding(4f), spacing = 2f) {
+            Column(Size.fillMaxWidth(height = 190f), Modifier.padding(4f), spacing = 2f, overflow = Overflow.ScrollVertical) {
                 val visible = tasks.value.filter { (showOpen.value && !it.done.value) || (showDone.value && it.done.value) }
                 if (visible.isEmpty()) Text("Nothing to show. Add a task or change the filter.", color = GRAY)
                 for (task in visible) key(task.id) {

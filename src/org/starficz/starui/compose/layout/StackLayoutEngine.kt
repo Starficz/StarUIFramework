@@ -29,7 +29,7 @@ internal enum class StackDirection {
 
 internal class StackLayoutEngine(
     private val plugin: StarUIPanelPlugin,
-    private val direction: StackDirection,
+    internal val direction: StackDirection,
     private val crossAlignValue: Float,
     private val spacing: Float
 ) : LayoutEngine {
@@ -45,6 +45,9 @@ internal class StackLayoutEngine(
 
     private var measuredPrimary = 0f
     private var measuredSecondary = 0f
+
+    override val contentSize: Pair<Float, Float>
+        get() = if (direction.isVertical) Pair(measuredSecondary, measuredPrimary) else Pair(measuredPrimary, measuredSecondary)
     private var totalFillWeight = 0f
 
     // Caches the (Raw Content + Child Padding) footprint for the layout pass
@@ -117,7 +120,7 @@ internal class StackLayoutEngine(
                 throw IllegalStateException("StarUI Layout Exception: A StackLayout set to WrapContent its primary axis cannot contain children that FillMax the primary axis.")
             }
             if (effectiveMaxPrimary == Float.MAX_VALUE && primaryDim is Dimension.FillMax) {
-                throw IllegalStateException("StarUI Layout Exception: Cannot use Dimension.FillMax inside an unconstrained infinite axis (e.g. ScrollPanel). Use WrapContent or Exact instead.")
+                throw IllegalStateException("StarUI Layout Exception: a child fills the main axis of a Column or Row that has no bounded size on it (nothing above gives it a size). Use WrapContent or Exact for the child, or give the container a size.")
             }
             if (primaryDim is Dimension.FillMax) totalFillWeight += primaryDim.weight
         }
@@ -290,10 +293,11 @@ internal class StackLayoutEngine(
 
         debugLog("[$debugId] Initial Assigned Flex Space: $initialFlexSpace | Total Flex Weight Demanded: $totalFillWeight")
 
-        if (rawAvailableFlexSpace < -0.5f) {
+        val clips = plugin.overflow.clips
+        if (rawAvailableFlexSpace < -0.5f && !clips) {
             log.warn("StarUI Layout Overflow: Primary boundaries exceeded by ${-rawAvailableFlexSpace}px in $debugId.")
         }
-        if (measuredSecondary > finalContainerSecondary + 0.5f) {
+        if (measuredSecondary > finalContainerSecondary + 0.5f && !clips) {
             log.warn("StarUI Layout Overflow: Cross boundaries exceeded by ${measuredSecondary - finalContainerSecondary}px in $debugId.")
         }
 

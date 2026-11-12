@@ -13,6 +13,14 @@ import org.starficz.starui.core.Anchor.AnchorData
 import org.starficz.starui.core.Anchor.AnchorReference
 
 // UIComponentAPI extensions that expose UIComponent fields/methods
+/**
+ * The vanilla scroll panel of a scrolling container (a Row, Column, Box or CustomPanel whose `overflow` scrolls on
+ * an axis), for `scrollToY`, `ensureVisible`, offsets and the rest of [ScrollPanelAPI]; null for any other panel.
+ * The container is the scroll panel's content: its size is the scrolled content's size.
+ */
+val CustomPanelAPI.scrollPanel: ScrollPanelAPI?
+    get() = (plugin as? StarUIPanelPlugin)?.scrollHost
+
 var UIComponentAPI.fader: Fader?
     get() = invoke("getFader") as Fader?
     set(fader) { invoke("setFader", fader) }

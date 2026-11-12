@@ -1,6 +1,8 @@
 // Reactive scopes: plain if / for in a builder follow UIState, plus disposal and the rules around rebuild timing.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -15,7 +17,6 @@ import org.starficz.starui.compose.components.Checkbox
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.components.TextField
@@ -427,15 +428,15 @@ fun registerReactiveTests() {
     StarUITestSuite.group("reactive-scrollpanel-and-theme") {
         val rows = UIState(3)
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(Size.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
+        val content = root.Column(Size.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f, overflow = Overflow.ScrollVertical) {
             for (i in 0 until rows.value) Spacer(Size.exact(280f, 30f), Modifier.background(ROW))
         }
+        sp = content.scrollPanel!!
         frame()
-        val content = sp.contentContainer
-        near(content.position.height, 3 * 30f + 2 * 5f, "initial scroll content")
+        near(content.position.height, 100f, "initial scroll content: shorter than the viewport, so the viewport's height")
         rows.value = 10
         frame()
-        near(content.position.height, 10 * 30f + 9 * 5f, "a ScrollPanel's builder is a scope too: the content follows the state")
+        near(content.position.height, 10 * 30f + 9 * 5f, "a scrolling Column's builder is a scope too: the content follows the state")
         expect(content.children.size == 10, "ten rows (${content.children.size})")
         sp.scrollToY(1000f)
         near(sp.yOffset, 345f - 100f, "the new content can be scrolled")

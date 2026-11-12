@@ -1,5 +1,7 @@
 package org.starficz.staruisamples
 
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -16,7 +18,6 @@ import org.starficz.starui.compose.components.Divider
 import org.starficz.starui.compose.components.FlexSpacer
 import org.starficz.starui.compose.components.Row
 import org.starficz.starui.compose.components.Image
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.ShipDisplay
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
@@ -85,7 +86,7 @@ object ExampleUIPlugin {
                     contentPadding = PaddingValues.symmetric(horizontal = 15f, vertical = 8f), // Fat buttons
                     font = ButtonFont.ORBITRON_12_CONDENSED
                 ),
-                scrollPanel = StarUITheme.Default.scrollPanel.copy(
+                scroll = StarUITheme.Default.scroll.copy(
                     shadowColor = Color(0, 50, 100, 200) // Cool blue gradient shadows!
                 ),
                 divider = StarUITheme.Default.divider.copy(
@@ -210,9 +211,10 @@ object ExampleUIPlugin {
                         // ---------------------------------------------------------
 
                         // We capture the returned StarUIScrollPanel controller directly!
-                        myScroller = ScrollPanel(
+                        myScroller = Column(
                             size = Size.fillMaxSize(1f), // Fills the rest of the HorizontalStack width
                             spacing = 10f,
+                            overflow = Overflow.ScrollVertical,
                             // Notice we don't pass shadowColor here, it inherently gets the Blue color from our Theme!
                             modifier = Modifier.padding(10f).background(Color(5, 5, 5, 200)).border(1f, Color.DARK_GRAY)
                         ) {
@@ -250,7 +252,7 @@ object ExampleUIPlugin {
                                     targetListItem = row
                                 }
                             }
-                        } // End ScrollPanel
+                        }.scrollPanel // End the scrolling Column
 
                     } // End Columns
                 }

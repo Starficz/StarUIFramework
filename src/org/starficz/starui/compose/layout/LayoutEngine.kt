@@ -10,6 +10,12 @@ import org.starficz.starui.core.width
 internal interface LayoutEngine {
     fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float>
     fun layout(assignedWidth: Float, assignedHeight: Float)
+
+    /**
+     * What the children need (padding included) according to the last [measure], whatever the container's own size
+     * rule made of it; null when [measure] already returns that. A scrolling container sizes its content from it.
+     */
+    val contentSize: Pair<Float, Float>? get() = null
 }
 
 // ==========================================

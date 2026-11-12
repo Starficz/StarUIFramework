@@ -71,8 +71,9 @@ data class ProgressBarTheme(
     val barColor: Color? = null     // null = vanilla's
 )
 
-data class ScrollPanelTheme(
-    val horizontalAlignment: Alignment.Horizontal = Alignment.Left,
+/** The vanilla scroll panel behind every container with a scrolling `overflow`. */
+data class ScrollTheme(
+    val isLeftScrollbar: Boolean = false,
     val renderShadows: Boolean = true,
     val maxShadowHeight: Float? = null,
     val shadowColor: Color? = null, // The dark gradient color
@@ -145,7 +146,7 @@ data class StarUITheme(
     val checkbox: CheckboxTheme = CheckboxTheme(),
     val slider: SliderTheme = SliderTheme(),
     val progressBar: ProgressBarTheme = ProgressBarTheme(),
-    val scrollPanel: ScrollPanelTheme = ScrollPanelTheme(),
+    val scroll: ScrollTheme = ScrollTheme(),
     val divider: DividerTheme = DividerTheme(),
     val sectionHeading: SectionHeadingTheme = SectionHeadingTheme(),
     val section: SectionTheme = SectionTheme(),

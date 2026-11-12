@@ -7,6 +7,7 @@ import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.NodeSize
 import org.starficz.starui.compose.modifier.actual
@@ -37,6 +38,9 @@ fun UIComponentAPI.dumpLayout(): String {
 
 private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: StarUIPanelPlugin?, depth: Int, out: StringBuilder) {
     val plugin = StarUIPanelPlugin.getAttached(node)
+    // a scrolling container: its vanilla scroll panel is the node, and the StarUI container inside it is described
+    // on the same line (overflow, content size, scroll offset, padding, scope) with its children below
+    val inner = plugin?.scrollContent
     val position = node.position
     val rootPosition = root.position
     val left = position.x - rootPosition.x
@@ -52,9 +56,18 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
 
     val sizing = parentPlugin?.childSizing?.get(node) ?: plugin?.takeIf { it.isTopLevelNode }?.myNodeSize
     if (sizing != null) out.append(" size=").append(describe(sizing))
+    val overflowOf = inner ?: plugin
+    if (overflowOf != null && overflowOf.overflow != Overflow.Visible) out.append(" overflow=").append(overflowOf.overflow)
+    if (inner != null && node is ScrollPanelAPI) {
+        val c = inner.component.position
+        out.append(" content=").append(number(c.width)).append('x').append(number(c.height))
+        if (node.xOffset != 0f || node.yOffset != 0f) {
+            out.append(" offset=(").append(number(-node.xOffset)).append(", ").append(number(node.yOffset)).append(')')
+        }
+    }
     // a container's padding is its own (space inside it); a leaf's padding is recorded by its parent
     val padding = parentPlugin?.childPadding?.get(node)
-        ?: plugin?.takeIf { it.layoutEngine != null }?.myPadding?.takeIf { it.horizontal != 0f || it.vertical != 0f }
+        ?: (inner ?: plugin)?.takeIf { it.layoutEngine != null }?.myPadding?.takeIf { it.horizontal != 0f || it.vertical != 0f }
     padding?.let { p ->
         out.append(" padding=(").append(number(p.left)).append(", ").append(number(p.top)).append(", ")
             .append(number(p.right)).append(", ").append(number(p.bottom)).append(')')
@@ -66,7 +79,7 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
     if (plugin != null) {
         val handlers = plugin.describeHandlers()
         if (handlers.isNotEmpty()) out.append(" [").append(handlers).append(']')
-        plugin.scope?.let { scope ->
+        (inner ?: plugin).scope?.let { scope ->
             out.append(" scope(builds=").append(scope.buildCount)
             if (scope.isReactive) out.append(", reactive")
             if (scope.dirty) out.append(", dirty")
@@ -80,6 +93,10 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
         // native widgets: their inner parts are engine details, not layout
         is LabelAPI, is ButtonAPI, is TextFieldAPI -> return
         is ScrollPanelAPI -> {
+            if (inner != null) {
+                for (child in inner.panel.getChildrenNonCopy()) dumpNode(child, root, inner, depth + 1, out)
+                return
+            }
             val content = node.contentContainer ?: return
             val contentPlugin = StarUIPanelPlugin.getAttached(content)
             for (child in content.getChildrenNonCopy()) dumpNode(child, root, contentPlugin, depth + 1, out)

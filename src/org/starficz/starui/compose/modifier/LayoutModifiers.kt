@@ -78,8 +78,9 @@ internal fun UIComponentAPI.addPadding(values: PaddingValues) {
     val actualComponent = this.actual
     val pluginAsContainer = ((actualComponent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin)
         ?.takeIf { it.layoutEngine != null }
-    val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)?.contentContainer
-        ?.let { StarUIPanelPlugin.getAttached(it) }
+    // a scrolling container's padding is inside the StarUI container it holds (it scrolls with the content)
+    val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)
+        ?.let { StarUIPanelPlugin.getAttached(it)?.scrollContent }
     val containerPlugin = pluginAsContainer ?: scrollContainerPlugin
 
     if (containerPlugin != null) {

@@ -92,6 +92,8 @@ object Input {
     fun down(x: Float, y: Float, button: Int = 0): InputEventAPI = StarUITestSupport.mouseButton(InputEventType.MOUSE_DOWN, x, y, button)
     fun up(x: Float, y: Float, button: Int = 0): InputEventAPI = StarUITestSupport.mouseButton(InputEventType.MOUSE_UP, x, y, button)
     fun move(x: Float, y: Float): InputEventAPI = StarUITestSupport.mouseMove(x, y)
+    /** A wheel notch at (x, y): [notches] > 0 is wheel up, < 0 wheel down. */
+    fun wheel(x: Float, y: Float, notches: Int, shift: Boolean = false): InputEventAPI = StarUITestSupport.mouseWheel(x, y, notches, shift)
     fun keyDown(code: Int, ch: Char = '\u0000'): InputEventAPI = StarUITestSupport.key(InputEventType.KEY_DOWN, code, ch)
     fun keyUp(code: Int, ch: Char = '\u0000'): InputEventAPI = StarUITestSupport.key(InputEventType.KEY_UP, code, ch)
 
@@ -214,6 +216,7 @@ object StarUITestSuite {
         registerModifierVisualTests()
         registerAnchorTests()
         registerScrollTests()
+        registerOverflowTests()
         registerStateTests()
         registerDynamicTests()
         registerRelayoutTests()

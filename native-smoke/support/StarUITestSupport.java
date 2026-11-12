@@ -91,6 +91,16 @@ public final class StarUITestSupport {
         return make(InputEventClass.MOUSE_EVENT, InputEventType.MOUSE_MOVE, x, y, 0, '\0');
     }
 
+    /**
+     * Real mouse wheel event at (x, y). notches: positive = wheel up (towards the top / left), negative = down.
+     * shift: whether Shift is held (the event's readable setShiftDown).
+     */
+    public static InputEventAPI mouseWheel(float x, float y, int notches, boolean shift) throws Exception {
+        InputEventAPI event = make(InputEventClass.MOUSE_EVENT, InputEventType.MOUSE_SCROLL, x, y, notches, '\0');
+        if (shift) event.getClass().getMethod("setShiftDown", boolean.class).invoke(event, true);
+        return event;
+    }
+
     /** Real keyboard event. type: KEY_DOWN, KEY_UP or KEY_REPEAT. */
     public static InputEventAPI key(InputEventType type, int keyCode, char ch) throws Exception {
         return make(InputEventClass.KEYBOARD_EVENT, type, 0f, 0f, keyCode, ch);

@@ -1,11 +1,12 @@
 // Automatic re-layout: a StarUI layout container lays out again by itself when its children or a Text change.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
 import org.starficz.starui.compose.modifier.Modifier
@@ -148,19 +149,20 @@ fun registerRelayoutTests() {
 
     StarUITestSuite.group("relayout-scrollpanel-content") {
         lateinit var sp: ScrollPanelAPI
-        sp = root.ScrollPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
+        val content = root.Column(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f,
+            overflow = Overflow.ScrollVertical) {
             Spacer(Size.exact(280f, 30f), Modifier.background(RED))
         }
+        sp = content.scrollPanel!!
         frame()
-        val content = sp.contentContainer
-        near(content.position.height, 30f, "initial content height")
+        near(content.position.height, 100f, "initial content height: the viewport's (the content is shorter)")
         val contentPlugin = StarUIPanelPlugin.getAttached(content)!!
         StarUIContext.withPlugin(contentPlugin) {
-            for (i in 0 until 5) sp.Spacer(Size.exact(280f, 30f), Modifier.background(if (i % 2 == 0) BLUE else GREEN))
+            for (i in 0 until 5) content.Spacer(Size.exact(280f, 30f), Modifier.background(if (i % 2 == 0) BLUE else GREEN))
         }
         frame()
         near(content.position.height, 6 * 30f + 5 * 5f, "content added later grows the scrollable content")
-        near(sp.position.height, 100f, "the ScrollPanel keeps its own size")
+        near(sp.position.height, 100f, "the scroll panel keeps its own size")
         sp.scrollToY(1000f)
         near(sp.yOffset, 205f - 100f, "the new content can be scrolled to")
         frame()

@@ -14,7 +14,6 @@ import org.starficz.starui.compose.components.Box
 import org.starficz.starui.compose.components.Checkbox
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.TextField
 import org.starficz.starui.compose.modifier.Modifier
@@ -154,18 +153,12 @@ fun registerGuardTests() {
         expect(err is IllegalStateException && err.message?.contains("WrapContent") == true,
             "FillMax child in a WrapContent Column throws IllegalStateException (got $err)")
 
-        // FillMax inside a vertical ScrollPanel: the content container wraps its height, so this is rejected.
-        r = scratchRoot()
-        r.ScrollPanel(Size.exact(200f, 100f)) { Spacer(Size.fillMaxHeight(width = 10f)) }
-        err = thrown { NativeSmokeSupport.render(r) }
-        expect(err is IllegalStateException, "FillMax child inside a ScrollPanel throws IllegalStateException (got $err)")
-
         // FillMax on a truly unconstrained axis: a Fill-height Column whose parent has no height.
         val flat = Global.getSettings().createCustom(screenW, 0f, null).also { it.position.inTL(0f, 0f) }
         flat.Column(Size.fillMaxHeight(width = 200f)) { Spacer(Size.fillMaxHeight(width = 10f)) }
         err = thrown { NativeSmokeSupport.render(flat) }
-        expect(err is IllegalStateException && err.message?.contains("unconstrained") == true,
-            "FillMax child on an unconstrained axis throws the unconstrained-axis error (got $err)")
+        expect(err is IllegalStateException && err.message?.contains("has no bounded size") == true,
+            "FillMax child on an unconstrained axis throws the no-bounded-size error (got $err)")
 
         // Anchors are meaningless inside a stack: rejected while building.
         r = scratchRoot()

@@ -1,5 +1,9 @@
 // BoxLayoutEngine geometry, and the zero-wrapper / BoxedUIElement contracts.
 
+import org.starficz.starui.compose.runtime.StarUITheme
+import org.starficz.starui.compose.components.Theme
+import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
 import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -16,7 +20,6 @@ import org.starficz.starui.compose.components.Checkbox
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel
 import org.starficz.starui.compose.components.Image
-import org.starficz.starui.compose.components.ScrollPanel
 import org.starficz.starui.compose.components.ShipDisplay
 import org.starficz.starui.compose.components.Spacer
 import org.starficz.starui.compose.components.Text
@@ -89,7 +92,6 @@ fun registerContractTests() {
             made["Checkbox"] = Checkbox("Checkbox", bind = flag)
             made["TextField"] = TextField(state, size = org.starficz.starui.compose.Size.exact(200f, 24f))
             made["ShipDisplay"] = ShipDisplay(Size.exact(120f, 120f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
-            made["ScrollPanel"] = ScrollPanel(Size.fillMaxWidth(height = 120f)) { Text("inside scroll") }
         }
         frame()
         val direct = col.children
@@ -100,7 +102,6 @@ fun registerContractTests() {
             expect(actual !is CustomPanelAPI, "$name is a native ${actual.javaClass.simpleName}, not a CustomPanel wrapper")
         }
         expect(direct.size == made.size, "Column holds exactly ${made.size} children (got ${direct.size})")
-        expect(made["ScrollPanel"] is ScrollPanelAPI, "ScrollPanel returns the vanilla ScrollPanelAPI itself")
         expect(made["Text"] is LabelAPI, "Text returns the vanilla LabelAPI itself")
         screenshot("final")
     }
@@ -191,15 +192,19 @@ fun registerContractTests() {
         frame()
         expect(plugin.layoutPassCount == passes, "the same text again does not (${plugin.layoutPassCount} vs $passes)")
 
-        // The ScrollPanel extras that ScrollPanelAPI still leaves out.
+        // The scroll panel extras that ScrollPanelAPI still leaves out, set through the theme.
         lateinit var sp: ScrollPanelAPI
+        lateinit var list: CustomPanelAPI
         root.CustomPanel(Size.exact(200f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) {
-            sp = ScrollPanel(Size.exact(200f, 100f), renderShadows = false, shadowColor = Color.RED) { Text("in") }
+            Theme(StarUITheme.current.copy(scroll = StarUITheme.current.scroll.copy(renderShadows = false, shadowColor = Color.RED))) {
+                list = Column(Size.exact(200f, 100f), overflow = Overflow.ScrollVertical) { Text("in") }
+            }
+            sp = list.scrollPanel!!
         }
         frame()
         expect(!sp.renderShadows, "renderShadows reads back false")
         expect(sp.shadowColor == Color.RED && sp.darkColor == Color.RED, "shadowColor is the API's darkColor")
-        expect(sp.contentContainer.children.size == 1, "the builder's Text went into the content container")
+        expect(list.children.size == 1 && list.parent === sp.contentContainer, "the builder's Text went into the Column in the content container")
         screenshot("final")
     }
 }

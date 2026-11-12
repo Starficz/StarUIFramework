@@ -5,11 +5,9 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.apache.log4j.Logger
 import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.AspectWrapImage
 import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.HGrow
 import org.starficz.starui.compose.ImageSize
 import org.starficz.starui.compose.Mixed
@@ -18,15 +16,17 @@ import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.VGrow
 import org.starficz.starui.compose.layout.BoxLayoutEngine
-import org.starficz.starui.compose.layout.Dimension
-import org.starficz.starui.compose.layout.LayoutEngine
-import org.starficz.starui.compose.layout.NodeSize
 import org.starficz.starui.compose.layout.StackDirection
 import org.starficz.starui.compose.layout.StackLayoutEngine
+import org.starficz.starui.compose.layout.PassThroughLayoutEngine
+import org.starficz.starui.compose.layout.ViewportLayoutEngine
+import org.starficz.starui.compose.Overflow
+import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.actual
 import org.starficz.starui.compose.runtime.ChildSlot
+import org.starficz.starui.compose.runtime.ClipStack
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
@@ -37,9 +37,6 @@ import org.starficz.starui.core.children
 import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
-import java.awt.Color
-
-private val containerLogger: Logger = Global.getLogger(StarUIPanelPlugin::class.java)
 
 // =====================================================================
 // SIZING HELPER
@@ -213,48 +210,127 @@ fun UIPanelAPI.Theme(
 // =====================================================================
 
 /**
+ * What a container call works with. [panel] and [plugin] are the StarUI container (its children go in it, the call
+ * returns it); [node] is what its parent lays out and what the modifiers apply to: the panel itself, or for a
+ * scrolling container the vanilla scroll panel holding it, with [nodePlugin] its plugin.
+ */
+internal class ContainerParts(
+    val panel: CustomPanelAPI,
+    val plugin: StarUIPanelPlugin,
+    val node: UIComponentAPI,
+    val nodePlugin: StarUIPanelPlugin
+)
+
+/**
+ * The container for a call with [overflow]: the reused one, or a new one added to this panel. A scrolling container
+ * is a vanilla scroll panel (sized by [size], laid out by a [ViewportLayoutEngine]) with the StarUI container in its
+ * content container; the scroll panel and its scroll position are kept across rebuilds.
+ */
+internal fun UIPanelAPI.containerParts(slot: ChildSlot, size: Size, overflow: Overflow): ContainerParts {
+    if (!overflow.scrolls) {
+        val (panel, plugin) = containerPanel(slot, size)
+        plugin.overflow = overflow
+        // Clip on both axes: vanilla's own scissor, which nests (it intersects with the enclosing one). setClipping
+        // is a readable engine method of the base panel (inferred, not API). A reused panel has the same overflow
+        // (it is part of the slot's props), so only a new one needs it.
+        if (overflow == Overflow.Clip && !slot.isReuse) panel.invoke("setClipping", true)
+        if (overflow.clips) ClipStack.anyClipContainers = true   // wakes the input hook that hides the cut-off part
+        return ContainerParts(panel, plugin, panel, plugin)
+    }
+
+    val reused: CustomPanelAPI? = slot.reused()
+    val panel: CustomPanelAPI
+    val plugin: StarUIPanelPlugin
+    val host: ScrollPanelAPI
+    if (reused != null) {
+        panel = reused
+        plugin = reused.plugin as StarUIPanelPlugin
+        plugin.resetForReuse()   // the rebuild reset the scroll panel's plugin; this one sits below it
+        host = plugin.scrollHost!!
+        applyReuseBounds(host, size)
+    } else {
+        val (initW, initH) = getInitialBounds(size)
+        val tempPanel = Global.getSettings().createCustom(initW, initH, null)
+        val tempTooltip = tempPanel.createUIElement(initW, initH, true)
+        tempPanel.addUIElement(tempTooltip)
+        host = tempPanel.children[0] as ScrollPanelAPI
+        host.removeComponent(tempTooltip)
+        tempPanel.removeComponent(host)
+        host.setSize(initW, initH)
+
+        plugin = StarUIPanelPlugin()
+        panel = Global.getSettings().createCustom(initW, initH, plugin)
+        plugin.customPanel = panel
+        plugin.scrollHost = host
+        host.contentContainer.addComponent(panel).inTL(0f, 0f)
+        this.addComponent(host)
+    }
+    plugin.overflow = overflow
+    plugin.isTopLevelNode = false
+
+    val theme = StarUITheme.current.scroll
+    host.isLeftScrollbar = theme.isLeftScrollbar
+    host.renderShadows = theme.renderShadows
+    theme.maxShadowHeight?.let { host.maxShadowHeight = it }
+    theme.shadowColor?.let { host.shadowColor = it }
+    theme.scrollWidgetColor?.let { host.scrollWidgetColor = it }
+    theme.scrollRailColor?.let { host.scrollRailColor = it }
+    host.setShowScrollbars(theme.showScrollbars)
+    host.setUseMWheel(theme.useMouseWheel)
+
+    // The content container passes layout requests and "rebuild below" marks up to the scroll panel.
+    StarUIPanelPlugin.getOrCreate(host.contentContainer).layoutEngine = PassThroughLayoutEngine
+    val hostPlugin = StarUIPanelPlugin.getOrCreate(host)
+    hostPlugin.scrollContent = plugin
+    hostPlugin.wheelEnabled = theme.useMouseWheel
+    hostPlugin.layoutEngine = ViewportLayoutEngine(host, plugin, overflow, size.toNodeSize())
+    return ContainerParts(panel, plugin, host, hostPlugin)
+}
+
+/** Records the sizing, remembers the container for the next rebuild and applies the modifiers. */
+private fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modifier) {
+    registerComponentSizing(node, size, isContainer = true, containerPlugin = nodePlugin)
+    slot.remember(node, panel)
+    modifier.operations.forEach { it(node) }
+}
+
+/**
  * A panel that does not place its children: position each one with `Modifier.anchor(...)`. Wraps its children by
- * default.
+ * default. [overflow] says what happens to children outside it (see [Overflow]); a scrolling CustomPanel's content
+ * reaches as far right and down as its children do.
  */
 fun UIPanelAPI.CustomPanel(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
+    overflow: Overflow = Overflow.Visible,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     checkDslTarget()
-    val slot = childSlot("CustomPanel")
-    val (panel, plugin) = containerPanel(slot, size)
-
-    registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
-    slot.remember(panel, panel)
-
-    modifier.operations.forEach { it(panel) }
-
-    plugin.attachScope("CustomPanel", builder) { panel.builder() }
-    return panel
+    val slot = childSlot("CustomPanel", overflow)
+    val parts = containerParts(slot, size, overflow)
+    parts.register(slot, size, modifier)
+    parts.plugin.attachScope("CustomPanel", builder) { parts.panel.builder() }
+    return parts.panel
 }
 
 /**
  * Puts its children on top of each other, later ones drawn over earlier ones. Place each child with
- * `Modifier.align(...)` (top left by default). Wraps its largest child by default.
+ * `Modifier.align(...)` (top left by default). Wraps its largest child by default. [overflow] says what happens to
+ * children bigger than it (see [Overflow]): `Overflow.Scroll` makes it a 2D viewport.
  */
 fun UIPanelAPI.Box(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
+    overflow: Overflow = Overflow.Visible,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     checkDslTarget()
-    val slot = childSlot("Box")
-    val (panel, plugin) = containerPanel(slot, size)
-    plugin.layoutEngine = BoxLayoutEngine(plugin)
-
-    registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
-    slot.remember(panel, panel)
-
-    modifier.operations.forEach { it(panel) }
-
-    plugin.attachScope("Box", builder) { panel.builder() }
-    return panel
+    val slot = childSlot("Box", overflow)
+    val parts = containerParts(slot, size, overflow)
+    parts.plugin.layoutEngine = BoxLayoutEngine(parts.plugin)
+    parts.register(slot, size, modifier)
+    parts.plugin.attachScope("Box", builder) { parts.panel.builder() }
+    return parts.panel
 }
 
 private fun UIPanelAPI.StackLayout(
@@ -263,33 +339,30 @@ private fun UIPanelAPI.StackLayout(
     size: Size,
     modifier: Modifier,
     spacing: Float,
+    overflow: Overflow,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit
 ): CustomPanelAPI {
     checkDslTarget()
     val kind = if (direction.isVertical) "Column" else "Row"
-    val slot = childSlot(kind)
-    val (panel, plugin) = containerPanel(slot, size)
-    plugin.isStackLayout = true
-
-    plugin.layoutEngine = StackLayoutEngine(
-        plugin = plugin,
+    val slot = childSlot(kind, overflow)
+    val parts = containerParts(slot, size, overflow)
+    parts.plugin.isStackLayout = true
+    parts.plugin.layoutEngine = StackLayoutEngine(
+        plugin = parts.plugin,
         direction = direction,
         crossAlignValue = crossAlignValue,
         spacing = spacing
     )
-
-    registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
-    slot.remember(panel, panel)
-
-    modifier.operations.forEach { it(panel) }
-
-    plugin.attachScope(kind, builder) { panel.builder() }
-    return panel
+    parts.register(slot, size, modifier)
+    parts.plugin.attachScope(kind, builder) { parts.panel.builder() }
+    return parts.panel
 }
 
 /**
  * Places its children top to bottom, [spacing] apart, aligned by [horizontalAlignment] (left by default).
  * Fills the width and wraps its children's height by default. `grow = VGrow.Upwards` stacks bottom to top instead.
+ * [overflow] says what happens to children that do not fit (see [Overflow]): `Overflow.ScrollVertical` makes it a
+ * scrolling list.
  */
 fun UIPanelAPI.Column(
     size: Size = Size.fillMaxWidth(),
@@ -297,6 +370,7 @@ fun UIPanelAPI.Column(
     grow: VGrow = VGrow.Downwards,
     horizontalAlignment: Alignment.Horizontal = Alignment.Left,
     spacing: Float = 0f,
+    overflow: Overflow = Overflow.Visible,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI = StackLayout(
     direction = grow.direction,
@@ -304,12 +378,15 @@ fun UIPanelAPI.Column(
     size = size,
     modifier = modifier,
     spacing = spacing,
+    overflow = overflow,
     builder = builder
 )
 
 /**
  * Places its children left to right, [spacing] apart, aligned by [verticalAlignment] (top by default).
  * Wraps its children's width and fills the height by default. `grow = HGrow.Leftwards` stacks right to left instead.
+ * [overflow] says what happens to children that do not fit (see [Overflow]): `Overflow.ScrollHorizontal` makes it a
+ * scrolling strip.
  */
 fun UIPanelAPI.Row(
     size: Size = Size.fillMaxHeight(),
@@ -317,6 +394,7 @@ fun UIPanelAPI.Row(
     grow: HGrow = HGrow.Rightwards,
     verticalAlignment: Alignment.Vertical = Alignment.Top,
     spacing: Float = 0f,
+    overflow: Overflow = Overflow.Visible,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI = StackLayout(
     direction = grow.direction,
@@ -324,116 +402,6 @@ fun UIPanelAPI.Row(
     size = size,
     modifier = modifier,
     spacing = spacing,
+    overflow = overflow,
     builder = builder
 )
-
-/**
- * Vanilla's scroll panel. Its children go top to bottom like a [Column], [spacing] apart, and scroll when they are
- * taller than the panel. Its size is exact or fill (it has no content size), and its children cannot fill its height.
- * Returns the vanilla [ScrollPanelAPI]; it keeps its scroll position across rebuilds.
- */
-fun UIPanelAPI.ScrollPanel(
-    size: BoundedSize = Size.fillMaxSize(),
-    modifier: Modifier = Modifier,
-    horizontalAlignment: Alignment.Horizontal = StarUITheme.current.scrollPanel.horizontalAlignment,
-    spacing: Float = 0f,
-    isLeftScrollbar: Boolean = false,
-    renderShadows: Boolean = StarUITheme.current.scrollPanel.renderShadows,
-    maxShadowHeight: Float? = StarUITheme.current.scrollPanel.maxShadowHeight,
-    shadowColor: Color? = StarUITheme.current.scrollPanel.shadowColor,
-    scrollWidgetColor: Color? = StarUITheme.current.scrollPanel.scrollWidgetColor,
-    scrollRailColor: Color? = StarUITheme.current.scrollPanel.scrollRailColor,
-    showScrollbars: Boolean = StarUITheme.current.scrollPanel.showScrollbars,
-    useMouseWheel: Boolean = StarUITheme.current.scrollPanel.useMouseWheel,
-    builder: (@StarUIDsl ScrollPanelAPI).() -> Unit = {}
-): ScrollPanelAPI {
-    checkDslTarget()
-    val slot = childSlot("ScrollPanel")
-    val (initW, initH) = getInitialBounds(size)
-
-    // 1. Spawn the genuine vanilla ScrollPanel, or keep the one from the previous build (and its scroll position)
-    val reused: ScrollPanelAPI? = slot.reused()
-    val vanillaScroll: ScrollPanelAPI
-    if (reused != null) {
-        vanillaScroll = reused
-        applyReuseBounds(vanillaScroll, size)
-    } else {
-        val tempPanel = Global.getSettings().createCustom(initW, initH, null)
-        val tempTMAPI = tempPanel.createUIElement(initW, initH, true)
-        tempPanel.addUIElement(tempTMAPI)
-        vanillaScroll = tempPanel.children[0] as ScrollPanelAPI
-        vanillaScroll.removeComponent(tempTMAPI)
-        vanillaScroll.setSize(initW, initH)
-    }
-
-    // 2. Apply declarative properties directly to the ScrollPanel
-    vanillaScroll.isLeftScrollbar = isLeftScrollbar
-    vanillaScroll.renderShadows = renderShadows
-    maxShadowHeight?.let { vanillaScroll.maxShadowHeight = it }
-    shadowColor?.let { vanillaScroll.shadowColor = it }
-    scrollWidgetColor?.let { vanillaScroll.scrollWidgetColor = it }
-    scrollRailColor?.let { vanillaScroll.scrollRailColor = it }
-    vanillaScroll.setShowScrollbars(showScrollbars)
-    vanillaScroll.setUseMWheel(useMouseWheel)
-
-    if (reused == null) this.addComponent(vanillaScroll)
-
-    // 3. Attach StarUIPanelPlugin directly to the ScrollPanel's internal contentContainer
-    val contentContainer = vanillaScroll.contentContainer
-    val contentPlugin = StarUIPanelPlugin.getOrCreate(contentContainer)
-    if (reused != null) contentPlugin.resetForReuse()
-    contentPlugin.isStackLayout = true
-    contentPlugin.myNodeSize = NodeSize(Dimension.FillMax(1f), Dimension.WrapContent)
-    contentPlugin.myPadding = PaddingValues.Zero
-    contentPlugin.layoutEngine = StackLayoutEngine(
-        plugin = contentPlugin,
-        direction = StackDirection.DOWN,
-        crossAlignValue = horizontalAlignment.alignValue,
-        spacing = spacing
-    )
-
-    // 4. Attach StarUIPanelPlugin directly to the outer ScrollPanel to handle outer modifiers & layout cascade
-    val outerPlugin = StarUIPanelPlugin.getOrCreate(vanillaScroll)
-    outerPlugin.kind = "ScrollPanel"
-    val nodeSize = size.toNodeSize()
-    outerPlugin.layoutEngine = object : LayoutEngine {
-        override fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
-            val physW = when (val wDim = nodeSize.width) {
-                is Dimension.Exact -> wDim.pixels
-                is Dimension.WrapContent -> {
-                    containerLogger.warn("StarUI Layout Warning: ScrollPanel width was set to WrapContent. ScrollPanels require bounded constraints; defaulting to 100px.")
-                    100f
-                }
-                else -> maxWidth
-            }
-            val physH = when (val hDim = nodeSize.height) {
-                is Dimension.Exact -> hDim.pixels
-                is Dimension.WrapContent -> {
-                    containerLogger.warn("StarUI Layout Warning: ScrollPanel height was set to WrapContent. ScrollPanels require bounded constraints; defaulting to 100px.")
-                    100f
-                }
-                else -> maxHeight
-            }
-            return Pair(physW, physH)
-        }
-
-        override fun layout(assignedWidth: Float, assignedHeight: Float) {
-            vanillaScroll.setSize(assignedWidth, assignedHeight)
-            val (contentW, contentH) = contentPlugin.layoutEngine!!.measure(assignedWidth, Float.MAX_VALUE)
-            vanillaScroll.setContentSize(contentW, contentH)
-            contentPlugin.layoutEngine!!.layout(contentW, contentH)
-            contentPlugin.markLayoutResolved()
-        }
-    }
-
-    registerComponentSizing(vanillaScroll, size, isContainer = true, containerPlugin = outerPlugin)
-    slot.remember(vanillaScroll, vanillaScroll)
-
-    // 5. Outer Modifiers apply directly to the ScrollPanel!
-    modifier.operations.forEach { it(vanillaScroll) }
-
-    // 6. Execute the builder on the ScrollPanel; vanilla adds its components to the content container
-    contentPlugin.attachScope("ScrollPanel", builder) { vanillaScroll.builder() }
-
-    return vanillaScroll
-}

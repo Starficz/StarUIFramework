@@ -9,6 +9,7 @@ import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.compose.runtime.ClipStack
 import org.starficz.starui.compose.runtime.Scope
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.BoxedUIElement
@@ -20,6 +21,8 @@ import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch
 import patchlib.api.match.MethodType
 import patchlib.api.match.StaticType
+import patchlib.api.query.MethodQuery
+import org.starficz.starui.compose.AxisOverflow
 import patchlib.api.patch.After
 import patchlib.api.patch.Before
 import patchlib.api.patch.Patch
@@ -28,6 +31,10 @@ import patchlib.api.patch.Patch
  * Attaches StarUI lifecycle hooks (`renderBelow`, `render`, `advance`, `processInput`, `positionChanged`)
  * directly to Starsector's root UI component implementations so that every [UIComponentAPI] in the game
  * natively supports all StarUI modifiers without needing wrapper [CustomPanelAPI] containers.
+ *
+ * The render hook also culls: inside a StarUI container whose overflow clips or scrolls, a child of a StarUI
+ * container that lies entirely outside the visible rectangle ([ClipStack]) is not rendered (its `render` body is
+ * skipped, as vanilla's scroll panel skips its off-screen items). Advance and input still run for it.
  */
 // 0.98a-RC8 Windows: matches com.fs.starfarer.ui.OOOo (UIComponent_0) and com.fs.starfarer.ui.d (Label)
 @Patch(
@@ -42,6 +49,8 @@ import patchlib.api.patch.Patch
     )
 )
 object UIComponentLifecyclePatch {
+    /** Set by the render @Before on a call it culled, so the @After skips the plugin's render too. */
+    private const val CULLED = "staruiframework.culled"
 
     @JvmStatic
     @Before(
@@ -54,9 +63,15 @@ object UIComponentLifecyclePatch {
         )
     )
     fun onRenderBefore(context: BeforeContext) {
-        if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
+        if (ClipStack.depth == 0 && !StarUIPanelPlugin.hasAttachedPlugins) return
+        if (!context.isMostDerivedCall) return
         val self = context.self as? UIComponentAPI ?: return
-        if (self is CustomPanelAPI) return
+        if (ClipStack.depth > 0 && ClipStack.culls(self)) {
+            context.setLocal(CULLED, true)
+            context.skipOriginal(null)
+            return
+        }
+        if (!StarUIPanelPlugin.hasAttachedPlugins || self is CustomPanelAPI) return
         val plugin = StarUIPanelPlugin.getAttached(self) ?: return
         val alphaMult = context.getArg(0) as? Float ?: return
         plugin.renderBelow(alphaMult)
@@ -73,9 +88,14 @@ object UIComponentLifecyclePatch {
         )
     )
     fun onRenderAfter(context: AfterContext) {
-        if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
+        val scissorOwner = ClipStack.scissorOwner
+        if (scissorOwner == null && !StarUIPanelPlugin.hasAttachedPlugins) return
+        if (!context.isMostDerivedCall) return
         val self = context.self as? UIComponentAPI ?: return
-        if (self is CustomPanelAPI) return
+        // a vanilla scissor inside this child (scroll panel, ship display) may have replaced a one-axis clip's
+        if (scissorOwner != null && (self.parent as? CustomPanelAPI)?.plugin === scissorOwner) ClipStack.reapplyScissor()
+        if (!StarUIPanelPlugin.hasAttachedPlugins || self is CustomPanelAPI) return
+        if (ClipStack.depth > 0 && context.getLocal<Boolean>(CULLED) == true) return
         val plugin = StarUIPanelPlugin.getAttached(self) ?: return
         val alphaMult = context.getArg(0) as? Float ?: return
         plugin.render(alphaMult)
@@ -410,5 +430,77 @@ object UIPanelContainerPatch {
             context.setArg(0, arg.boxedElement)
         }
         requestLayoutOf(context.self)
+    }
+}
+
+/**
+ * Mouse input on the cut-off part of a clipping container does not reach its children: while they process input,
+ * mouse events outside the container's visible rectangle are moved far off screen, and put back afterwards. This is
+ * what vanilla's scroll panel does for its content (so scrolling containers need nothing here). Nested clips
+ * intersect by themselves: an event the outer one moved is outside the inner one too.
+ *
+ * `processInput` with one parameter is matched as the lifecycle patch matches it (readable engine name, inferred).
+ * The events' `setX(int)` / `setY(int)` are readable engine methods (InputEventAPI has getters only), found with
+ * PatchLib's reflection. Handlers leave at once until a clipping container exists, and act only on StarUI panels
+ * whose overflow clips without scrolling.
+ */
+// 0.98.5a-RC4 Windows: processInput is declared on com.fs.starfarer.ui.R; events are com.fs.starfarer.util.oOOO.C
+@Patch(
+    target = ClassMatch(
+        subtype = UIComponentAPI::class,
+        methodMatches = [
+            MethodMatch(methodName = "processInput", parameterCount = 1, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE)
+        ]
+    )
+)
+object ClipInputPatch {
+    private const val MOVED = "staruiframework.clipMovedEvents"
+    private const val OFF_SCREEN = Int.MAX_VALUE
+    private val SET_X = MethodQuery.create().methodName("setX").parameterTypes(Int::class.javaPrimitiveType).build()
+    private val SET_Y = MethodQuery.create().methodName("setY").parameterTypes(Int::class.javaPrimitiveType).build()
+
+    @JvmStatic
+    @Before(target = MethodMatch(methodName = "processInput", parameterCount = 1, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun hideClippedInput(context: BeforeContext) {
+        if (!ClipStack.anyClipContainers || !context.isMostDerivedCall) return
+        val self = context.self as? CustomPanelAPI ?: return
+        val plugin = self.plugin as? StarUIPanelPlugin ?: return
+        val overflow = plugin.overflow
+        if (!overflow.clips || plugin.scrollHost != null) return
+        val events = context.getArg(0) as? List<*> ?: return
+        val p = self.position
+        val clipsX = overflow.horizontal != AxisOverflow.Visible
+        val clipsY = overflow.vertical != AxisOverflow.Visible
+        var moved: ArrayList<Any>? = null
+        for (e in events) {
+            val event = e as? InputEventAPI ?: continue
+            if (event.isConsumed || !event.isMouseEvent) continue
+            val x = event.x
+            val y = event.y
+            if (x == OFF_SCREEN) continue
+            val outside = (clipsX && (x < p.x || x > p.x + p.width)) || (clipsY && (y < p.y || y > p.y + p.height))
+            if (!outside) continue
+            if (moved == null) moved = ArrayList()
+            moved.add(event); moved.add(x); moved.add(y)
+            context.getMethod(SET_X, event).call<Any?>(OFF_SCREEN)
+            context.getMethod(SET_Y, event).call<Any?>(OFF_SCREEN)
+        }
+        if (moved != null) context.setLocal(MOVED, moved)
+    }
+
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "processInput", parameterCount = 1, returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun restoreClippedInput(context: AfterContext) {
+        if (!ClipStack.anyClipContainers) return
+        val moved = context.getLocal<ArrayList<Any>>(MOVED) ?: return
+        var i = 0
+        while (i < moved.size) {
+            val event = moved[i] as InputEventAPI
+            if (!event.isConsumed) {   // a consumed event's data may no longer be touched (vanilla skips them too)
+                context.getMethod(SET_X, event).call<Any?>(moved[i + 1])
+                context.getMethod(SET_Y, event).call<Any?>(moved[i + 2])
+            }
+            i += 3
+        }
     }
 }

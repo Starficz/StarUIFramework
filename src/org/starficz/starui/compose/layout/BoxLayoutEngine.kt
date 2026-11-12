@@ -54,10 +54,10 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
 
             // --- THE HARD MATH EXCEPTIONS ---
             if (innerAvailableW == Float.MAX_VALUE && sizeConfig.width is Dimension.FillMax) {
-                throw IllegalStateException("StarUI Layout Exception: Cannot use Dimension.FillMax width inside an unconstrained infinite axis (e.g. inside a horizontal ScrollPanel). Use WrapContent or Exact.")
+                throw IllegalStateException("StarUI Layout Exception: a child fills the width of a Box that has no bounded width (nothing above gives it one). Use WrapContent or Exact for the child, or give the Box a size.")
             }
             if (innerAvailableH == Float.MAX_VALUE && sizeConfig.height is Dimension.FillMax) {
-                throw IllegalStateException("StarUI Layout Exception: Cannot use Dimension.FillMax height inside an unconstrained infinite axis (e.g. inside a vertical ScrollPanel). Use WrapContent or Exact.")
+                throw IllegalStateException("StarUI Layout Exception: a child fills the height of a Box that has no bounded height (nothing above gives it one). Use WrapContent or Exact for the child, or give the Box a size.")
             }
 
             // A child's margin is space outside it: it gets that much less room, and the Box wraps around it too
