@@ -8,6 +8,7 @@ import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.CutStyle
 import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
@@ -125,6 +126,21 @@ fun UIPanelAPI.addPara(
 
     return para
 }
+
+/**
+ * A vanilla slider or bar (`SettingsAPI.createSlider`), added to this panel. The object is also a [UIComponentAPI]
+ * (the API interface just doesn't say so); [asComponent] gives that view.
+ */
+fun UIPanelAPI.addSlider(text: String?, rangeMin: Float, rangeMax: Float, width: Float, height: Float): SliderAPI {
+    val slider = Global.getSettings().createSlider(text, rangeMin, rangeMax)
+    val component = slider.asComponent
+    component.position.setSize(width, height)
+    this.addComponent(component)
+    return slider
+}
+
+/** Every vanilla [SliderAPI] is a UI component; this is that view, for positioning, modifiers and panel methods. */
+val SliderAPI.asComponent: UIComponentAPI get() = this as UIComponentAPI
 
 fun UIPanelAPI.addTextField(width: Float, height: Float, font: Font): TextFieldAPI {
     val tempPanel = Global.getSettings().createCustom(width, height, null)

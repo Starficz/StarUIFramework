@@ -1,9 +1,12 @@
 package org.starficz.starui.internal
 
 import com.fs.starfarer.api.input.InputEventAPI
+import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.PositionAPI
+import com.fs.starfarer.api.ui.SliderAPI
+import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.runtime.Scope
@@ -222,10 +225,50 @@ object LabelTextPatch {
         if (!StarUIPanelPlugin.hasAnyPlugins || !context.isMostDerivedCall) return
         val self = context.self as? LabelAPI ?: return
         val parent = self.parent ?: return
+        // A slider rewrites its own value label every frame while it moves; the slider's size never depends on it.
+        if (parent is SliderAPI) return
         val plugin = StarUIPanelPlugin.getAttached(parent) ?: return
         if (self.text == context.getArg(0)) return
         plugin.requestLayout()
     }
+}
+
+/**
+ * Tells a native control's StarUI plugin that its value changed, so `bind` states follow it without polling. Every
+ * change goes through these API methods, the player's included (0.98.5a-RC4 decompile):
+ * - a text field's typing, backspace, paste and clearing all end in `setText(String)`;
+ * - a slider's drag ends in `setProgress(float)` (followed by `forceSync()`).
+ * A button's click flips its checked field directly, not through `setChecked`; clicks are already seen by the button
+ * listener, so the `setChecked(boolean)` hook covers the other case: code (vanilla, another mod, the caller holding the
+ * ButtonAPI) checking or unchecking it. All three are API interface methods matched by API subtype.
+ */
+// 0.98.5a-RC4 Windows: matches com.fs.starfarer.ui.B (text field), com.fs.starfarer.ui.o0O0 (button),
+// com.fs.starfarer.campaign.ui.N (slider)
+@Patch(target = ClassMatch(subtype = TextFieldAPI::class))
+object TextFieldValuePatch {
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "setText", parameterTypes = [String::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun afterSetText(context: AfterContext) = notifyValueChanged(context)
+}
+
+@Patch(target = ClassMatch(subtype = ButtonAPI::class))
+object ButtonCheckedPatch {
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "setChecked", parameterTypes = [Boolean::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun afterSetChecked(context: AfterContext) = notifyValueChanged(context)
+}
+
+@Patch(target = ClassMatch(subtype = SliderAPI::class))
+object SliderProgressPatch {
+    @JvmStatic
+    @After(target = MethodMatch(methodName = "setProgress", parameterTypes = [Float::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
+    fun afterSetProgress(context: AfterContext) = notifyValueChanged(context)
+}
+
+private fun notifyValueChanged(context: AfterContext) {
+    if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
+    val self = context.self as? UIComponentAPI ?: return
+    StarUIPanelPlugin.getAttached(self)?.nativeValueChanged()
 }
 
 /**

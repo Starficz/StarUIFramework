@@ -61,8 +61,14 @@ deprecated aliases that centre by default.
 `Text(text, size, modifier, font, color, textAlign, highlightedText)`, `Image(spritePath, size, ...)`,
 `ShipDisplay(size, modifier, fleetMember, variant, ...)`, `Button(text, size, modifier, ..., font, cutStyle,
 shortcut) { onClick }`, `TextField(bind: UIState<String>, size, modifier, font, hint)`,
-`Checkbox(text, ..., bind, buttonGroup)`, `AreaCheckbox(text, ..., bind, buttonGroup)`, `Spacer(size, modifier,
+`Checkbox(text, ..., bind, buttonGroup)`, `AreaCheckbox(text, ..., bind, buttonGroup)`,
+`Slider(bind: UIState<Float>, rangeMin, rangeMax, size, modifier, text, step) { configure }`,
+`ProgressBar(progress, rangeMin, rangeMax, size, modifier, text, animate) { configure }`, `Spacer(size, modifier,
 color)`, `Divider()`, `FlexSpacer(weight)`.
+
+`Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return its `SliderAPI`; it holds one
+value (its `min` is a floor, `max` an overflow mark). `configure` takes any `SliderAPI` setter (colours, display mode)
+and runs on every build. Use `slider.asComponent` (from `core`) for the `UIComponentAPI` view.
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `ScrollPanel`
 a `ScrollPanelAPI` (its builder's components go into the scrolling content container), `Button` a `ButtonAPI`.
@@ -147,8 +153,10 @@ Column {
    recreated.
 7. `state.peek()` reads without subscribing. Reads outside builders (handlers, `onAdvance`, render callbacks) never
    subscribe.
-8. Existing bindings still work: `TextField(bind = ...)`, `Checkbox(bind = ...)`, `ButtonGroup` (radio groups) and
-   `state.onChange { }` inside a builder (cleaned up automatically when the builder re-runs or its UI is removed).
+8. Existing bindings still work: `TextField(bind = ...)`, `Checkbox(bind = ...)`, `Slider(bind = ...)`, `ButtonGroup`
+   (radio groups) and `state.onChange { }` inside a builder (cleaned up automatically when the builder re-runs or its
+   UI is removed). A bound control writes its state the moment its native value changes, whoever changed it: the
+   player, or any code calling `setText` / `setChecked` / `setProgress` on the vanilla object.
 9. UI that is removed or hidden never rebuilds. It catches up once when it is shown again.
 10. Layout updates by itself: adding or removing children, changing a `Text`'s string, or a rebuild all re-lay out
     the tree on the next frame. Call `component.requestLayout()` only after changing something StarUI cannot see,

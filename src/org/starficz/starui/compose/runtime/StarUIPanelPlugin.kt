@@ -191,6 +191,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     private var advanceFunctions: MutableList<(Float) -> Unit> = mutableListOf()
     private var onLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
     private var onFirstLayoutFunctions: MutableList<() -> Unit> = mutableListOf()
+    // Run by the PatchLib hooks when a native control's value changes (text field text, checked state, slider
+    // progress), whoever changed it: the player or any code.
+    private var onValueChangedFunctions: MutableList<() -> Unit> = mutableListOf()
 
     var inputCaptureTopPad = 0f
         private set
@@ -460,7 +463,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     internal fun describeHandlers(): String {
         val names = listOf(
             "onPositionChanged", "onClick", "onClickOutside", "onClickRelease", "onHover", "onHoverEnter", "onHoverExit",
-            "onMouseHeld", "onKeyDown", "onKeyUp", "onKeyHeld", "renderBelow", "render", "advance", "onLayout", "onFirstLayout"
+            "onMouseHeld", "onKeyDown", "onKeyUp", "onKeyHeld", "renderBelow", "render", "advance", "onLayout", "onFirstLayout",
+            "onValueChanged"
         )
         return handlerLists().mapIndexedNotNull { i, list ->
             when (list.size) { 0 -> null; 1 -> names[i]; else -> names[i] + " x" + list.size }
@@ -471,8 +475,15 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         onPositionChangedFunctions, onClickFunctions, onClickOutsideFunctions, onClickReleaseFunctions,
         onHoverFunctions, onHoverEnterFunctions, onHoverExitFunctions, onMouseButtonHeldFunctions,
         onKeyDownFunctions, onKeyUpFunctions, onKeyHeldFunctions, renderBelowFunctions, renderFunctions,
-        advanceFunctions, onLayoutFunctions, onFirstLayoutFunctions
+        advanceFunctions, onLayoutFunctions, onFirstLayoutFunctions, onValueChangedFunctions
     )
+
+    /** [function] runs whenever this native control's value changes (see [onValueChangedFunctions]). */
+    internal fun onNativeValueChanged(function: () -> Unit) { register(onValueChangedFunctions, function) }
+    internal fun nativeValueChanged() {
+        if (onValueChangedFunctions.isEmpty()) return
+        onValueChangedFunctions.toList().forEach { it() }
+    }
 
     fun onPositionChanged(function: (PositionAPI) -> Unit) { register(onPositionChangedFunctions, function) }
     override fun positionChanged(position: PositionAPI) {

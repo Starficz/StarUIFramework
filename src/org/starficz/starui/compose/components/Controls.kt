@@ -4,6 +4,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CutStyle
+import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.Size
@@ -18,7 +19,9 @@ import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.addAreaCheckbox
 import org.starficz.starui.core.addButton
 import org.starficz.starui.core.addCheckbox
+import org.starficz.starui.core.addSlider
 import org.starficz.starui.core.addTextField
+import org.starficz.starui.core.asComponent
 import org.starficz.starui.core.clearOnClick
 import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.onClick
@@ -65,10 +68,9 @@ fun UIPanelAPI.TextField(
     bind.onChange(ownerPlugin) { newValue ->
         if (textField.text != newValue) textField.text = newValue
     }
-    ownerPlugin.advance {
-        if (textField.text != bind.peek()) {
-            bind.value = textField.text
-        }
+    // Every text change (typing, backspace, paste, any setText call) reaches here through TextFieldValuePatch.
+    StarUIPanelPlugin.getOrCreate(textField).onNativeValueChanged {
+        if (textField.text != bind.peek()) bind.value = textField.text
     }
 
     return textField
@@ -169,8 +171,16 @@ fun UIPanelAPI.AreaCheckbox(
 
     val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(button)
     bind?.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
+    if (bind != null) followCheckedFromCode(button, bind)
 
     return button
+}
+
+/** A setChecked call from code (vanilla, another mod, whoever holds the ButtonAPI) updates [bind]; see ButtonCheckedPatch. */
+private fun followCheckedFromCode(button: ButtonAPI, bind: UIState<Boolean>) {
+    StarUIPanelPlugin.getOrCreate(button).onNativeValueChanged {
+        if (bind.peek() != button.isChecked) bind.value = button.isChecked
+    }
 }
 
 fun UIPanelAPI.Checkbox(
@@ -222,6 +232,116 @@ fun UIPanelAPI.Checkbox(
 
     val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(button)
     bind?.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
+    if (bind != null) followCheckedFromCode(button, bind)
 
     return button
+}
+
+/**
+ * A vanilla slider the player can drag, bound to [bind]. Dragging writes [bind]; writing [bind] moves the slider.
+ * Values outside [rangeMin]..[rangeMax] are shown clamped (the state is left as it is). With [step], dragged values snap
+ * to `rangeMin + k * step`.
+ *
+ * The vanilla slider holds one value. Its `min` is a floor the value can't go below and its `max` an overflow mark
+ * (both left at the range ends here); set them, colours and the display mode in [configure], which runs on every build.
+ */
+fun UIPanelAPI.Slider(
+    bind: UIState<Float>,
+    rangeMin: Float = 0f,
+    rangeMax: Float = 100f,
+    size: Size = Size.exact(200f, 25f),
+    modifier: Modifier = Modifier,
+    text: String? = null,
+    step: Float? = null,
+    configure: (SliderAPI.() -> Unit)? = null
+): SliderAPI {
+    val slider = nativeSlider("Slider", text, rangeMin, rangeMax, size, modifier)
+    slider.setUserAdjustable(true)
+    slider.isShowAdjustableIndicator = true
+    configure?.invoke(slider)
+
+    // Showing the state (clamped to the range) goes through setProgress too; the hook must not write that back.
+    var showingState = false
+    fun show(value: Float) {
+        val clamped = value.coerceIn(slider.rangeMin, slider.rangeMax)
+        if (slider.progress == clamped) return
+        showingState = true
+        try { slider.progress = clamped; slider.forceSync() } finally { showingState = false }
+    }
+    show(bind.peek())
+
+    val component = slider.asComponent
+    val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(component)
+    bind.onChange(ownerPlugin) { newValue -> show(newValue) }
+    // Every progress change (the player's drag, any setProgress call) reaches here through SliderProgressPatch.
+    StarUIPanelPlugin.getOrCreate(component).onNativeValueChanged {
+        if (showingState) return@onNativeValueChanged
+        var value = slider.progress
+        if (step != null && step > 0f) {
+            value = (slider.rangeMin + Math.round((value - slider.rangeMin) / step) * step).coerceIn(slider.rangeMin, slider.rangeMax)
+        }
+        if (bind.peek() != value) bind.value = value
+        // Vanilla sets the unsnapped value again on every drag event, release included: snap the bar back each time.
+        show(value)
+    }
+    return slider
+}
+
+/**
+ * A vanilla bar showing [progress] between [rangeMin] and [rangeMax]; the player can't change it. Pass a state's value
+ * and the bar follows it (the builder runs again and the bar is reused). With [animate] it slides to a new value the
+ * way vanilla bars do; otherwise it jumps. Colours and the display mode go in [configure], which runs on every build.
+ */
+fun UIPanelAPI.ProgressBar(
+    progress: Float,
+    rangeMin: Float = 0f,
+    rangeMax: Float = 100f,
+    size: Size = Size.exact(200f, 12f),
+    modifier: Modifier = Modifier,
+    text: String? = null,
+    animate: Boolean = true,
+    configure: (SliderAPI.() -> Unit)? = null
+): SliderAPI {
+    val bar = nativeSlider("ProgressBar", text, rangeMin, rangeMax, size, modifier)
+    bar.setUserAdjustable(false)
+    bar.isShowAdjustableIndicator = false
+    if (text == null) bar.isShowNoText = true
+    configure?.invoke(bar)
+    val shown = progress.coerceIn(rangeMin, rangeMax)
+    if (bar.progress != shown) {
+        bar.progress = shown
+        if (!animate) bar.forceSync()
+    }
+    return bar
+}
+
+/** Makes or reuses the vanilla slider behind [Slider] and [ProgressBar]; every setting has a setter, so none is fixed. */
+private fun UIPanelAPI.nativeSlider(
+    kind: String, text: String?, rangeMin: Float, rangeMax: Float, size: Size, modifier: Modifier
+): SliderAPI {
+    checkDslTarget()
+    val intrinsic = Pair(200f, 25f)
+    val slot = childSlot(kind)
+    val reused: SliderAPI? = slot.reused()
+    val slider: SliderAPI
+    if (reused != null) {
+        slider = reused
+        applyReuseBounds(slider.asComponent, size, intrinsic)
+        slider.setText(text)
+    } else {
+        val (initW, initH) = getInitialBounds(size, intrinsic)
+        slider = this.addSlider(text, rangeMin, rangeMax, initW, initH)
+    }
+    slider.rangeMin = rangeMin
+    slider.rangeMax = rangeMax
+    slider.max = rangeMax
+
+    val component = slider.asComponent
+    registerComponentSizing(component, size, isContainer = false)
+    slot.remember(component, slider)
+    if (!StarUIContext.isTopLevel) {
+        StarUIContext.currentPlugin.childMeasurables[component] = { _, _ -> intrinsic }
+    }
+    modifier.operations.forEach { it(component) }
+    return slider
 }

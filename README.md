@@ -5,10 +5,10 @@ A modern UI framework for Starsector built with a Kotlin DSL. Very WIP, has many
 ### Currently done for layout:
 - CustomPanels (absolute/relative anchoring)
 - StackLayouts
+- ScrollPanels
   
 Need to do:
 - Grids 
-- ScrollPanels
 
 
 ### Currently done for content:
@@ -19,9 +19,9 @@ Need to do:
 - Checkboxes
 - Text Fields
 - Ship Displays
+- Sliders and progress bars (one value; vanilla has no range slider)
   
 Need to do:
-- Sliders/Bars
 - Large Skill Icons
 
 The following needs to be ported from TooltipMakerAPI

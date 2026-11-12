@@ -61,6 +61,7 @@ object ShowcaseUIPlugin {
     private val details = UIState(false)
     private val lastChange = UIState("nothing yet")
     private val altTheme = UIState(false)
+    private val volume = UIState(40f)
 
     private val ALT_THEME = StarUITheme.Default.copy(
         button = StarUITheme.Default.button.copy(
@@ -254,6 +255,13 @@ object ShowcaseUIPlugin {
             showOpen.onChange { lastChange.value = "OPEN filter ${if (it) "on" else "off"}" }
             Text("last change: ${lastChange.value}")
             Text("peek() does not subscribe: ${tasks.peek().size} tasks when this card was last built", color = MUTED)
+        }
+
+        card("SLIDER + PROGRESSBAR") {
+            // Dragging writes `volume`; the bar and the text read it, so this card builds again and both follow.
+            Slider(volume, 0f, 100f, Size.mixed(Axis.Fill(), Axis.Exact(25f)), text = "Volume", step = 5f)
+            ProgressBar(volume.value, size = Size.mixed(Axis.Fill(), Axis.Exact(10f)))
+            Text("step = 5: the state snaps to ${volume.value.toInt()}", color = MUTED)
         }
     }
 
