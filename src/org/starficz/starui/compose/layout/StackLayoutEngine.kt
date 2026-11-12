@@ -248,7 +248,6 @@ internal class StackLayoutEngine(
 
     override fun layout(assignedWidth: Float, assignedHeight: Float) {
         val children = plugin.panel.getChildrenCopy()
-        if (children.isEmpty()) return
 
         val isVertical = direction.isVertical
         val debugId = "${if (isVertical) "VStack" else "HStack"}@${Integer.toHexString(plugin.component.hashCode())}"
@@ -291,6 +290,8 @@ internal class StackLayoutEngine(
             if (isVertical) finalContainerSecondary else finalContainerPrimary,
             if (isVertical) finalContainerPrimary else finalContainerSecondary
         )
+        // Sized even when empty (an emptied wrap Column shrinks); with no children there is nothing more to place
+        if (children.isEmpty()) return
 
         // ==========================================
         // FINAL ASSIGNMENT & SIZING

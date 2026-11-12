@@ -19,6 +19,7 @@ import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIElement
 import org.starficz.starui.core.applyAnchor
+import org.starficz.starui.core.removeTooltip
 import org.starficz.starui.core.bottom
 import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
@@ -352,7 +353,28 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * handler, binding and flag the previous build set through modifiers is dropped, then the function re-applies
      * the current ones. What the engine or the user's input owns (hover, pressed state) is kept.
      */
+    /** A tooltip from Modifier.tooltip is on this component; [tooltipAppliedThisBuild]: the current build applied it. */
+    private var hasStarUITooltip = false
+    private var tooltipAppliedThisBuild = false
+
+    internal fun noteTooltipApplied() {
+        hasStarUITooltip = true
+        tooltipAppliedThisBuild = true
+    }
+
+    /**
+     * Called after a rebuild that reused this component: a tooltip its new call did not ask for again is removed.
+     * Not done in [resetForReuse], before the build: most rebuilds apply the same tooltip again, and taking it off
+     * first would close it under the cursor on every rebuild.
+     */
+    internal fun dropTooltipIfNotReapplied() {
+        if (!hasStarUITooltip || tooltipAppliedThisBuild) return
+        hasStarUITooltip = false
+        component.removeTooltip()
+    }
+
     internal fun resetForReuse() {
+        tooltipAppliedThisBuild = false
         scope?.runCleanups()
         activeBindings.forEach { (state, binding) -> state.removeBinding(binding) }
         activeBindings.clear()

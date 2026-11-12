@@ -4,6 +4,7 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lazywizard.lazylib.opengl.ColorUtils
 import org.lwjgl.opengl.GL11
 import org.starficz.starui.compose.components.StarUIDsl
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.addTooltip
 import org.starficz.starui.core.bottom
 import org.starficz.starui.core.left
@@ -14,10 +15,16 @@ import java.awt.Color
 // --- Tooltips ---
 fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE) = this.then {
     it.actual.addTooltip(location, width, null) { tm -> tm.addPara(text, 0f) }
+    StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 
+/**
+ * A tooltip on this component. In a builder that runs again, a reused component whose call no longer has a tooltip
+ * loses the one it had.
+ */
 fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null, builder: (@StarUIDsl TooltipMakerAPI).() -> Unit) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.builder() }
+    StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 
 // --- Convenience Rendering ---

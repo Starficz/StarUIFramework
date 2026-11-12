@@ -47,6 +47,16 @@ fun UIComponentAPI.addTooltip(
     }
 }
 
+/**
+ * Removes a tooltip set with [addTooltip] (vanilla keeps one per component). A tooltip that is showing is faded out
+ * first: vanilla's StandardTooltipV2 removes itself from the screen once it has faded.
+ */
+internal fun UIComponentAPI.removeTooltip() {
+    if (invoke("getTooltipLogic") == null) return
+    invoke("hideTooltip", null)
+    invoke("setTooltip", 0f, null)
+}
+
 fun UIPanelAPI.addImage(
     imageSpritePath: String,
     width: Float = 100f,

@@ -98,13 +98,21 @@ class UIState<T>(initialValue: T) {
 }
 
 class ButtonGroup {
-    // A set: a rebuilt builder registers the same states again for its new buttons.
-    private val allFlags: MutableCollection<UIState<Boolean>> = LinkedHashSet()
+    // How many live buttons use each state, in the order the states joined. A button made inside a builder leaves the
+    // group when that builder runs again (its next pass adds the buttons still there) or its UI is thrown away, so a
+    // group that outlives the builder never keeps a removed button's state. Counted, not a set, because two buttons
+    // may share one state.
+    private val members = LinkedHashMap<UIState<Boolean>, Int>()
 
     internal fun addButtonToGroup(button: ButtonAPI, bind: UIState<Boolean>) {
-        allFlags.add(bind)
+        members[bind] = (members[bind] ?: 0) + 1
+        StarUIContext.currentScope?.addCleanup {
+            val left = (members[bind] ?: return@addCleanup) - 1
+            if (left <= 0) members.remove(bind) else members[bind] = left
+        }
         button.isChecked = bind.peek() == true
         button.onClick {
+            val allFlags = members.keys.toList()
             if (allFlags.count { it.value } == 1 && bind.value) {
                 allFlags.forEach { it.value = true }
             } else {

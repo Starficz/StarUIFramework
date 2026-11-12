@@ -112,6 +112,7 @@ internal class Scope(
             plugin.reuseCursor = null
         }
         cursor.removeUnused()
+        cursor.finishReused()
         cursor.restoreCallOrder()
         plugin.requestLayout()
     }
@@ -275,6 +276,9 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
     private val keyed = HashMap<Pair<String, Any>, UIComponentAPI>()
     private val unused = LinkedHashSet<UIComponentAPI>()
 
+    /** The old children this build updated in place. */
+    private val reused = ArrayList<UIComponentAPI>()
+
     /** Every child the new build emitted (reused or new), in call order. */
     private val emitted = ArrayList<UIComponentAPI>()
 
@@ -312,6 +316,7 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
             queue.removeAt(index)
         }
         unused.remove(child)
+        reused.add(child)
         StarUIPanelPlugin.getAttached(child)?.resetForReuse()
         return records[child]
     }
@@ -322,6 +327,11 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
      * vanilla's bringToTop also moves every ancestor to the top of its parent, which would lift the whole screen
      * this container lives in above tooltips and overlays. And not with remove + add, which closes open tooltips.
      */
+    /** After the build: what a reused child's old call set up but its new call did not (its tooltip) is undone. */
+    fun finishReused() {
+        for (child in reused) StarUIPanelPlugin.getAttached(child)?.dropTooltipIfNotReapplied()
+    }
+
     fun restoreCallOrder() {
         @Suppress("UNCHECKED_CAST")
         val live = panel.getChildrenNonCopy() as MutableList<UIComponentAPI>
