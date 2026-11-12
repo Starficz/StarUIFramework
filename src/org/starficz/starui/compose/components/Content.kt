@@ -207,41 +207,50 @@ fun UIPanelAPI.Image(
  * Vanilla shrinks the ship to 95% of the space and draws it 3% above centre. `exactScale = 1f` draws it at its real
  * size instead, centred and pixel-sharp (`1f / Global.getSettings().screenScaleMult` for one sprite pixel per screen
  * pixel). It is made new on every rebuild, since the ship it shows may have changed.
+ *
+ * Labels show only for a [variant] with a [shipName]: [style] `NORMAL` puts the name at the top (Orbitron 20) and the
+ * hull class and designation at the bottom, `MINI` the name alone at the top left (Victor 10), `NONE` nothing. They are
+ * as wide as the display minus 10, so a small display wraps them. A [fleetMember] display never has labels (vanilla
+ * makes it with style NONE), so [style], [labelColor] and [shipName] with a fleetMember are an error.
+ *
+ * [scaleSmallerShips] shrinks smaller hulls by a fixed table (frigate 50%, destroyer 55%, cruiser 70%, fighter 75%), so
+ * a fleet of mixed sizes reads by size. [scanlines] darkens the display with vanilla's scanline overlay: 0 is none,
+ * 1 solid black (vanilla's own displays use 0.2 to 0.4).
  */
 fun UIPanelAPI.ShipDisplay(
     size: BoundedSize = StarUITheme.current.shipDisplay.size,
     modifier: Modifier = Modifier,
     fleetMember: FleetMemberAPI? = null,
     variant: ShipVariantAPI? = null,
-    style: BoxedUIShipPreview.Style = StarUITheme.current.shipDisplay.vanillaStyle,
-    color: Color = StarUITheme.current.shipDisplay.color ?: Global.getSettings().getColor("textFriendColor"),
-    isSchematicMode: Boolean = false,
+    style: BoxedUIShipPreview.Style? = null,
+    labelColor: Color? = null,
+    shipName: String? = null,
+    hideLabels: Boolean = false,
     showFighters: Boolean = StarUITheme.current.shipDisplay.showFighters,
     showDestroyedFighters: Boolean = StarUITheme.current.shipDisplay.showDestroyedFighters,
     showBorder: Boolean = StarUITheme.current.shipDisplay.showBorder,
     borderNewStyle: Boolean = StarUITheme.current.shipDisplay.newBorderStyle,
     borderColor: Color? = null,
-    scaleSmallerShips: Float? = StarUITheme.current.shipDisplay.scaleSmallerShips,
-    exactScale: Float? = null,
-    scanlineAlpha: Float? = null,
-    tintAlpha: Float? = null,
-    isDisabled: Boolean = false,
-    hideLabels: Boolean = false,
-    labelColor: Color? = null,
-    title: String? = null,
-    subtitle: String? = null
+    scaleSmallerShips: Boolean = StarUITheme.current.shipDisplay.scaleSmallerShips,
+    scanlines: Float = StarUITheme.current.shipDisplay.scanlines,
+    exactScale: Float? = null
 ): BoxedUIShipPreview {
     checkDslTarget()
+    require(fleetMember == null || (style == null && labelColor == null && shipName == null)) {
+        "ShipDisplay: a fleetMember display has no labels (vanilla makes it with style NONE), so style, labelColor " +
+            "and shipName do nothing with one. Pass the fleet member's variant instead to get labels."
+    }
     // Never reused: a ship display snapshots its fleet member or variant when it is made, and those objects are
     // usually edited in place (the refit screen), so "same arguments" does not mean "same picture".
     val slot = childSlot("ShipDisplay", Any())
     val (initW, initH) = getInitialBounds(size, Pair(100f, 100f))
 
-    val rawShip = this.addShipPreview(initW, initH, fleetMember, style, color)
-    rawShip.isSchematicMode = isSchematicMode
+    val theme = StarUITheme.current.shipDisplay
+    val rawShip = this.addShipPreview(initW, initH, fleetMember, style ?: theme.vanillaStyle,
+        labelColor ?: theme.labelColor ?: Global.getSettings().getColor("textFriendColor"))
 
     if (variant != null) {
-        if (title != null || subtitle != null) rawShip.setVariant(variant, title, subtitle)
+        if (shipName != null) rawShip.setVariant(variant, shipName)
         else rawShip.variant = variant
     }
     rawShip.showFighters = showFighters
@@ -249,12 +258,10 @@ fun UIPanelAPI.ShipDisplay(
     rawShip.setShowBorder(showBorder)
     rawShip.setBorderNewStyle(borderNewStyle)
     borderColor?.let { rawShip.borderColor = it }
-    scaleSmallerShips?.let { rawShip.setScaleDownSmallerShipsMagnitude(it) }
+    rawShip.setScaleDownSmallerShips(scaleSmallerShips)
     rawShip.exactScale = exactScale
-    if (scanlineAlpha != null && tintAlpha != null) rawShip.adjustOverlay(scanlineAlpha, tintAlpha)
-    if (isDisabled) rawShip.makeLookDisabled()
+    rawShip.setScanlines(scanlines)
     if (hideLabels) rawShip.hideLabels()
-    labelColor?.let { rawShip.setLabelColor(it) }
 
     registerComponentSizing(rawShip, size, isContainer = false)
     slot.remember(rawShip.boxedElement, rawShip)

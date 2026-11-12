@@ -414,23 +414,20 @@ object ShowcaseUIPlugin {
 
         Section("ShipDisplay options") {
             val lasher = Global.getSettings().getVariant("lasher_Assault")
-            val heron = Global.getFactory().createFleetMember(FleetMemberType.SHIP, "heron_Strike")
-            val lasherMember = Global.getFactory().createFleetMember(FleetMemberType.SHIP, "lasher_Assault")
+            val heron = Global.getSettings().createFleetMember(FleetMemberType.SHIP, "heron_Strike")
             Row(Size.fillMaxWidth(), spacing = 6f) {
                 ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, showFighters = true"), fleetMember = heron, showFighters = true)
-                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("style = MINI"), variant = lasher, style = BoxedUIShipPreview.Style.MINI)
                 ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("showBorder, borderColor"), variant = lasher, showBorder = true, borderColor = BRIGHT)
-                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, isDisabled = true"), fleetMember = lasherMember, isDisabled = true)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("scanlines = 0.5"), variant = lasher, scanlines = 0.5f)
+                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("scaleSmallerShips = true: a frigate at 50%"), variant = lasher, scaleSmallerShips = true)
             }
+            // labels need a variant and a shipName; they are the display's width minus 10, so give them room
             Row(Size.fillMaxWidth(), spacing = 6f) {
-                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("fleetMember, color = highlight, tintAlpha = 0.6"), fleetMember = lasherMember,
-                    color = HIGHLIGHT, tintAlpha = 0.6f)
-                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("isSchematicMode, scanlineAlpha = 1"), variant = lasher,
-                    isSchematicMode = true, scanlineAlpha = 1f)
-                ShipDisplay(Size.exact(100f, 100f), Modifier.tooltip("scaleSmallerShips = 0.5"), variant = lasher, scaleSmallerShips = 0.5f)
+                ShipDisplay(Size.exact(220f, 160f), Modifier.tooltip("style = NORMAL (the default), shipName"), variant = lasher,
+                    shipName = "ISS Example")
+                ShipDisplay(Size.exact(220f, 160f), Modifier.tooltip("style = MINI, labelColor = highlight"), variant = lasher,
+                    shipName = "ISS Example", style = BoxedUIShipPreview.Style.MINI, labelColor = HIGHLIGHT)
             }
-            // vanilla draws the title and subtitle under the ship, at its own size: give it the room
-            ShipDisplay(Size.exact(240f, 150f), fleetMember = lasherMember, title = "Lasher", subtitle = "title and subtitle")
         }
 
         Section("More modifiers: border, onHover, keys, tooltip builder") {
@@ -665,7 +662,7 @@ object ShowcaseUIPlugin {
                 FlexSpacer()
                 ShipDisplay(Size.exact(90f, 90f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
                 ShipDisplay(Size.exact(90f, 90f), variant = Global.getSettings().getVariant("eagle_Assault"),
-                    isSchematicMode = true, modifier = Modifier.tooltip("isSchematicMode = true"))
+                    showBorder = true, modifier = Modifier.tooltip("showBorder = true"))
             }
         }
 

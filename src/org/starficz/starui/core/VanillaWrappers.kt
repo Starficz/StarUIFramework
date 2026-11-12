@@ -103,7 +103,6 @@ class BoxedUIImage(val innerImage: UIComponentAPI) :
 
 interface ShipPreviewAPI : UIPanelAPI {
     var exactScale: Float?
-    var isSchematicMode: Boolean
     var showFighters: Boolean
     var showDestroyedFighters: Boolean
     var highlightBrightness: Float
@@ -117,12 +116,14 @@ interface ShipPreviewAPI : UIPanelAPI {
     fun getHighlightFader(): Fader
     fun setShowBorder(show: Boolean)
     fun setBorderNewStyle(newStyle: Boolean)
-    fun setVariant(variant: ShipVariantAPI, title: String? = null, subtitle: String? = null)
+    /** Shows [variant] named [shipName]; with a name, a NORMAL or MINI display fills its labels. */
+    fun setVariant(variant: ShipVariantAPI, shipName: String?)
     fun updateWithStatus(fleetMember: FleetMemberAPI, fleetStatus: FleetMemberStatusAPI)
     fun setWingSpec(fighterWingSpec: FighterWingSpecAPI)
-    fun setScaleDownSmallerShipsMagnitude(mag: Float)
-    fun adjustOverlay(scanlineAlpha: Float, tintAlpha: Float)
-    fun makeLookDisabled()
+    /** Shrinks smaller hulls by vanilla's fixed table (frigate 50%, destroyer 55%, cruiser 70%, fighter 75%). */
+    fun setScaleDownSmallerShips(enabled: Boolean)
+    /** Darkens the display with vanilla's scanline overlay: 0 is none, 1 solid black. */
+    fun setScanlines(alpha: Float)
     fun setLabelColor(color: Color)
     fun hideLabels()
 }
@@ -160,10 +161,6 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
             uiShipPreview.invoke("cleanup")
         }
 
-    override var isSchematicMode: Boolean
-        get() = uiShipPreview.invoke("isSchematicMode") as Boolean
-        set(schematicMode) { uiShipPreview.invoke("setSchematicMode", schematicMode) }
-
     override fun getShips(): Array<ShipAPI> {
         uiShipPreview.invoke("prepareShip")
         return uiShipPreview.invoke("getShips") as Array<ShipAPI>
@@ -197,21 +194,24 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
         get() = uiShipPreview.invoke("getVariant") as ShipVariantAPI?
         set(variant) { uiShipPreview.invoke("setVariant", variant) }
 
-    override fun setVariant(variant: ShipVariantAPI, title: String?, subtitle: String?) {
-        uiShipPreview.invoke("setVariant", variant, title, subtitle)
+    // vanilla's third argument only seeds a random name when the name is null; it is never shown
+    override fun setVariant(variant: ShipVariantAPI, shipName: String?) {
+        uiShipPreview.invoke("setVariant", variant, shipName, null)
     }
     override fun updateWithStatus(fleetMember: FleetMemberAPI, fleetStatus: FleetMemberStatusAPI) {
         uiShipPreview.invoke("updateWithStatus", fleetMember, fleetStatus)
     }
     override fun setWingSpec(fighterWingSpec: FighterWingSpecAPI) { uiShipPreview.invoke("setWingSpec", fighterWingSpec) }
 
-    override fun setScaleDownSmallerShipsMagnitude(mag: Float) {
-        uiShipPreview.invoke("setScaleDownSmallerShipsMagnitude", mag)
+    // Vanilla reads any magnitude other than 1 as "on" (it also enlarges fighter wings a little as it drops);
+    // 0.25 is its own default.
+    override fun setScaleDownSmallerShips(enabled: Boolean) {
+        uiShipPreview.invoke("setScaleDownSmallerShipsMagnitude", if (enabled) 0.25f else 1f)
     }
-    override fun adjustOverlay(scanlineAlpha: Float, tintAlpha: Float){
-        uiShipPreview.invoke("adjustOverlay", scanlineAlpha, tintAlpha)
+    // Vanilla's adjustOverlay(a, b) draws the scanline texture twice, b at the top and a 1 px lower, both black.
+    override fun setScanlines(alpha: Float) {
+        uiShipPreview.invoke("adjustOverlay", alpha, alpha)
     }
-    override fun makeLookDisabled(){ uiShipPreview.invoke("makeLookDisabled") }
 
     override fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
     override fun hideLabels(){ uiShipPreview.invoke("hideLabels") }

@@ -177,7 +177,7 @@ object ExampleUIPlugin {
                                 size = Size.fillMaxSize(1f), // Fills the remaining vertical space of Column A
                                 variant = Global.getSettings().getVariant("hammerhead_Balanced"),
                                 showFighters = true,
-                                scaleSmallerShips = 0.5f,
+                                scaleSmallerShips = true,
                                 showBorder = true,
                                 modifier = Modifier.background(Color(0, 0, 20, 100))
                             )

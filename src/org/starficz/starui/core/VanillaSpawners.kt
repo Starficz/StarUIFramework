@@ -90,7 +90,7 @@ fun UIPanelAPI.addShipPreview(
     shipPreview.setSize(width, height)
     boxedUIShipPreview.setBorderNewStyle(true)
     boxedUIShipPreview.setShowBorder(false)
-    boxedUIShipPreview.adjustOverlay(0f, 0f)
+    boxedUIShipPreview.setScanlines(0f)
     this.addComponent(shipPreview)
 
     return boxedUIShipPreview

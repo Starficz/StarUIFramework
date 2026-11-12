@@ -106,12 +106,13 @@ data class SectionTheme(
 data class ShipDisplayTheme(
     val size: BoundedSize = Size.exact(100f, 100f),
     val vanillaStyle: BoxedUIShipPreview.Style = BoxedUIShipPreview.Style.NORMAL,
-    val color: Color? = null, // null defaults to Global.getSettings().getColor("textFriendColor")
+    val labelColor: Color? = null, // null defaults to Global.getSettings().getColor("textFriendColor")
     val showFighters: Boolean = false,
     val showDestroyedFighters: Boolean = false,
     val showBorder: Boolean = false,
     val newBorderStyle: Boolean = true,
-    val scaleSmallerShips: Float = 1f
+    val scaleSmallerShips: Boolean = false,
+    val scanlines: Float = 0f
 )
 
 data class ImageTheme(
