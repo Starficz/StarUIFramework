@@ -48,6 +48,10 @@ internal class Scope(
         private set
 
     internal val selfRef = WeakReference(this)
+
+    init {
+        liveCount++
+    }
     private val reads = LinkedHashSet<UIState<*>>()
     private val cleanups = ArrayList<() -> Unit>()
     private var loopReported = false
@@ -115,6 +119,7 @@ internal class Scope(
     fun dispose() {
         if (disposed) return
         disposed = true
+        liveCount--
         dirty = false
         unsubscribe()
         runCleanups()
@@ -145,6 +150,10 @@ internal class Scope(
         private var flushing = false
 
         val hasDirty: Boolean get() = dirtyScopes.isNotEmpty()
+
+        /** Scopes created and not yet disposed (including ones that became garbage without being disposed). */
+        var liveCount = 0
+            private set
 
         /**
          * Rebuilds every dirty scope at or below [top], outermost first. An outer rebuild re-runs the builders of the

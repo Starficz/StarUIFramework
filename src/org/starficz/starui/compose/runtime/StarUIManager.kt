@@ -61,6 +61,14 @@ object StarUIManager {
         internal set
 
 
+    /**
+     * Diagnostics: container scopes created and not yet disposed. UI that StarUI or a vanilla `clearChildren()`
+     * removed is disposed, so in a steady screen this number stays flat; if it keeps growing while the same UI is
+     * rebuilt, something is creating StarUI containers that are never torn down.
+     */
+    val liveScopeCount: Int
+        get() = Scope.liveCount
+
     fun registerPlugin(plugin: StarUIPlugin) {
         if (plugin !in registeredPlugins) registeredPlugins.add(plugin)
     }

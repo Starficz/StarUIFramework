@@ -523,7 +523,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         advanceFunctions.forEach { it(amount) }
         // This node's children have advanced already (vanilla advances children before the plugin), so they can be
         // replaced now. When a StarUI parent is also marked it will flush everything below it in a moment.
-        if (dirtyScopeBelow && component.parent?.let { getAttached(it) }?.dirtyScopeBelow != true) Scope.flush(this)
+        // Not when detached: a callback above may just have removed this node (a vanilla panel rebuilding itself).
+        val parent = component.parent ?: return
+        if (dirtyScopeBelow && getAttached(parent)?.dirtyScopeBelow != true) Scope.flush(this)
     }
 
     override fun processInput(events: MutableList<InputEventAPI>) {

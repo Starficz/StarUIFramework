@@ -29,6 +29,7 @@ import org.starficz.starui.compose.modifier.onAdvance
 import org.starficz.starui.compose.modifier.onClick
 import org.starficz.starui.compose.runtime.ButtonGroup
 import org.starficz.starui.compose.runtime.Scope
+import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.runtime.TextTheme
@@ -38,6 +39,7 @@ import org.starficz.starui.core.BoxedScrollPanel
 import org.starficz.starui.core.BoxedUILabel
 import org.starficz.starui.core.children
 import org.starficz.starui.core.clearChildren
+import org.starficz.starui.core.parent
 import java.awt.Color
 import java.lang.ref.WeakReference
 
@@ -80,8 +82,10 @@ fun registerScopeTests() {
         Input.sendList(root, Input.down(panel.position.x + 250f, panel.cy))
         expect(clicks == 1, "before dispose the click handler works ($clicks)")
 
+        val liveBefore = StarUIManager.liveScopeCount
         plugin.dispose()
         expect(plugin.isDisposed, "isDisposed is set")
+        expect(StarUIManager.liveScopeCount == liveBefore - 1, "the live scope count drops by the panel's one scope ($liveBefore -> ${StarUIManager.liveScopeCount})")
         expect(flag.observers.isEmpty(), "dispose() removes the UIState listeners right away (${flag.observers.size} left)")
         flag.value = false
         expect(changes == 1, "a disposed onChange no longer fires ($changes)")
@@ -292,6 +296,25 @@ fun registerReactiveTests() {
         frame(); frame()
         expect(builds == 2, "and only once ($builds)")
         screenshot("final")
+
+        // A node removed by a callback during its own advance (what a vanilla panel rebuilding itself does to
+        // injected UI) must not rebuild afterwards in that same advance.
+        val removeState = UIState(0)
+        var removeBuilds = 0
+        var removeNow = false
+        lateinit var selfRemoving: CustomPanelAPI
+        selfRemoving = host.Column(LayoutSize.wrap(), Modifier.onAdvance {
+            if (removeNow) {
+                removeNow = false
+                removeState.value++
+                host.removeComponent(selfRemoving)
+            }
+        }) { removeBuilds++; Text("r=${removeState.value}") }
+        frame()
+        removeNow = true
+        NativeSmokeSupport.advance(root, 1)
+        expect(selfRemoving.parent == null, "the Column removed itself during its advance")
+        expect(removeBuilds == 1, "and was not rebuilt after being detached ($removeBuilds builds)")
     }
 
     StarUITestSuite.group("reactive-loop-guard") {

@@ -158,14 +158,21 @@ fun registerPerfTests() {
             }
             return (System.nanoTime() - t0) / 1e6 / frames
         }
+        // Alternate short off/on windows and keep each mode's best one: other load on the PC (it varied 3x between
+        // runs) only ever makes a window slower, so the minimum is the fair comparison.
         val saved = StarUIPanelPlugin.hasAttachedPlugins
-        StarUIPanelPlugin.hasAttachedPlugins = false; msPerFrame(120); val off = msPerFrame(400)
-        StarUIPanelPlugin.hasAttachedPlugins = true; msPerFrame(120); val on = msPerFrame(400)
-        StarUIPanelPlugin.hasAttachedPlugins = false; val off2 = msPerFrame(400)
+        StarUIPanelPlugin.hasAttachedPlugins = false; msPerFrame(120)
+        StarUIPanelPlugin.hasAttachedPlugins = true; msPerFrame(120)
+        var off = Double.MAX_VALUE
+        var on = Double.MAX_VALUE
+        repeat(6) {
+            StarUIPanelPlugin.hasAttachedPlugins = false; off = minOf(off, msPerFrame(100))
+            StarUIPanelPlugin.hasAttachedPlugins = true; on = minOf(on, msPerFrame(100))
+        }
         StarUIPanelPlugin.hasAttachedPlugins = saved
-        val delta = on - (off + off2) / 2
-        log(String.format("PERF hooks: 300 vanilla labels, %.3f ms/frame hooks short-circuited, %.3f ms/frame hooks active (%.3f again off) -> overhead %.3f ms/frame, %.2f us per label per frame",
-            off, on, off2, delta, delta * 1000 / 300))
+        val delta = on - off
+        log(String.format("PERF hooks: 300 vanilla labels, best of 6 x 100 frames: %.3f ms/frame hooks short-circuited, %.3f ms/frame hooks active -> overhead %.3f ms/frame, %.2f us per label per frame",
+            off, on, delta, delta * 1000 / 300))
         expect(delta < 1.0, "lifecycle hooks add under 1 ms per frame on 300 vanilla labels (${"%.3f".format(delta)} ms)")
 
         // 2. Text measuring: uncached builds a panel + tooltip + label per call.
