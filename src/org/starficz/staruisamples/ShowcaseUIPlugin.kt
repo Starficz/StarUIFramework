@@ -128,11 +128,50 @@ object ShowcaseUIPlugin {
             }
             Divider(color = DARK)
 
-            // ---------------------------------------- body: three columns ----------------------------------------
-            Row(Size.fillMaxSize(), spacing = 14f) {
-                Column(Size.fillMaxSize(), spacing = 10f) { layoutColumn() }
-                Column(Size.fillMaxSize(), spacing = 10f) { stateColumn() }
-                Column(Size.fillMaxSize(), spacing = 10f) { contentColumn() }
+            // ---------------------------------------- body: scrolls under the header ----------------------------------------
+            // Nothing fills a ScrollPanel's height, so the columns wrap theirs; the right padding keeps the scrollbar clear.
+            ScrollPanel(Size.fillMaxSize()) {
+                Column(Size.fillMaxWidth(), Modifier.padding(right = 14f), spacing = 10f) {
+                    Row(Size.fillMaxWidth(), spacing = 14f) {
+                        Column(Size.fillMaxWidth(), spacing = 10f) { layoutColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { stateColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { contentColumn() }
+                    }
+                    fullSizeShips()
+                }
+            }
+        }
+    }
+
+    // =================================================================================================================
+    // Full width, below the columns: ship displays at their real size
+    // =================================================================================================================
+    private val shipsPerScreenPixel = UIState(false)
+
+    private fun UIPanelAPI.fullSizeShips() {
+        Section("ShipDisplay: full size (exactScale)") {
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 10f) {
+                Checkbox("One sprite pixel per screen pixel", bind = shipsPerScreenPixel,
+                    modifier = Modifier.tooltip("exactScale = 1 / screenScaleMult instead of 1 (the same unless UI scaling is on)"))
+                Text("Left of each pair: vanilla's fit (95%, 3% high). Right: exactScale, centred on whole pixels.", color = GRAY)
+            }
+            val scale = if (shipsPerScreenPixel.value) 1f / Global.getSettings().screenScaleMult else 1f
+            // two pairs per row: four capital-sized pairs side by side are wider than a 1600 px screen
+            for (variantIds in listOf(listOf("paragon_Elite", "onslaught_Standard"), listOf("conquest_Elite", "wolf_Assault")))
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.Bottom, spacing = 16f) {
+                for (variantId in variantIds) {
+                    val variant = Global.getSettings().getVariant(variantId) ?: continue
+                    val sprite = Global.getSettings().getSprite(variant.hullSpec.spriteName)
+                    // the box is the sprite plus a little room, so the exact display shows the whole hull
+                    val box = Size.exact(sprite.width * scale + 20f, sprite.height * scale + 20f)
+                    Column(Size.wrapContent(), horizontalAlignment = Alignment.CenterHorizontally, spacing = 4f) {
+                        Row(Size.wrapContent(), spacing = 4f) {
+                            ShipDisplay(box, Modifier.background(INSET_BG), variant = variant)
+                            ShipDisplay(box, Modifier.background(INSET_BG), variant = variant, exactScale = scale)
+                        }
+                        Text("${variant.hullSpec.hullName}: ${sprite.width.toInt()} x ${sprite.height.toInt()} px", color = GRAY)
+                    }
+                }
             }
         }
     }
