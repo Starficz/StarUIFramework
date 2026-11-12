@@ -23,7 +23,6 @@ import org.starficz.starui.core.bottom
 import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.left
-import org.starficz.starui.core.parent
 import org.starficz.starui.core.right
 import org.starficz.starui.core.setMouseOverPad
 import org.starficz.starui.core.setPlugin

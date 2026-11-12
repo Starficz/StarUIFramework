@@ -35,11 +35,8 @@ import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.runtime.TextTheme
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedScrollPanel
-import org.starficz.starui.core.BoxedUILabel
+import com.fs.starfarer.api.ui.ScrollPanelAPI
 import org.starficz.starui.core.children
-import org.starficz.starui.core.clearChildren
-import org.starficz.starui.core.parent
 import java.awt.Color
 import java.lang.ref.WeakReference
 
@@ -431,7 +428,7 @@ fun registerReactiveTests() {
 
     StarUITestSuite.group("reactive-scrollpanel-and-theme") {
         val rows = UIState(3)
-        lateinit var sp: BoxedScrollPanel
+        lateinit var sp: ScrollPanelAPI
         sp = root.ScrollPanel(PanelSize.exact(300f, 100f), at(40f, 40f).background(PANEL), spacing = 5f) {
             for (i in 0 until rows.value) Spacer(PanelSize.exact(280f, 30f), Modifier.background(ROW))
         }
@@ -448,7 +445,7 @@ fun registerReactiveTests() {
         // The theme in force where a container was declared is in force again when it rebuilds.
         val themed = StarUITheme.Default.copy(text = TextTheme(color = Color(255, 0, 255)))
         val label = UIState("themed")
-        lateinit var text: BoxedUILabel
+        lateinit var text: LabelAPI
         root.Theme(themed) {
             Column(LayoutSize.wrap(), at(400f, 40f).background(PANEL)) { text = Text(label.value) }
         }

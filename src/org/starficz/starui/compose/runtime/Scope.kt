@@ -7,7 +7,6 @@ import com.fs.starfarer.api.ui.UIPanelAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.getChildrenNonCopy
-import org.starficz.starui.core.parent
 import java.lang.ref.WeakReference
 import java.util.IdentityHashMap
 

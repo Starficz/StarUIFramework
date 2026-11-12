@@ -3,6 +3,7 @@
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
+import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -27,11 +28,13 @@ import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.padding
 import org.starficz.starui.compose.runtime.StarUIManager
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIElement
 import org.starficz.starui.core.children
-import org.starficz.starui.core.parent
+import org.starficz.starui.core.renderShadows
+import org.starficz.starui.core.shadowColor
 import java.awt.Color
 
 fun registerBoxTests() {
@@ -98,7 +101,8 @@ fun registerContractTests() {
             expect(actual !is CustomPanelAPI, "$name is a native ${actual.javaClass.simpleName}, not a CustomPanel wrapper")
         }
         expect(direct.size == made.size, "Column holds exactly ${made.size} children (got ${direct.size})")
-        expect((made["ScrollPanel"] as? BoxedUIElement)?.boxedElement is ScrollPanelAPI, "ScrollPanel wraps a vanilla ScrollPanelAPI")
+        expect(made["ScrollPanel"] is ScrollPanelAPI, "ScrollPanel returns the vanilla ScrollPanelAPI itself")
+        expect(made["Text"] is LabelAPI, "Text returns the vanilla LabelAPI itself")
         screenshot("final")
     }
 
@@ -129,38 +133,76 @@ fun registerContractTests() {
     }
 
     StarUITestSuite.group("contract-boxed-container-ops") {
-        // UIPanelContainerPatch must unwrap BoxedUIElements passed to vanilla container methods.
-        lateinit var a: UIComponentAPI; lateinit var boxed: org.starficz.starui.core.BoxedUILabel; lateinit var c: UIComponentAPI
+        // UIPanelContainerPatch must unwrap BoxedUIElements (images, ship previews) passed to vanilla container methods.
+        lateinit var a: UIComponentAPI; lateinit var boxed: org.starficz.starui.core.BoxedUIImage; lateinit var c: UIComponentAPI
         val host = root.CustomPanel(PanelSize.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
             a = Spacer(PanelSize.exact(10f, 10f))
-            boxed = Text("boxed label")
+            boxed = Image("graphics/icons/cargo/supplies.png", ImageSize.exact(20f, 20f))
             c = Spacer(PanelSize.exact(10f, 10f))
         }
         frame()
         val raw = boxed.boxedElement
         fun order() = (host as UIPanelAPI).children
-        expect(order().indexOf(raw) == 1, "boxed label's real component is the middle child")
+        expect(order().indexOf(raw) == 1, "boxed image's real component is the middle child")
 
-        // Vanilla quirk (UIPanel.sendToBottom): it is a no-op when the component is currently the LAST child, so
-        // sendToBottom is exercised from the middle position, before bringComponentToTop.
         var err = thrown { host.sendToBottom(boxed) }
-        expect(err == null, "sendToBottom(BoxedUILabel) does not throw ($err)")
-        expect(order().firstOrNull() === raw, "sendToBottom moved the real label to the front")
+        expect(err == null, "sendToBottom(BoxedUIImage) does not throw ($err)")
+        expect(order().firstOrNull() === raw, "sendToBottom moved the real image to the front")
 
         err = thrown { host.bringComponentToTop(boxed) }
-        expect(err == null, "bringComponentToTop(BoxedUILabel) does not throw ($err)")
-        expect(order().lastOrNull() === raw, "bringComponentToTop moved the real label to the end")
+        expect(err == null, "bringComponentToTop(BoxedUIImage) does not throw ($err)")
+        expect(order().lastOrNull() === raw, "bringComponentToTop moved the real image to the end")
 
+        // Until 0.98a, sendToBottom did nothing when the component was the LAST child; 0.98.5a fixed that.
         host.sendToBottom(boxed)
-        expect(order().lastOrNull() === raw, "documented vanilla quirk: sendToBottom on the last child does nothing")
+        expect(order().firstOrNull() === raw, "sendToBottom on the last child moves it to the front (fixed in 0.98.5a)")
+        host.bringComponentToTop(boxed)
 
         err = thrown { host.removeComponent(boxed) }
-        expect(err == null, "removeComponent(BoxedUILabel) does not throw ($err)")
-        expect(order().none { it === raw }, "removeComponent removed the real label")
+        expect(err == null, "removeComponent(BoxedUIImage) does not throw ($err)")
+        expect(order().none { it === raw }, "removeComponent removed the real image")
 
         err = thrown { host.addComponent(boxed) }
-        expect(err == null, "addComponent(BoxedUILabel) does not throw ($err)")
-        expect(order().lastOrNull() === raw, "addComponent re-added the real label")
+        expect(err == null, "addComponent(BoxedUIImage) does not throw ($err)")
+        expect(order().lastOrNull() === raw, "addComponent re-added the real image")
         expect(order().none { it === boxed }, "the Boxed wrapper itself never lands in the child list")
+    }
+
+    StarUITestSuite.group("contract-api-0985") {
+        // children is UIPanelAPI.getChildrenCopy2: a snapshot that later changes to the panel do not touch.
+        val col = root.Column(LayoutSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+            Spacer(PanelSize.exact(10f, 10f))
+        }
+        frame()
+        val before = col.children
+        col.Spacer(PanelSize.exact(10f, 10f))
+        expect(before.size == 1 && col.children.size == 2, "an earlier children list stays as it was (${before.size}, ${col.children.size})")
+
+        // A label StarUI did not make (a plain vanilla para, moved into the Column) still asks the Column to lay out
+        // again when its text changes: that is the LabelAPI.setText hook, not a wrapper.
+        val temp = Global.getSettings().createCustom(400f, 100f, null).createUIElement(400f, 100f, false)
+        val vanilla: LabelAPI = temp.addPara("x", 0f)
+        col.addComponent(vanilla)
+        frame()
+        val plugin = col.plugin as StarUIPanelPlugin
+        var passes = plugin.layoutPassCount
+        vanilla.text = "a different text"
+        frame()
+        expect(plugin.layoutPassCount == passes + 1, "a new text on a vanilla label lays the Column out once (${plugin.layoutPassCount} vs $passes)")
+        passes = plugin.layoutPassCount
+        vanilla.text = "a different text"
+        frame()
+        expect(plugin.layoutPassCount == passes, "the same text again does not (${plugin.layoutPassCount} vs $passes)")
+
+        // The ScrollPanel extras that ScrollPanelAPI still leaves out.
+        lateinit var sp: ScrollPanelAPI
+        root.CustomPanel(PanelSize.exact(200f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(400f, 40f))) {
+            sp = ScrollPanel(PanelSize.exact(200f, 100f), renderShadows = false, shadowColor = Color.RED) { Text("in") }
+        }
+        frame()
+        expect(!sp.renderShadows, "renderShadows reads back false")
+        expect(sp.shadowColor == Color.RED && sp.darkColor == Color.RED, "shadowColor is the API's darkColor")
+        expect(sp.contentContainer.children.size == 1, "the builder's Text went into the content container")
+        screenshot("final")
     }
 }

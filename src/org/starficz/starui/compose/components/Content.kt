@@ -4,6 +4,8 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.Alignment
+import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.ImageSize
 import org.starficz.starui.compose.NativeImage
@@ -14,7 +16,7 @@ import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.BoxedUIImage
-import org.starficz.starui.core.BoxedUILabel
+
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.addImage
@@ -46,12 +48,14 @@ enum class ContentScale {
     None
 }
 
-typealias StarUIText = BoxedUILabel
+typealias StarUIText = LabelAPI
 typealias StarUIImage = BoxedUIImage
 typealias StarUIShipDisplay = BoxedUIShipPreview
 
 /**
- * Creates a native Starsector [BoxedUILabel] directly in this panel with zero wrapper [com.fs.starfarer.api.ui.CustomPanelAPI] nodes.
+ * Creates a native Starsector label ([LabelAPI]) directly in this panel with zero wrapper
+ * [com.fs.starfarer.api.ui.CustomPanelAPI] nodes. Changing its text later (`label.text = ...`) re-lays out the
+ * surrounding StarUI layout on the next frame.
  */
 fun UIPanelAPI.Text(
     text: String,
@@ -61,12 +65,12 @@ fun UIPanelAPI.Text(
     color: Color? = StarUITheme.current.text.color,
     textAlign: TextAlign = StarUITheme.current.text.textAlign,
     highlightedText: Collection<Pair<String, Color>>? = null
-): BoxedUILabel {
+): LabelAPI {
     checkDslTarget()
     // Font, colour and highlights are fixed when a native label is made, so a call that changes them gets a new
     // label; the text itself is updated in place (highlighted labels excepted: their highlights index the text).
     val slot = childSlot("Text", listOf(font, color, highlightedText, if (highlightedText != null) text else null))
-    val reused: BoxedUILabel? = slot.reused()
+    val reused: LabelAPI? = slot.reused()
     val rawLabel = reused ?: this.addPara(text, font, color, highlightedText)
     if (reused != null && rawLabel.text != text) rawLabel.text = text
 
@@ -82,18 +86,18 @@ fun UIPanelAPI.Text(
     applyTextAlign()
 
     if (reused != null) {
-        applyReuseBounds(rawLabel.boxedElement, size, measureTextSize(text, font))
+        applyReuseBounds(rawLabel, size, measureTextSize(text, font))
     } else {
         val (initW, initH) = getInitialBounds(size, measureTextSize(text, font))
         rawLabel.setSize(initW, initH)
     }
 
     registerComponentSizing(rawLabel, size, isContainer = false)
-    slot.remember(rawLabel.boxedElement, rawLabel)
+    slot.remember(rawLabel, rawLabel)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
-        val actual = rawLabel.boxedElement
+        val actual: UIComponentAPI = rawLabel
 
         parentPlugin.childMeasurables[actual] = { maxW, _ ->
             val currentStr = rawLabel.text
@@ -132,7 +136,7 @@ fun UIPanelAPI.Label(
     color: Color? = StarUITheme.current.text.color,
     align: TextAlign = StarUITheme.current.text.textAlign,
     highlightedText: Collection<Pair<String, Color>>? = null
-): BoxedUILabel = Text(text, size, modifier, font, color, align, highlightedText)
+): LabelAPI = Text(text, size, modifier, font, color, align, highlightedText)
 
 /**
  * Creates a native Starsector [BoxedUIImage] directly in this panel with zero wrapper [com.fs.starfarer.api.ui.CustomPanelAPI] nodes.

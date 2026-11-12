@@ -36,7 +36,7 @@ fun Modifier.counting(c: Counts): Modifier = this
 private fun TestContext.instrumentedLabel(counts: Counts, text: String = "Input target"): Pair<UIComponentAPI, UIComponentAPI> {
     var label: UIComponentAPI? = null
     val host = root.CustomPanel(PanelSize.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
-        label = Text(text, modifier = Modifier.counting(counts).anchor(Anchor.inside.center.ofParent())).boxedElement
+        label = Text(text, modifier = Modifier.counting(counts).anchor(Anchor.inside.center.ofParent()))
     }
     frame()
     return host to label!!

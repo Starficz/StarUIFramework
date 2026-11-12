@@ -4,7 +4,6 @@ import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.BoxedUIElement
-import org.starficz.starui.core.parent
 
 internal val UIComponentAPI.actual: UIComponentAPI
     get() = if (this is BoxedUIElement) this.boxedElement else this

@@ -13,7 +13,7 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedScrollPanel
+import com.fs.starfarer.api.ui.ScrollPanelAPI
 import java.awt.Color
 
 private val CHILD = Color(200, 140, 60)
@@ -86,7 +86,7 @@ fun registerAnchorTests() {
 fun registerScrollTests() {
     StarUITestSuite.group("scrollpanel-measure-and-scroll") {
         val items = mutableListOf<CustomPanelAPI>()
-        lateinit var sp: BoxedScrollPanel
+        lateinit var sp: ScrollPanelAPI
         sp = root.ScrollPanel(PanelSize.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)),
             spacing = 5f, yPadding = 10f) {
             for (i in 0 until 20) items += Spacer(PanelSize.exact(280f, 30f), Modifier.background(if (i % 2 == 0) Color(200, 60, 60) else Color(60, 60, 200)))

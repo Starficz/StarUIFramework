@@ -32,7 +32,7 @@ fun registerModifierVisualTests() {
         lateinit var label: UIComponentAPI
         root.CustomPanel(PanelSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 100f))) {
             label = Text("Native label with background", modifier = Modifier.background(Color(40, 40, 220))
-                .anchor(Anchor.inside.center.ofParent())).boxedElement
+                .anchor(Anchor.inside.center.ofParent()))
         }
         frame()
         val centre = pixel(panel.cx, panel.cy)
@@ -69,7 +69,7 @@ fun registerModifierVisualTests() {
         lateinit var label: UIComponentAPI
         root.CustomPanel(PanelSize.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
             label = Text("lifecycle", modifier = Modifier.onAdvance { advances++ }.onLayout { layouts++ }.onPositionChanged { moves++ }
-                .anchor(Anchor.inside.center.ofParent())).boxedElement
+                .anchor(Anchor.inside.center.ofParent()))
         }
         NativeSmokeSupport.advance(root, 10)
         expect(advances == 10, "onAdvance on a native label fires once per frame: 10 frames -> $advances")

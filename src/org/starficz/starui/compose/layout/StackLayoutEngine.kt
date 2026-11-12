@@ -8,7 +8,7 @@ import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.core.ReflectionUtils.getMethodsMatching
+import org.starficz.starui.core.relativeToBase
 import org.starficz.starui.core.getChildrenCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
@@ -447,10 +447,7 @@ internal class StackLayoutEngine(
 
         debugLog("  [$debugId] Child[$childIndex] anchored to ${if (isFirst) "Parent" else "Previous"} | Offset X: $offsetX, Y: $offsetY")
 
-        // Apply via Vanilla Reflection (null targetPos anchors relative to parent)
-        val floatType = Float::class.javaPrimitiveType!!
-        val paramTypes = arrayOf<Class<*>?>(child.position::class.java, floatType, floatType, floatType, floatType, floatType, floatType)
-        child.position.getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
-            .invoke(child.position, prev?.position, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
+        // A null base anchors relative to the parent
+        child.position.relativeToBase(prev, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }

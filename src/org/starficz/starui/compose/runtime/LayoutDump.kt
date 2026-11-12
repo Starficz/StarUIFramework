@@ -80,7 +80,7 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
         // native widgets: their inner parts are engine details, not layout
         is LabelAPI, is ButtonAPI, is TextFieldAPI -> return
         is ScrollPanelAPI -> {
-            val content = (node as Any).invoke("getContentContainer") as? UIPanelAPI ?: return
+            val content = node.contentContainer ?: return
             val contentPlugin = StarUIPanelPlugin.getAttached(content)
             for (child in content.getChildrenNonCopy()) dumpNode(child, root, contentPlugin, depth + 1, out)
         }

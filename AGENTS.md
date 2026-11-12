@@ -64,6 +64,11 @@ shortcut) { onClick }`, `TextField(bind: UIState<String>, size, modifier, font, 
 `Checkbox(text, ..., bind, buttonGroup)`, `AreaCheckbox(text, ..., bind, buttonGroup)`, `Spacer(size, modifier,
 color)`, `Divider()`, `FlexSpacer(weight)`.
 
+Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `ScrollPanel`
+a `ScrollPanelAPI` (its builder's components go into the scrolling content container), `Button` a `ButtonAPI`.
+`Image` and `ShipDisplay` return `BoxedUIImage` / `BoxedUIShipPreview`, small wrappers for components that have no API;
+pass them to vanilla panel methods freely (StarUI unwraps them).
+
 `Button` supports only the fonts vanilla buttons have (`ORBITRON_12_CONDENSED` default, `ORBITRON_20(_BOLD)`,
 `ORBITRON_24(_BOLD)`, `VICTOR_10/14`). Fonts are the `Font` enum in `core/Font.kt`.
 
@@ -194,7 +199,8 @@ src/org/starficz/starui/
   compose/runtime/      StarUIPanelPlugin.kt (per-component state, handlers, layout, scopes),
                         Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
                         (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
-  core/                 vanilla helpers and wrappers (Boxed* types), Anchor, Font, ReflectionUtils
+  core/                 vanilla helpers, BoxedUIImage / BoxedUIShipPreview (no API for those), Anchor, Font,
+                        ReflectionUtils
   internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt)
 native-smoke/           in-game test suite (test-only, never shipped)
 docs/                   design notes: reactive-scopes-plan.md
@@ -224,8 +230,14 @@ docs/                   design notes: reactive-scopes-plan.md
   Write the test first and see it fail when practical. Tests are Kotlin in the default package, registered in
   `native-smoke/kotlin/TestFramework.kt`.
 - **No obfuscated names** in code, PatchLib matchers, casts or imports. Find engine classes and members by API
-  interface, readable name or shape. Decompiled vanilla sources (renamed, so not runtime names) are in
-  `starsector-reference-master/src` next to the game folder.
+  interface, readable name or shape. Prefer the API whenever it has the method (0.98.5a added many UI ones:
+  `getParent`, `getChildrenCopy2`, `clearChildren`, `relativeTo2`, most of `ScrollPanelAPI`, `SliderAPI`).
+  Look engine code up in a decompile of the current game's `starfarer_obf.jar` (the patchlib skill bundles
+  Vineflower); a decompile from an older game version will mislead you.
+- **Never use `java.lang.reflect` directly**: the game's script class loader refuses it at runtime
+  (`SecurityException`). Go through `ReflectionUtils` (`invoke`, `getMethodsMatching`, `ReflectedMethod`).
+- A reflective `invoke("name")` throws "Ambiguous method call" when the API declares the same method with a narrower
+  return type (the class then has a bridge method too). Call the API method instead.
 - **Keep public signatures stable**: Combat AI Tweaks, Scy Nation and Refit Filters ship compiled against StarUI.
   Add and deprecate; don't remove or change.
 - Source files are CRLF. Keep each file's existing line endings.

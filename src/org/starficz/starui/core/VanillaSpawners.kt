@@ -7,6 +7,7 @@ import com.fs.starfarer.api.ui.Alignment
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.CutStyle
+import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
@@ -89,7 +90,7 @@ fun UIPanelAPI.addPara(
     text: String, font: Font? = null, color: Color? = null,
     highlightedText: Collection<Pair<String, Color>>? = null,
     widthOverride: Float? = null, xPad: Float = 0f, yPad: Float = 0f
-): BoxedUILabel {
+): LabelAPI {
     val tempPanel = Global.getSettings().createCustom(10000f, 10000f, null)
     val tempTMAPI = tempPanel.createUIElement(10000f, 10000f, false)
     color?.let { tempTMAPI.setParaFontColor(it) }
@@ -102,17 +103,17 @@ fun UIPanelAPI.addPara(
         tempTMAPI.addPara(text, 0f)
     }
 
-    this.addComponent(para as UIComponentAPI)
+    this.addComponent(para)
 
     para.setAlignment(Alignment.MID)
     if (widthOverride != null) {
         para.autoSizeToWidth(widthOverride)
     } else {
-        para.invoke("autoSize")
+        para.autoSize()
     }
     para.setSize(para.width + xPad * 2, para.height + yPad * 2)
 
-    return BoxedUILabel(para)
+    return para
 }
 
 fun UIPanelAPI.addTextField(width: Float, height: Float, font: Font): TextFieldAPI {

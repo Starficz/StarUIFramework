@@ -6,7 +6,7 @@ import com.fs.starfarer.api.ui.UIComponentAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.core.ReflectionUtils.getMethodsMatching
+import org.starficz.starui.core.relativeToBase
 import org.starficz.starui.core.getChildrenCopy
 
 internal val Alignment.xAnchor: Float
@@ -205,12 +205,6 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         val myAnchorX = -alignX
         val myAnchorY = -alignY
 
-        val floatType = Float::class.javaPrimitiveType!!
-        val paramTypes = arrayOf<Class<*>?>(
-            child.position::class.java, floatType, floatType, floatType, floatType, floatType, floatType
-        )
-
-        child.position.getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
-            .invoke(child.position, null, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
+        child.position.relativeToBase(null, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }

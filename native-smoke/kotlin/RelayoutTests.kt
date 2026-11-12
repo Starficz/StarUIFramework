@@ -18,10 +18,9 @@ import org.starficz.starui.compose.modifier.requestLayout
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedScrollPanel
-import org.starficz.starui.core.BoxedUILabel
+import com.fs.starfarer.api.ui.ScrollPanelAPI
+import com.fs.starfarer.api.ui.LabelAPI
 import org.starficz.starui.core.children
-import org.starficz.starui.core.clearChildren
 import java.awt.Color
 
 private val BG = Color(30, 30, 40)
@@ -99,7 +98,7 @@ fun registerRelayoutTests() {
     }
 
     StarUITestSuite.group("relayout-text-change") {
-        lateinit var label: BoxedUILabel
+        lateinit var label: LabelAPI
         lateinit var next: CustomPanelAPI
         val row = root.Row(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
             label = Text("short")
@@ -149,7 +148,7 @@ fun registerRelayoutTests() {
     }
 
     StarUITestSuite.group("relayout-scrollpanel-content") {
-        lateinit var sp: BoxedScrollPanel
+        lateinit var sp: ScrollPanelAPI
         sp = root.ScrollPanel(PanelSize.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG), spacing = 5f) {
             Spacer(PanelSize.exact(280f, 30f), Modifier.background(RED))
         }
@@ -171,7 +170,7 @@ fun registerRelayoutTests() {
 
     StarUITestSuite.group("relayout-onlayout-semantics") {
         var layouts = 0; var firsts = 0; var leafLayouts = 0; var leafFirsts = 0; var nestedLayouts = 0
-        lateinit var label: BoxedUILabel
+        lateinit var label: LabelAPI
         val col = root.Column(LayoutSize.wrap(),
             Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(BG).onLayout { layouts++ }.onFirstLayout { firsts++ }) {
             label = Text("leaf", modifier = Modifier.onLayout { leafLayouts++ }.onFirstLayout { leafFirsts++ })
@@ -197,7 +196,7 @@ fun registerRelayoutTests() {
 
         // A callback that changes layout input (a common pattern: a label showing a measured size) settles by itself.
         var passesSeen = 0
-        lateinit var sizeLabel: BoxedUILabel
+        lateinit var sizeLabel: LabelAPI
         val reporter = root.Column(LayoutSize.wrap(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 140f)).background(BG)
             .onLayout { passesSeen++; sizeLabel.text = "passes so far: at least one" }) {
             sizeLabel = Text("?")

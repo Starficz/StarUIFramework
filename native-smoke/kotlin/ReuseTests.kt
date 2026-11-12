@@ -28,8 +28,7 @@ import org.starficz.starui.compose.modifier.onClick
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedScrollPanel
-import org.starficz.starui.core.BoxedUILabel
+import com.fs.starfarer.api.ui.ScrollPanelAPI
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.children
 import java.awt.Color
@@ -51,7 +50,7 @@ private fun TestContext.clickOnce(c: UIComponentAPI) {
 fun registerReuseTests() {
     StarUITestSuite.group("reuse-in-place") {
         val tick = UIState(0)
-        lateinit var label: BoxedUILabel
+        lateinit var label: LabelAPI
         lateinit var spacer: CustomPanelAPI
         lateinit var inner: CustomPanelAPI
         val col = root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
@@ -61,11 +60,11 @@ fun registerReuseTests() {
         }
         frame()
         val first = Triple(label, spacer, inner)
-        val nativeLabel = label.boxedElement
+        val nativeLabel = label
 
         tick.value = 2
         frame()
-        expect(label === first.first && label.boxedElement === nativeLabel, "the Text call reuses the same native label")
+        expect(label === first.first && label === nativeLabel, "the Text call reuses the same native label")
         expect(label.text == "tick 2", "with its text updated in place (${label.text})")
         expect(spacer === first.second, "the Spacer is reused")
         near(spacer.w, 100f, "and resized to its new exact size")
@@ -108,8 +107,8 @@ fun registerReuseTests() {
     StarUITestSuite.group("reuse-recreate-on-fixed-props") {
         val big = UIState(false)
         lateinit var button: ButtonAPI
-        lateinit var colored: BoxedUILabel
-        lateinit var plain: BoxedUILabel
+        lateinit var colored: LabelAPI
+        lateinit var plain: LabelAPI
         val col = root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             button = Button("Font", font = if (big.value) Font.ORBITRON_20 else Font.ORBITRON_12_CONDENSED)
             colored = Text("Colour", color = if (big.value) Color(255, 80, 80) else Color(255, 255, 255))
@@ -123,8 +122,8 @@ fun registerReuseTests() {
         expect(button !== oldButton, "a Button whose font changed is a new native button (fonts are fixed at creation)")
         expect(colored !== oldColored, "a Text whose colour changed is a new native label")
         expect(plain === oldPlain, "a Text whose fixed properties did not change is reused")
-        expect(oldButton !in col.children && oldColored.boxedElement !in col.children, "the replaced objects are removed")
-        expect(col.children == listOf(button, colored.boxedElement, plain.boxedElement), "and the order still follows the calls")
+        expect(oldButton !in col.children && oldColored !in col.children, "the replaced objects are removed")
+        expect(col.children == listOf(button, colored, plain), "and the order still follows the calls")
         expect(colored.color == Color(255, 80, 80), "the new label has the new colour (${colored.color})")
         screenshot("final")
     }
@@ -213,7 +212,7 @@ fun registerReuseTests() {
     StarUITestSuite.group("reuse-scroll-position") {
         val header = UIState(0)
         val rows = UIState(20)
-        lateinit var sp: BoxedScrollPanel
+        lateinit var sp: ScrollPanelAPI
         root.Column(LayoutSize.wrap(), origin(40f, 40f).background(REUSE_BG), spacing = 5f) {
             Text("header ${header.value}")
             sp = ScrollPanel(PanelSize.exact(300f, 100f)) {

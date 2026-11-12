@@ -17,9 +17,6 @@ var UIComponentAPI.fader: Fader?
     get() = invoke("getFader") as Fader?
     set(fader) { invoke("setFader", fader) }
 
-var UIComponentAPI.parent: UIPanelAPI?
-    get() = invoke("getParent") as UIPanelAPI?
-    set(parent) { invoke("setParent", parent) }
 
 fun UIComponentAPI.setMouseOverPad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
     invoke("setMouseOverPad", leftPad, rightPad, topPad, bottomPad)
@@ -75,23 +72,12 @@ var UIComponentAPI.enabled: Boolean
     get() = invoke("isEnabled") as Boolean
     set(enabled) { invoke("setEnabled", enabled) }
 
-var UIComponentAPI.width
-    get() = position.width
-    set(width) { position.setSize(width, position.height) }
-
-var UIComponentAPI.height
-    get() = position.height
-    set(height) { position.setSize(position.width, height) }
+// width, height, x and y are UIComponentAPI members since 0.98.5a (read-only; set them on `position`).
 
 fun UIComponentAPI.setSize(width: Float, height: Float){
     position.setSize(width, height)
 }
 
-val UIComponentAPI.x
-    get() = position.x
-
-val UIComponentAPI.y
-    get() = position.y
 
 val UIComponentAPI.left
     get() = x
@@ -134,22 +120,46 @@ var UIComponentAPI.yAlignOffset: Float
 
 
 fun UIComponentAPI.applyAnchor(anchor: AnchorData){
-    val floatType = Float::class.javaPrimitiveType!!
-    val paramTypes = listOf<Class<*>?>(this.position::class.java,
-        floatType, floatType, floatType, floatType, floatType, floatType).toTypedArray()
-
-    val anchorPosition = when(anchor.reference){
+    val base = when(anchor.reference){
         is AnchorReference.Parent -> null
         is AnchorReference.Previous -> {
-            parent?.children?.dropLast(1)?.lastOrNull()?.position
+            parent?.children?.dropLast(1)?.lastOrNull()
                 ?: throw Error("Previous Component does not exist!")
         }
-        is AnchorReference.Sibling -> anchor.reference.component.position
+        is AnchorReference.Sibling -> anchor.reference.component
     }
 
-    this.position.getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
-        .invoke(this.position, anchorPosition, anchor.refAnchorX, anchor.refAnchorY,
-            anchor.targetAnchorX, anchor.targetAnchorY, anchor.offsetX, anchor.offsetY)
+    position.relativeToBase(base, anchor.refAnchorX, anchor.refAnchorY,
+        anchor.targetAnchorX, anchor.targetAnchorY, anchor.offsetX, anchor.offsetY)
+}
+
+// Mod code may not touch java.lang.reflect directly (the game's script loader refuses it), hence ReflectedMethod.
+private var relativeToParentClass: Class<*>? = null
+private var relativeToParentMethod: ReflectionUtils.ReflectedMethod? = null
+
+/**
+ * Places this position relative to [base], or to its parent when [base] is null: the alignment values are those of
+ * vanilla's `relativeTo` (`PositionAPI.relativeTo2`). With a base this is the API call. Without one it stays a
+ * reflective call of `relativeTo(null, ...)`: vanilla keeps the null and re-resolves the parent on every recompute,
+ * which `relativeTo2` (it reads `base.position`) cannot express. The method is looked up once.
+ */
+internal fun PositionAPI.relativeToBase(
+    base: UIComponentAPI?,
+    xAlignBase: Float, yAlignBase: Float, xAlignThis: Float, yAlignThis: Float, xOffset: Float, yOffset: Float
+) {
+    if (base != null) {
+        relativeTo2(base, xAlignBase, yAlignBase, xAlignThis, yAlignThis, xOffset, yOffset)
+        return
+    }
+    var method = relativeToParentMethod
+    if (method == null || relativeToParentClass !== javaClass) {
+        val floatType = java.lang.Float.TYPE
+        val paramTypes = arrayOf<Class<*>?>(javaClass, floatType, floatType, floatType, floatType, floatType, floatType)
+        method = getMethodsMatching("relativeTo", parameterTypes = paramTypes)[0]
+        relativeToParentMethod = method
+        relativeToParentClass = javaClass
+    }
+    method.invoke(this, null, xAlignBase, yAlignBase, xAlignThis, yAlignThis, xOffset, yOffset)
 }
 
 val UIPanelAPI.lastComponent
@@ -157,9 +167,8 @@ val UIPanelAPI.lastComponent
 
 
 // UIPanelAPI extensions that expose UIPanel methods
-fun UIPanelAPI.getChildrenCopy(): List<UIComponentAPI> {
-    return invoke("getChildrenCopy") as List<UIComponentAPI>
-}
+/** A snapshot of the children (`UIPanelAPI.getChildrenCopy2`, a new list that later changes do not touch). */
+fun UIPanelAPI.getChildrenCopy(): List<UIComponentAPI> = getChildrenCopy2()
 
 fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
     return invoke("getChildrenNonCopy") as List<UIComponentAPI>
@@ -180,9 +189,6 @@ fun UIPanelAPI.allChildrenWithMethod(methodName: String): List<UIComponentAPI> {
     return children.filter { it.getMethodsMatching(methodName).isNotEmpty() }
 }
 
-fun UIPanelAPI.clearChildren() {
-    invoke("clearChildren")
-}
 
 // Measuring builds a throwaway panel, tooltip and label, and Text's measure lambda calls this on every layout pass.
 // The result only depends on (text, font), so keep a small LRU of results.

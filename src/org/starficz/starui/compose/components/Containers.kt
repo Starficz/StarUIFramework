@@ -39,7 +39,8 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.toNodeSize
 import org.starficz.starui.compose.wrapPadding
-import org.starficz.starui.core.BoxedScrollPanel
+import org.starficz.starui.core.renderShadows
+import org.starficz.starui.core.shadowColor
 import org.starficz.starui.core.children
 import org.starficz.starui.core.setPlugin
 import org.starficz.starui.core.height
@@ -87,7 +88,7 @@ internal fun getInitialBounds(size: StarUISizing, intrinsic: Pair<Float, Float>?
  * panel) would silently disappear on the next rebuild. Fail at the call instead, and say what to do.
  */
 internal fun UIPanelAPI.checkDslTarget() {
-    val target: UIPanelAPI = (this as? BoxedScrollPanel)?.contentContainer ?: this
+    val target: UIPanelAPI = (this as? ScrollPanelAPI)?.contentContainer ?: this
     val plugin = StarUIPanelPlugin.getAttached(target) ?: return
     val scope = plugin.scope ?: return
     if (!scope.isReactive || StarUIContext.currentPluginOrNull === plugin) return
@@ -109,7 +110,7 @@ internal fun UIPanelAPI.childSlot(kind: String, props: Any? = null): ChildSlot {
     val container = StarUIContext.currentPluginOrNull
     val key = StarUIContext.nextKey()
     val cursor = container?.reuseCursor
-    val record = if (cursor != null && cursor.isFor((this as? BoxedScrollPanel)?.contentContainer ?: this)) {
+    val record = if (cursor != null && cursor.isFor((this as? ScrollPanelAPI)?.contentContainer ?: this)) {
         cursor.take(kind, key, props)
     } else null
     return ChildSlot(container, kind, key, props, record)
@@ -427,11 +428,11 @@ fun UIPanelAPI.HorizontalStackLayout(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI = Row(size, modifier, grow, align, xPadding, yPadding, spacing, builder)
 
-typealias StarUIScrollPanel = BoxedScrollPanel
+typealias StarUIScrollPanel = ScrollPanelAPI
 
 /**
- * Creates a native Starsector [ScrollPanelAPI] wrapped in [BoxedScrollPanel] (which implements both
- * [ScrollPanelAPI] and [UIPanelAPI]), with zero wrapper [CustomPanelAPI] nodes.
+ * Creates a native Starsector [ScrollPanelAPI] with zero wrapper [CustomPanelAPI] nodes. Components called in
+ * [builder] go into its content container, which scrolls.
  */
 fun UIPanelAPI.ScrollPanel(
     size: PanelSize = PanelSize.fill(1f),
@@ -448,19 +449,17 @@ fun UIPanelAPI.ScrollPanel(
     scrollRailColor: Color? = StarUITheme.current.scrollPanel.scrollRailColor,
     showScrollbars: Boolean = StarUITheme.current.scrollPanel.showScrollbars,
     useMouseWheel: Boolean = StarUITheme.current.scrollPanel.useMouseWheel,
-    builder: (@StarUIDsl BoxedScrollPanel).() -> Unit = {}
-): BoxedScrollPanel {
+    builder: (@StarUIDsl ScrollPanelAPI).() -> Unit = {}
+): ScrollPanelAPI {
     checkDslTarget()
     val slot = childSlot("ScrollPanel")
     val (initW, initH) = getInitialBounds(size)
 
     // 1. Spawn the genuine vanilla ScrollPanel, or keep the one from the previous build (and its scroll position)
-    val reused: BoxedScrollPanel? = slot.reused()
-    val boxedScroll: BoxedScrollPanel
+    val reused: ScrollPanelAPI? = slot.reused()
     val vanillaScroll: ScrollPanelAPI
     if (reused != null) {
-        boxedScroll = reused
-        vanillaScroll = reused.scrollPanel
+        vanillaScroll = reused
         applyReuseBounds(vanillaScroll, size)
     } else {
         val tempPanel = Global.getSettings().createCustom(initW, initH, null)
@@ -468,25 +467,23 @@ fun UIPanelAPI.ScrollPanel(
         tempPanel.addUIElement(tempTMAPI)
         vanillaScroll = tempPanel.children[0] as ScrollPanelAPI
         vanillaScroll.removeComponent(tempTMAPI)
-
-        boxedScroll = BoxedScrollPanel(vanillaScroll)
-        boxedScroll.setSize(initW, initH)
+        vanillaScroll.setSize(initW, initH)
     }
 
     // 2. Apply declarative properties directly to the ScrollPanel
-    boxedScroll.isLeftScrollbar = isLeftScrollbar
-    boxedScroll.renderShadows = renderShadows
-    maxShadowHeight?.let { boxedScroll.maxShadowHeight = it }
-    shadowColor?.let { boxedScroll.shadowColor = it }
-    scrollWidgetColor?.let { boxedScroll.scrollWidgetColor = it }
-    scrollRailColor?.let { boxedScroll.scrollRailColor = it }
-    boxedScroll.setShowScrollbars(showScrollbars)
-    boxedScroll.setUseMWheel(useMouseWheel)
+    vanillaScroll.isLeftScrollbar = isLeftScrollbar
+    vanillaScroll.renderShadows = renderShadows
+    maxShadowHeight?.let { vanillaScroll.maxShadowHeight = it }
+    shadowColor?.let { vanillaScroll.shadowColor = it }
+    scrollWidgetColor?.let { vanillaScroll.scrollWidgetColor = it }
+    scrollRailColor?.let { vanillaScroll.scrollRailColor = it }
+    vanillaScroll.setShowScrollbars(showScrollbars)
+    vanillaScroll.setUseMWheel(useMouseWheel)
 
     if (reused == null) this.addComponent(vanillaScroll)
 
     // 3. Attach StarUIPanelPlugin directly to the ScrollPanel's internal contentContainer
-    val contentContainer = boxedScroll.contentContainer
+    val contentContainer = vanillaScroll.contentContainer
     val contentPlugin = StarUIPanelPlugin.getOrCreate(contentContainer)
     if (reused != null) contentPlugin.resetForReuse()
     contentPlugin.isStackLayout = true
@@ -525,22 +522,22 @@ fun UIPanelAPI.ScrollPanel(
         }
 
         override fun layout(assignedWidth: Float, assignedHeight: Float) {
-            boxedScroll.setSize(assignedWidth, assignedHeight)
+            vanillaScroll.setSize(assignedWidth, assignedHeight)
             val (contentW, contentH) = contentPlugin.layoutEngine!!.measure(assignedWidth, Float.MAX_VALUE)
-            boxedScroll.setContentSize(contentW, contentH)
+            vanillaScroll.setContentSize(contentW, contentH)
             contentPlugin.layoutEngine!!.layout(contentW, contentH)
             contentPlugin.markLayoutResolved()
         }
     }
 
     registerComponentSizing(vanillaScroll, size, isContainer = true, containerPlugin = outerPlugin)
-    slot.remember(vanillaScroll, boxedScroll)
+    slot.remember(vanillaScroll, vanillaScroll)
 
     // 5. Outer Modifiers apply directly to the ScrollPanel!
-    modifier.operations.forEach { it(boxedScroll) }
+    modifier.operations.forEach { it(vanillaScroll) }
 
-    // 6. Execute builder scoped directly to BoxedScrollPanel!
-    contentPlugin.attachScope("ScrollPanel", builder) { boxedScroll.builder() }
+    // 6. Execute the builder on the ScrollPanel; vanilla adds its components to the content container
+    contentPlugin.attachScope("ScrollPanel", builder) { vanillaScroll.builder() }
 
-    return boxedScroll
+    return vanillaScroll
 }

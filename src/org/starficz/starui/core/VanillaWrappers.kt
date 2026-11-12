@@ -11,124 +11,31 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.ReflectionUtils.invoke
 import java.awt.Color
 
-// Abstract base class for Boxed vanilla elements to fix vanilla jank / things with no API's (like images)
+// Abstract base class for Boxed vanilla elements that still have no API (images, ship previews).
+// Labels, scroll panels and sliders are used directly: LabelAPI, ScrollPanelAPI and SliderAPI cover them since 0.98.5a.
 abstract class BoxedUIElement(val boxedElement: UIComponentAPI)
 
-interface ExtendedScrollPanelAPI : ScrollPanelAPI, UIPanelAPI {
-    var isLeftScrollbar: Boolean
-    var renderShadows: Boolean
-    var maxShadowHeight: Float
-    var scrollWidgetColor: Color
-    var scrollRailColor: Color
-    val contentContainer: UIPanelAPI
-    var shadowColor: Color
+// The few scroll panel methods ScrollPanelAPI still leaves out (readable engine names).
 
-    fun addToOverlay(uiComponent: UIComponentAPI)
-    fun removeFromOverlay(uiComponent: UIComponentAPI)
-    fun setContentSize(width: Float, height: Float)
-    fun setUseSimpleShadows(simpleShadows: Boolean)
+/** Whether the scroll panel draws shadows at its top and bottom edges. */
+var ScrollPanelAPI.renderShadows: Boolean
+    get() = !(invoke("isDoNotRenderShadows") as Boolean)
+    set(value) { invoke("setDoNotRenderShadows", !value) }
 
-    // Missing Vanilla Methods!
-    fun scrollToBottom()
-    fun scrollToY(y: Float)
-    fun setShowScrollbars(show: Boolean)
-    fun setUseMWheel(use: Boolean)
-    fun setOffset(xOffset: Float, yOffset: Float)
-    fun resetOffset()
-    fun ensureVisible(component: UIComponentAPI)
-    fun saveVerticalScrollState()
-    fun restoreVerticalScrollState()
-}
+/** The colour of the edge shadows; the same value as [ScrollPanelAPI.getDarkColor]. */
+var ScrollPanelAPI.shadowColor: Color
+    get() = darkColor
+    set(value) { darkColor = value }
 
-class BoxedScrollPanel(val scrollPanel: ScrollPanelAPI) :
-    BoxedUIElement(scrollPanel),
-    ExtendedScrollPanelAPI,
-    ScrollPanelAPI by scrollPanel,
-    UIPanelAPI by (scrollPanel as UIPanelAPI)
-{
-    override fun getPosition(): com.fs.starfarer.api.ui.PositionAPI = scrollPanel.position
-    override fun render(alphaMult: Float) = scrollPanel.render(alphaMult)
-    override fun processInput(events: MutableList<com.fs.starfarer.api.input.InputEventAPI>?) = scrollPanel.processInput(events)
-    override fun advance(amount: Float) = scrollPanel.advance(amount)
-    override fun addComponent(custom: UIComponentAPI?): com.fs.starfarer.api.ui.PositionAPI = scrollPanel.addComponent(custom)
-    override fun removeComponent(custom: UIComponentAPI?) = scrollPanel.removeComponent(custom)
-    override fun bringComponentToTop(c: UIComponentAPI?) = scrollPanel.bringComponentToTop(c)
-    override fun sendToBottom(c: UIComponentAPI?) = scrollPanel.sendToBottom(c)
-    override fun getOpacity(): Float = scrollPanel.opacity
-    override fun setOpacity(opacity: Float) { scrollPanel.opacity = opacity }
+/** Adds a component that is drawn over the scrolling content and does not scroll with it. */
+fun ScrollPanelAPI.addToOverlay(uiComponent: UIComponentAPI) { invoke("addToOverlay", uiComponent) }
+fun ScrollPanelAPI.removeFromOverlay(uiComponent: UIComponentAPI) { invoke("removeFromOverlay", uiComponent) }
 
-    override var isLeftScrollbar: Boolean
-        get() = scrollPanel.invoke("isLeftScrollbar") as Boolean
-        set(value) { scrollPanel.invoke("setLeftScrollbar", value) }
-    override var renderShadows: Boolean
-        get() = (!(scrollPanel.invoke("isDoNotRenderShadows") as Boolean))
-        set(value) { scrollPanel.invoke("setDoNotRenderShadows", !value) }
-    override var maxShadowHeight: Float
-        get() = scrollPanel.invoke("getMaxShadowHeight") as Float
-        set(value) { scrollPanel.invoke("setMaxShadowHeight", value) }
-    override var scrollWidgetColor: Color
-        get() = scrollPanel.invoke("getScrollWidgetColor") as Color
-        set(value) { scrollPanel.invoke("setScrollWidgetColor", value) }
-    override var scrollRailColor: Color
-        get() = scrollPanel.invoke("getScrollRailColor") as Color
-        set(value) { scrollPanel.invoke("setScrollRailColor", value) }
-    override val contentContainer: UIPanelAPI
-        get() = scrollPanel.invoke("getContentContainer") as UIPanelAPI
-    override var shadowColor: Color
-        get() = scrollPanel.invoke("getDarkColor") as Color
-        set(value) { scrollPanel.invoke("setDarkColor", value) }
-
-    override fun addToOverlay(uiComponent: UIComponentAPI) { scrollPanel.invoke("addToOverlay", uiComponent) }
-    override fun removeFromOverlay(uiComponent: UIComponentAPI) { scrollPanel.invoke("removeFromOverlay", uiComponent) }
-    override fun setContentSize(width: Float, height: Float) { scrollPanel.invoke("setContentSize", width, height) }
-    override fun setUseSimpleShadows(simpleShadows: Boolean) { scrollPanel.invoke("setUseSimpleShadows", simpleShadows) }
-
-    // Invoke the missing methods
-    override fun scrollToBottom() { scrollPanel.invoke("scrollToBottom") }
-    override fun scrollToY(y: Float) { scrollPanel.invoke("scrollToY", y) }
-    override fun setShowScrollbars(show: Boolean) { scrollPanel.invoke("setShowScrollbars", show) }
-    override fun setUseMWheel(use: Boolean) { scrollPanel.invoke("setUseMWheel", use) }
-    override fun setOffset(xOffset: Float, yOffset: Float) { scrollPanel.invoke("setOffset", xOffset, yOffset) }
-    override fun resetOffset() { scrollPanel.invoke("resetOffset") }
-    override fun saveVerticalScrollState() { scrollPanel.invoke("saveVerticalScrollState") }
-    override fun restoreVerticalScrollState() { scrollPanel.invoke("restoreVerticalScrollState") }
-    override fun ensureVisible(component: UIComponentAPI) {
-        val actualComponent = if (component is BoxedUIElement) component.boxedElement else component
-        scrollPanel.invoke("ensureVisible", actualComponent)
-    }
-}
-
-interface ExtendedLabelAPI : LabelAPI {
-    fun autoSize()
-}
-
-class BoxedUILabel(val uiLabel: LabelAPI) :
-    BoxedUIElement(uiLabel as UIComponentAPI),
-    UIComponentAPI by (uiLabel as UIComponentAPI),
-    LabelAPI by uiLabel,
-    ExtendedLabelAPI
-{
-    override fun getPosition(): com.fs.starfarer.api.ui.PositionAPI = uiLabel.position
-    override fun render(alphaMult: Float) = uiLabel.render(alphaMult)
-    override fun advance(amount: Float) = uiLabel.advance(amount)
-    override fun getOpacity(): Float = uiLabel.opacity
-    override fun setOpacity(opacity: Float) { uiLabel.opacity = opacity }
-
-    override fun autoSize() { (uiLabel as UIComponentAPI).invoke("autoSize") }
-
-    /** A changed string changes the label's measured size, so its layout container is asked to lay out again. */
-    override fun setText(text: String?) {
-        val changed = uiLabel.text != text
-        uiLabel.text = text
-        if (changed) {
-            (uiLabel as UIComponentAPI).parent?.let { StarUIPanelPlugin.getAttached(it) }?.requestLayout()
-        }
-    }
-}
+/** Sizes the label to its text (vanilla's autoSize, which LabelAPI leaves out). */
+fun LabelAPI.autoSize() { invoke("autoSize") }
 
 interface ImageAPI {
     var spriteName: String
@@ -192,54 +99,6 @@ class BoxedUIImage(val innerImage: UIComponentAPI) :
     override fun sizeToOriginalSpriteSize() { innerImage.invoke("autoSize") }
     override fun sizeToOriginalAspectRatioWithWidth(width: Float) { innerImage.invoke("autoSizeToWidth", width) }
     override fun sizeToOriginalAspectRatioWithHeight(height: Float) { innerImage.invoke("autoSizeToHeight", height) }
-}
-
-class BoxedUISliderBar(val uiBar: UIPanelAPI): BoxedUIElement(uiBar), UIComponentAPI by uiBar {
-    var bonusColor
-        get() = uiBar.invoke("getBonusColor") as Color
-        set(color) { uiBar.invoke("setBonusColor", color) }
-
-    var widgetColor
-        get() = uiBar.invoke("getWidgetColor") as Color
-        set(color) { uiBar.invoke("setWidgetColor", color) }
-
-    var barColor
-        get() = uiBar.invoke("getBarColor") as Color
-        set(color) { uiBar.invoke("setBarColor", color) }
-
-    var numSubivisions
-        get() = uiBar.invoke("getNumSubivisions") as Int
-        set(amount) { uiBar.invoke("setNumSubivisions", amount) }
-
-    var roundingIncrement
-        get() = uiBar.invoke("getRoundingIncrement") as Int
-        set(amount) { uiBar.invoke("setRoundingIncrement", amount) }
-
-    var rangeMax
-        get() = uiBar.invoke("getRangeMax") as Float
-        set(amount) { uiBar.invoke("setRangeMax", amount) }
-
-    var rangeMin
-        get() = uiBar.invoke("getRangeMin") as Float
-        set(amount) { uiBar.invoke("setRangeMin", amount) }
-
-    var bonusAmount
-        get() = uiBar.invoke("getBonusAmount") as Float
-        set(amount) { uiBar.invoke("setBonusAmount", amount) }
-
-    var progress
-        get() = uiBar.invoke("getProgress") as Float
-        set(amount) { uiBar.invoke("setProgress", amount) }
-
-    var showNotchOnIfBelowProgress
-        get() = uiBar.invoke("getShowNotchOnIfBelowProgress") as Float
-        set(amount) { uiBar.invoke("setShowNotchOnIfBelowProgress", amount) }
-
-    val isShowNoText
-        get() = uiBar.invoke("isShowNoText") as Boolean
-
-    val textLabel
-        get() = BoxedUILabel(uiBar.invoke("getValue") as LabelAPI)
 }
 
 interface ShipPreviewAPI : UIPanelAPI {

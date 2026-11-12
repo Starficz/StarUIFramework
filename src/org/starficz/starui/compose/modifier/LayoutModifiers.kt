@@ -13,7 +13,6 @@ import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.applyAnchor
 import org.starficz.starui.core.children
-import org.starficz.starui.core.parent
 
 private fun UIComponentAPI.applySizeConfig(action: (NodeSize) -> NodeSize) {
     val actualComponent = this.actual
@@ -77,10 +76,8 @@ fun Modifier.padding(left: Float = 0f, top: Float = 0f, right: Float = 0f, botto
     val actualComponent = component.actual
     val pluginAsContainer = ((actualComponent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin)
         ?.takeIf { it.layoutEngine != null }
-    val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)?.let {
-        val contentContainer = it.invoke("getContentContainer") as? UIPanelAPI
-        contentContainer?.let { cc -> StarUIPanelPlugin.getAttached(cc) }
-    }
+    val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)?.contentContainer
+        ?.let { StarUIPanelPlugin.getAttached(it) }
     val containerPlugin = pluginAsContainer ?: scrollContainerPlugin
 
     // Padding is space INSIDE.

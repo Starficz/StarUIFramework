@@ -155,10 +155,10 @@ fun registerStackTests() {
         lateinit var label: UIComponentAPI
         lateinit var columnLabel: UIComponentAPI
         root.Row(LayoutSize.exact(600f, 24f), Modifier.anchor(ORIGIN).background(Color(30, 30, 40))) {
-            label = Text(text).boxedElement
+            label = Text(text)
         }
         root.Column(LayoutSize.exact(600f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 100f)).background(Color(30, 30, 40))) {
-            columnLabel = Text(text).boxedElement
+            columnLabel = Text(text)
         }
         frame()
         log("row label ${label.w}x${label.h}, column label ${columnLabel.w}x${columnLabel.h}")
