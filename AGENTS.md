@@ -75,6 +75,11 @@ a `ScrollPanelAPI` (its builder's components go into the scrolling content conta
 `Image` and `ShipDisplay` return `BoxedUIImage` / `BoxedUIShipPreview`, small wrappers for components that have no API;
 pass them to vanilla panel methods freely (StarUI unwraps them).
 
+Vanilla ship displays fit the ship and then always shrink it to 95%, and sit it 3% above centre. For an exact scale,
+set `shipDisplay.overwriteScale = 1f` (one sprite pixel per UI unit; `1f / screenScaleMult` for one per screen pixel):
+the ship then draws at that scale, centred, with its edges on whole pixels (`ShipDisplayExactScalePatch`). Vanilla's
+`getScale()` still reports its own 95% value.
+
 `Button` supports only the fonts vanilla buttons have (`ORBITRON_12_CONDENSED` default, `ORBITRON_20(_BOLD)`,
 `ORBITRON_24(_BOLD)`, `VICTOR_10/14`). Fonts are the `Font` enum in `core/Font.kt`.
 
@@ -235,6 +240,9 @@ docs/                   design notes: reactive-scopes-plan.md
 - **Test in the real game.** `native-smoke/run-test-suite.ps1` compiles `src/` and `native-smoke/kotlin/` into a
   test-only jar and runs every group in an isolated game process (about 45 s; `-Filter name,name` runs only some).
   It ends with `SUITE SUMMARY checks=N failures=0`. Look at the PNGs too. It cannot run under Fast Rendering.
+  With starsector-native-smoke 2.0 every game holds a slot: from Git Bash, run it as
+  `bash "<skill>/scripts/live/smoke-slot.sh" run staruiframework.tests -- powershell.exe -NoProfile -ExecutionPolicy
+  Bypass -File "<Windows path to run-test-suite.ps1>" -OutDir "<Windows path, new folder>"` (`NO_SLOT` otherwise).
   Write the test first and see it fail when practical. Tests are Kotlin in the default package, registered in
   `native-smoke/kotlin/TestFramework.kt`.
 - **No obfuscated names** in code, PatchLib matchers, casts or imports. Find engine classes and members by API

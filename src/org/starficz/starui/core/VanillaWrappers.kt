@@ -155,9 +155,20 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
         get() = uiShipPreview.invoke("getScaleDownToFitHeight") as Float
         set(height) { uiShipPreview.invoke("setScaleDownToFitHeight", height) }
 
+    /**
+     * An exact scale for the ship (1 = one sprite pixel per UI unit; at a UI scale above 100% use
+     * `1f / Global.getSettings().screenScaleMult` for one per screen pixel), centred exactly and pixel aligned.
+     * Null (the default) keeps vanilla's fit, which never reaches 1:1 (it always takes 95%). Done by
+     * ShipDisplayExactScalePatch.
+     */
     override var overwriteScale: Float?
-        get() = uiShipPreview.invoke("getOverwriteScale") as Float?
-        set(scale) { uiShipPreview.invoke("setOverwriteScale", scale) }
+        get() = ShipDisplayScale.of(uiShipPreview)
+        set(scale) {
+            if (ShipDisplayScale.of(uiShipPreview) == scale) return
+            ShipDisplayScale.set(uiShipPreview, scale)
+            // the ship's centring happens when its ships are made; make them again on the next render
+            uiShipPreview.invoke("cleanup")
+        }
 
     override var isSchematicMode: Boolean
         get() = uiShipPreview.invoke("isSchematicMode") as Boolean
