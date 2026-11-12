@@ -80,7 +80,10 @@ and last a click handler or builder where there is one.
 `Checkbox(text, bind, size, modifier, ..., buttonGroup)`, `AreaCheckbox(text, bind, size, modifier, ..., buttonGroup)`,
 `Slider(bind: UIState<Float>, size, modifier, valueRange = 0f..100f, text, barColor, widgetColor, configure =, step)`,
 `ProgressBar(progress, size, modifier, valueRange, text, barColor, configure =, animate)`,
-`SectionHeading(text, size, modifier, color, backgroundColor, textAlign)`, `Spacer(size, modifier)`,
+`SectionHeading(text, size, modifier, color, backgroundColor, textAlign)`, `Table(items, size, modifier, ...) { column(...) }`,
+`StatGrid { entry(label, value) }`, `StatModGrid(stat)`, `LabelledValue(label, value)`, `RelationshipBar(value)`,
+`ImportanceIndicator(importance)`, `CommodityIcons { icons(id, count) }`, `CostDisplay { cost(id, quantity) }`,
+`ShipList(ships)`, `FleetSummary(ships)`, `CodexEntries(title, ids)`, `Spacer(size, modifier)`,
 `Divider(modifier, thickness, color)`, `FlexSpacer(weight)`.
 
 - Controls have a `contentPadding` (space between their edge and their content, from the theme); `Modifier.padding`
@@ -90,6 +93,16 @@ and last a click handler or builder where there is one.
 - `Spacer` draws nothing; give it `Modifier.background(color)` to show it.
 - `SectionHeading` is vanilla's own (`TooltipMakerAPI.addSectionHeading`) and returns its `LabelAPI`, which draws its
   own bar; it fills the width by default and its text updates in place.
+- `Table` is vanilla's table: `column("Ship") { it.name }` for text, `column("Cost", width = 80f) { cell("$cost",
+  color = ...) }` for styled text, `column("", width = 70f) { custom { Button(...) } }` for StarUI components in a cell
+  (laid over the cell, reactive like any builder). Columns with `width` are exact; the rest share the leftover by
+  `weight`. `rowTooltip`, `onRowClick` and a column's `tooltip` (on its header) work as in vanilla. Rows are all
+  `itemHeight` tall.
+- The other TooltipMakerAPI ports (`StatGrid`, `RelationshipBar`, `ShipList`, ...) build vanilla's own component on a
+  temporary tooltip at the width they get and hold it in a StarUI panel; they are made again when that width
+  changes or their builder runs again. `CostDisplay` and the faction or person `RelationshipBar` need a campaign.
+- Vanilla's `bringComponentToTop` also raises the panel in its parent, and so on up: inside a Column or Row it
+  reorders them. To move a child above its siblings, remove it and add it again.
 - For vanilla's colours use `VanillaColors` (from `core`): the player faction's `base`, `dark` and `bright`, `text`,
   `gray`, `highlight`, `positive`, `negative`, the story-point colours and `panel`, each read live. The showcase
   (`staruisamples/ShowcaseUIPlugin.kt`) is styled with them.

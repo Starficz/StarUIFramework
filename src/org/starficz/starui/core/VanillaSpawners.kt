@@ -272,3 +272,19 @@ fun ButtonAPI.onClick(function: () -> Unit) {
         listener.addOnClick(function)
     }
 }
+/**
+ * Builds vanilla tooltip content at [width] on a temporary TooltipMakerAPI and returns the component it added last,
+ * detached, for adding anywhere else. Most TooltipMakerAPI builders (grids, bars, tables, ship lists) add exactly one
+ * component through `addCustom`, which is what this takes; an empty panel when it added nothing. [block] gets the
+ * temporary tooltip.
+ */
+fun buildFromTooltip(width: Float, block: TooltipMakerAPI.() -> Unit): UIComponentAPI {
+    val tempPanel = Global.getSettings().createCustom(width, 4000f, null)
+    val tooltip = tempPanel.createUIElement(width, 4000f, false)
+    tempPanel.addUIElement(tooltip)
+    tooltip.block()
+    // some builders add nothing for empty input (a stat with no modifiers): an empty panel then
+    val made = tooltip.prev ?: return Global.getSettings().createCustom(width, 0f, null)
+    tooltip.removeComponent(made)
+    return made
+}

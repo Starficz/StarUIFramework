@@ -130,7 +130,7 @@ internal fun applyReuseBounds(
 }
 
 /** The CustomPanel for a container call: the reused one, or a new one with a fresh plugin added to this panel. */
-private fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<CustomPanelAPI, StarUIPanelPlugin> {
+internal fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<CustomPanelAPI, StarUIPanelPlugin> {
     val reused: CustomPanelAPI? = slot.reused()
     if (reused != null) {
         applyReuseBounds(reused, size)

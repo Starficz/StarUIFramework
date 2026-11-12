@@ -22,13 +22,18 @@ Need to do:
 - Ship Displays
 - Sliders and progress bars (one value; vanilla has no range slider)
 - Section headings (vanilla's own)
+- Tables (text, styled and custom cells, row tooltips, row clicks)
+- Stat grids and stat modifier grids
+- Labelled values, relationship bars, importance indicators
+- Commodity icons, cost displays (campaign only)
+- Ship lists, fleet summaries, codex entry links
   
 Need to do:
 - Large Skill Icons
 
-The following needs to be ported from TooltipMakerAPI
-- Small Skill Icons
-- Tables
+The following needs to be ported from TooltipMakerAPI (all need a running campaign)
+- Skill panels (small skill icons)
 - Planet UI
 - Cargo
 - Sector Map
+- Event progress bars and markers, survey requirements, story point info

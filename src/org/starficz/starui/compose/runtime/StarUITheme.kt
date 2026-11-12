@@ -103,6 +103,17 @@ data class SectionTheme(
     val borderColor: Color? = null       // null = the player faction's dark UI colour
 )
 
+data class TableTheme(
+    val size: Size = Size.wrapContent(),
+    /** The height of every row. */
+    val itemHeight: Float = 20f,
+    val withHeader: Boolean = true,
+    val withBorder: Boolean = true,
+    val baseColor: Color? = null,   // null = the player faction's base UI colour
+    val darkColor: Color? = null,   // null = its dark UI colour
+    val brightColor: Color? = null  // null = its bright UI colour
+)
+
 data class ShipDisplayTheme(
     val size: BoundedSize = Size.exact(100f, 100f),
     val vanillaStyle: BoxedUIShipPreview.Style = BoxedUIShipPreview.Style.NORMAL,
@@ -139,7 +150,8 @@ data class StarUITheme(
     val sectionHeading: SectionHeadingTheme = SectionHeadingTheme(),
     val section: SectionTheme = SectionTheme(),
     val shipDisplay: ShipDisplayTheme = ShipDisplayTheme(),
-    val image: ImageTheme = ImageTheme()
+    val image: ImageTheme = ImageTheme(),
+    val table: TableTheme = TableTheme()
 ) {
     companion object {
         val Default = StarUITheme()

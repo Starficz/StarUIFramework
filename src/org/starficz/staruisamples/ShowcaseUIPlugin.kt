@@ -2,6 +2,10 @@ package org.starficz.staruisamples
 
 import com.fs.starfarer.api.Global
 import org.starficz.starui.compose.Alignment
+import com.fs.starfarer.api.campaign.PersonImportance
+import com.fs.starfarer.api.combat.MutableStat
+import com.fs.starfarer.api.impl.codex.CodexDataV2
+import com.fs.starfarer.api.ui.IconRenderMode
 import com.fs.starfarer.api.fleet.FleetMemberType
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
@@ -356,7 +360,30 @@ object ShowcaseUIPlugin {
             }
             Text("Counters made with mutableStateOf; each column reads only its own", color = GRAY)
         }
+        Section("Table: text, styled and custom cells") {
+            lateinit var clickLabel: LabelAPI
+            Table(fleet.value, Size.fillMaxWidth(), rowKey = { it.id }, emptyText = "Fleet empty",
+                rowTooltip = { ship -> addPara("Row tooltip for the %s.", 0f, HIGHLIGHT, ship.name) },
+                onRowClick = { ship -> clickLabel.text = "onRowClick: ${ship.name}" }) {
+                column("Ship", tooltip = "A weighted column: it takes the width the others leave") { it.name }
+                column("Cost", width = 70f, align = TextAlign.Right) { ship -> cell("${ship.cost}", color = HIGHLIGHT) }
+                column("Status", width = 90f) { ship ->
+                    cell("${ship.cr}% CR", highlightedText = listOf("${ship.cr}%" to if (ship.cr < 50) NEGATIVE else POSITIVE))
+                }
+                column("", width = 70f) { ship ->
+                    custom { Button("Sell", modifier = Modifier.align(Alignment.Center)) { fleet.value = fleet.value - ship } }
+                }
+            }
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                Button("Reset fleet") { fleet.value = startFleet }
+                clickLabel = Text("Click a row (onRowClick), hover one (rowTooltip)", color = GRAY)
+            }
+        }
     }
+    private class FleetShip(val id: Int, val name: String, val cost: Int, val cr: Int)
+    private val startFleet = listOf(FleetShip(1, "Onslaught", 320, 70), FleetShip(2, "Eagle", 180, 45),
+        FleetShip(3, "Hammerhead", 90, 85), FleetShip(4, "Wolf", 40, 30))
+    private val fleet = UIState(startFleet)
     private val leftCount = mutableStateOf(0)
     private val rightCount = mutableStateOf(0)
     private var leftBuilds = 0
@@ -465,6 +492,25 @@ object ShowcaseUIPlugin {
                     Text(name, color = GRAY)
                 }
             }
+        }
+        Section("Vanilla tooltip content") {
+            StatGrid(columns = 2) {
+                entry("Max speed", "120"); entry("Armor", "1500", VanillaColors.negative)
+                entry("Hull", "8000"); entry("Flux capacity", "12000")
+            }
+            StatModGrid(MutableStat(100f).apply { modifyFlat("hullmod", 20f, "Hardened Shields"); modifyMult("skill", 1.25f, "Field Modulation") })
+            Row(Size.fillMaxWidth(), spacing = 8f) {
+                LabelledValue("Credits", "12,000", Size.fillMaxWidth())
+                LabelledValue("Story points", "3", Size.fillMaxWidth(), valueColor = VanillaColors.story)
+            }
+            RelationshipBar(0.35f, Size.fillMaxWidth())
+            ImportanceIndicator(PersonImportance.HIGH, Size.fillMaxWidth())
+            CommodityIcons { icons("supplies", 4); icons("fuel", 2); icons("heavy_machinery", 1, IconRenderMode.DIM) }
+            val members = listOf("onslaught_Standard", "eagle_Assault", "hammerhead_Balanced", "wolf_Assault")
+                .map { Global.getSettings().createFleetMember(FleetMemberType.SHIP, it) }
+            ShipList(members, columns = 4, iconSize = 40f)
+            FleetSummary(members, Size.fillMaxWidth())
+            CodexEntries("Related codex entries", setOf(CodexDataV2.getShipEntryId("onslaught"), CodexDataV2.getShipEntryId("eagle")))
         }
     }
 
