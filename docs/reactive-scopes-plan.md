@@ -1,8 +1,10 @@
 # StarUIFramework: reactive scopes plan
 
-Status: planned, not started. Written 2026-11-11 at the end of a long session so the work can start in a fresh
-context. Read this whole file first, then the memory note `starui-test-suite-constraints` (it is loaded
-automatically). Everything below was checked in code or in game unless it says otherwise.
+Status (2026-11-11): Phases 0-5 done on branch `reactive-scopes` (609/609 checks), plus AGENTS.md. Remaining:
+Phase 6 (Refit Filters port and live acceptance). Decisions taken: onLayout fires every pass (onFirstLayout is
+once), every container is a scope, Step 1 kept simple and Step 2 built on it. Found while building Step 2: stack
+children are anchored on their previous sibling, so removing one now re-pins the rest. Originally written
+2026-11-11 so the work could start in a fresh context.
 
 **Goal.** Make plain Kotlin `if` / `for` / `when` inside StarUI builders update automatically when state changes,
 without a virtual-node layer (keep "zero wrapper": DSL calls create real Starsector objects), and make the library
