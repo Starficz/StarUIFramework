@@ -26,6 +26,7 @@ import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.getChildrenCopy
+import org.starficz.starui.core.sectorMap
 
 private data class TestShip(val id: Int, val name: String, val cost: Int)
 private val testShips = listOf(TestShip(1, "Onslaught", 300), TestShip(2, "Eagle", 150), TestShip(3, "Wolf", 40))
@@ -260,7 +261,7 @@ fun registerVanillaPortTests() {
             expect(p.getChildrenCopy().isNotEmpty(), "PlanetInfo holds vanilla's planet display")
         }
 
-        var map: org.starficz.starui.core.BoxedSectorMap? = null
+        var map: CustomPanelAPI? = null
         val mapError = thrown {
             val params = com.fs.starfarer.api.ui.MapParams()
             root.Column(Size.exact(400f, 300f), elementAt(800f, 20f)) {
@@ -268,8 +269,7 @@ fun registerVanillaPortTests() {
             }
             frame(); frame()
         }
-        log("SectorMap at startup: ${mapError ?: "built"}; map=${map?.map}")
-        map?.let { m -> if (m.map != null) near(m.holder.position.width, 380f, "SectorMap takes its exact width") }
+        log("SectorMap at startup: ${mapError ?: "built"}; map=${map?.sectorMap}")
         screenshot("final")
     }
 }

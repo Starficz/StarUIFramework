@@ -114,7 +114,9 @@ and last a click handler or builder where there is one.
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
 `ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
 `Image` and `ShipDisplay` return `BoxedUIImage` / `BoxedUIShipPreview`, small wrappers for components that have no API;
-pass them to vanilla panel methods freely (StarUI unwraps them).
+pass them to vanilla panel methods freely (StarUI unwraps them). A box is only for a vanilla object with no API
+interface at all; where one exists, the methods it leaves out are extensions on it (`ScrollPanelAPI.addToOverlay`,
+`SectorMapAPI.centerOn`).
 
 Vanilla ship displays fit the ship and then always shrink it to 95%, and sit it 3% above centre. For an exact scale,
 pass `exactScale = 1f` (one sprite pixel per UI unit; `1f / screenScaleMult` for one per screen pixel), or set

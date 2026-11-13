@@ -13,6 +13,7 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.IconRenderMode
 import com.fs.starfarer.api.ui.MapParams
+import com.fs.starfarer.api.ui.SectorMapAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -24,7 +25,9 @@ import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.layout.VanillaElementEngine
 import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.core.BoxedSectorMap
+import org.starficz.starui.core.centerOn
+import org.starficz.starui.core.getChildrenCopy
+import org.starficz.starui.core.worldCenter
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.buildFromTooltip
 import java.awt.Color
@@ -459,9 +462,9 @@ fun UIPanelAPI.PlaythroughData(
 /**
  * Vanilla's sector map (as in intel and mission screens) at the size it gets, showing what [params] asks for
  * (`MapParams.showSystem`, `positionToShowAllMarkersAndSystems`, filters, ...). With a [title] it sits in vanilla's
- * titled box, in [color] and [dark]. Returns a [BoxedSectorMap]: SectorMapAPI (pings) and the map's centring and zoom.
- * Vanilla lays a map out once, so a size change makes it again (keeping its centre), and so does the builder calling
- * this running again. Needs a campaign.
+ * titled box, in [color] and [dark]. `.sectorMap` on the returned panel gives vanilla's [SectorMapAPI] (pings, and
+ * `centerOn`, `centerOnEntity`, `zoomOutAndCenter` from `core`) once it is laid out. Vanilla lays a map out once, so
+ * a size change makes it again, keeping its centre; so does the builder calling this running again. Needs a campaign.
  */
 fun UIPanelAPI.SectorMap(
     params: MapParams,
@@ -470,16 +473,20 @@ fun UIPanelAPI.SectorMap(
     title: String? = null,
     color: Color = Global.getSector()?.playerFaction?.baseUIColor ?: VanillaColors.base,
     dark: Color = Global.getSector()?.playerFaction?.darkUIColor ?: VanillaColors.dark
-): BoxedSectorMap {
-    lateinit var boxed: BoxedSectorMap
-    val panel = VanillaSizedComponent("SectorMap", size, modifier, onSwap = { old, made -> boxed.swapped(old, made) }) { width, height ->
-        val tempPanel = Global.getSettings().createCustom(width, height, null)
-        val tooltip = tempPanel.createUIElement(width, height, false)
-        tooltip.createSectorMap(width, height, params, title, color, dark)
-    }
-    boxed = boxedMaps.getOrPut(panel) { BoxedSectorMap(panel) }
-    return boxed
+): CustomPanelAPI = VanillaSizedComponent("SectorMap", size, modifier, onSwap = ::keepMapCenter) { width, height ->
+    val tempPanel = Global.getSettings().createCustom(width, height, null)
+    val tooltip = tempPanel.createUIElement(width, height, false)
+    tooltip.createSectorMap(width, height, params, title, color, dark)
 }
 
-/** One box per map panel, so a reused panel keeps its pending calls. */
-private val boxedMaps = java.util.WeakHashMap<CustomPanelAPI, BoxedSectorMap>()
+/** A sector map made again (a new size) starts where the old one was looking. */
+private fun keepMapCenter(old: UIComponentAPI?, made: UIComponentAPI) {
+    val oldMap = old?.let { findMap(it) } ?: return
+    findMap(made)?.centerOn(oldMap.worldCenter)
+}
+
+private fun findMap(component: UIComponentAPI): SectorMapAPI? {
+    if (component is SectorMapAPI) return component
+    if (component !is UIPanelAPI) return null
+    return component.getChildrenCopy().firstNotNullOfOrNull { findMap(it) }
+}

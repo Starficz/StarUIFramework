@@ -1,6 +1,9 @@
 package org.starficz.starui.core
 
 
+import com.fs.starfarer.api.campaign.SectorEntityToken
+import com.fs.starfarer.api.ui.SectorMapAPI
+import org.lwjgl.util.vector.Vector2f
 import com.fs.graphics.util.Fader
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
@@ -20,6 +23,32 @@ import org.starficz.starui.core.Anchor.AnchorReference
  */
 val CustomPanelAPI.scrollPanel: ScrollPanelAPI?
     get() = (plugin as? StarUIPanelPlugin)?.scrollHost
+
+/**
+ * The vanilla map of a `SectorMap` (inside its title box when it has one), for pings and the [SectorMapAPI]
+ * extensions below; null for any other panel, and before the map is first laid out (it is made at the size it gets).
+ * Vanilla lays a map out once, so StarUI makes it again when its size changes: read this when you use it, do not
+ * keep it.
+ */
+val CustomPanelAPI.sectorMap: SectorMapAPI?
+    get() = findSectorMap(this)
+
+private fun findSectorMap(component: UIComponentAPI): SectorMapAPI? {
+    if (component is SectorMapAPI) return component
+    if (component !is UIPanelAPI) return null
+    return component.getChildrenNonCopy().firstNotNullOfOrNull { findSectorMap(it) }
+}
+
+// The sector map's readable methods SectorMapAPI leaves out.
+
+/** Centres the map on a point of the location it shows, in world coordinates. */
+fun SectorMapAPI.centerOn(location: Vector2f) { invoke("centerOn", Vector2f(location)) }
+/** Shows [entity]'s location (switching between hyperspace and a system as needed) and centres on it. */
+fun SectorMapAPI.centerOnEntity(entity: SectorEntityToken) { invoke("centerOnEntity", entity) }
+/** Zooms all the way out and centres the map. */
+fun SectorMapAPI.zoomOutAndCenter() { invoke("zoomOutAndCenter") }
+/** The world point at the centre of the view. */
+val SectorMapAPI.worldCenter: Vector2f get() = invoke("getWorldCenter") as Vector2f
 
 var UIComponentAPI.fader: Fader?
     get() = invoke("getFader") as Fader?
