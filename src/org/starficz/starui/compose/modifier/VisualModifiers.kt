@@ -42,21 +42,22 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
 }
 
 /**
- * A line [width] pixels thick around the component's edge, in [color], drawn over its content. The default, a 1 px
- * line in the player faction's dark colour, is what vanilla's campaign panels draw (intel, dialogs, codex boxes).
+ * A line [width] pixels thick along the inside of the component's edge, in [color], drawn over its content. The
+ * default, a 1 px line in the player faction's dark colour, is what vanilla's campaign panels draw (intel, dialogs,
+ * codex boxes). Drawn as four rectangles that meet without overlapping, so the corners are square and a translucent
+ * colour is even all the way round.
  */
 fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = onRender { alphaMult ->
+    val t = minOf(width, (right - left) / 2f, (top - bottom) / 2f)
+    if (t <= 0f) return@onRender
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)
     GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
     ColorUtils.glColor(color, alphaMult, false)
-    GL11.glLineWidth(width)
-    GL11.glBegin(GL11.GL_LINE_LOOP)
-    GL11.glVertex2f(left, bottom)
-    GL11.glVertex2f(right, bottom)
-    GL11.glVertex2f(right, top)
-    GL11.glVertex2f(left, top)
-    GL11.glEnd()
+    GL11.glRectf(left, top - t, right, top)               // top, full width
+    GL11.glRectf(left, bottom, right, bottom + t)         // bottom, full width
+    GL11.glRectf(left, bottom + t, left + t, top - t)     // left, between them
+    GL11.glRectf(right - t, bottom + t, right, top - t)   // right, between them
     GL11.glEnable(GL11.GL_TEXTURE_2D)
 }
 

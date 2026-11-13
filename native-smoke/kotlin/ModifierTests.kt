@@ -79,6 +79,34 @@ fun registerModifierVisualTests() {
         screenshot("final")
     }
 
+    StarUITestSuite.group("modifier-border-corners") {
+        // a thick translucent line: every corner filled, painted once (an overlap would blend twice and come out
+        // brighter), nothing outside the component or inside the band
+        val t = 8f
+        val panel = root.CustomPanel(Size.exact(240f, 140f), Modifier.anchor(Anchor.inside.topLeft.ofParent(80f, 80f))
+            .border(Color(40, 220, 40, 128), t))
+        frame()
+        val p = panel.position
+        val edge = pixel(p.x + p.width / 2f, p.y + t / 2f)
+        expect(edge.g > 60, "the line is drawn (mid-bottom edge $edge)")
+        val corners = listOf(p.x to p.y, p.x + p.width - t to p.y, p.x to p.y + p.height - t, p.x + p.width - t to p.y + p.height - t)
+        for ((i, c) in corners.withIndex()) {
+            val (cx, cy) = c
+            val odd = mutableListOf<Rgb>()
+            // whole pixels: region() rounds, and a half-pixel offset lands on the next pixel out
+            for (dy in 0 until t.toInt()) for (dx in 0 until t.toInt()) {
+                val px = pixel(cx + dx, cy + dy)
+                if (px != edge) odd += px
+            }
+            expect(odd.isEmpty(), "corner $i is filled once, the same colour as the edges (${odd.size} pixels differ: ${odd.take(3)})")
+        }
+        val outside = fraction(p.x - 6f, p.y - 6f, p.width + 12f, 5f) { it.g > 60 }
+        expect(outside == 0f, "nothing below the component (fraction $outside)")
+        val inside = fraction(p.x + t + 1f, p.y + t + 1f, p.width - 2 * t - 2f, p.height - 2 * t - 2f) { it.g > 60 }
+        expect(inside == 0f, "nothing inside the band (fraction $inside)")
+        screenshot("final")
+    }
+
     StarUITestSuite.group("modifier-spacing-shapes") {
         // margin, padding and hitBoxPadding take the same three shapes: (all), (horizontal, vertical), sides by name
         lateinit var all: CustomPanelAPI; lateinit var pair: CustomPanelAPI; lateinit var sides: CustomPanelAPI
