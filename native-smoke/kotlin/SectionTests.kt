@@ -59,10 +59,11 @@ fun registerSectionTests() {
         heading = section.getChildrenCopy().first() as LabelAPI
         expect(heading.text == "Cargo", "the section starts with its heading (${heading.text})")
         near(section.w, 320f, "a section fills its column's width")
-        near(heading.relTop(section), 0f, "the heading sits at the top")
-        near(content.relTop(section), heading.h + 8f, "the content starts below it, after the top padding")
-        near(content.relLeft(section), 10f, "and the side padding in")
-        near(section.h, heading.h + 8f + 40f + 8f, "the section wraps its heading, padding and content")
+        // the 1 px border takes its pixel (CSS's box model): everything sits 1 in from the edge
+        near(heading.relTop(section), 1f, "the heading sits at the top, inside the border")
+        near(content.relTop(section), 1f + heading.h + 8f, "the content starts below it, after the top padding")
+        near(content.relLeft(section), 1f + 10f, "and the side padding in")
+        near(section.h, 1f + heading.h + 8f + 40f + 8f + 1f, "the section wraps its border, heading, padding and content")
         screenshot("final")
     }
 }

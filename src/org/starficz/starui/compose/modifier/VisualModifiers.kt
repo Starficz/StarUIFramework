@@ -46,8 +46,12 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
  * default, a 1 px line in the player faction's dark colour, is what vanilla's campaign panels draw (intel, dialogs,
  * codex boxes). Drawn as four rectangles that meet without overlapping, so the corners are square and a translucent
  * colour is even all the way round.
+ *
+ * Like a CSS border, it takes its space: [width] is added to the component's padding on every side, so `padding`
+ * is the gap inside the border and content never sits on it. On a wrap axis the component grows by twice [width];
+ * on an exact or fill axis it keeps its size and the content gets that much less room.
  */
-fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = onRender { alphaMult ->
+fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = reserveBorder(width).onRender { alphaMult ->
     val t = minOf(width, (right - left) / 2f, (top - bottom) / 2f)
     if (t <= 0f) return@onRender
     GL11.glDisable(GL11.GL_TEXTURE_2D)
@@ -72,11 +76,19 @@ enum class VanillaFrame(internal val spriteSet: String) {
     Codex("ui_border4"),
     /** Combat's text boxes: a thin frame with rounded corners (`ui_border3`). */
     Combat("ui_border3"),
+    ;
+
+    /** How deep the frame is: its corner sprite's size, the unit vanilla draws every piece in (8 for TitleMenu, 4 otherwise). */
+    val depth: Float get() = Global.getSettings().getSprite("ui", "${spriteSet}_bot_left").width
 }
+
+/** Adds a border's [depth] to the component's padding, so content starts inside the border (CSS's box model). */
+private fun Modifier.reserveBorder(depth: Float) = then { component -> component.addPadding(PaddingValues.all(depth)) }
 
 /**
  * One of vanilla's sprite frames around the component, inside its edge and under its content, drawn as vanilla's
- * own frame class draws it: the corners at their size, each edge repeated between them.
+ * own frame class draws it: the corners at their size, each edge repeated between them. Like the line [border], it
+ * takes its space: the frame's [VanillaFrame.depth] is added to the component's padding on every side.
  */
 fun Modifier.border(frame: VanillaFrame): Modifier {
     fun sprite(part: String) = Global.getSettings().getSprite("ui", "${frame.spriteSet}_$part")
@@ -85,7 +97,7 @@ fun Modifier.border(frame: VanillaFrame): Modifier {
     val leftEdge = sprite("left"); val rightEdge = sprite("right")
     val topEdge = sprite("top"); val botEdge = sprite("bot")
     val all = listOf(botLeft, botRight, topLeft, topRight, leftEdge, rightEdge, topEdge, botEdge)
-    return onRenderBelow { alphaMult ->
+    return reserveBorder(botLeft.width).onRenderBelow { alphaMult ->
         val c = botLeft.width   // vanilla sizes every piece by the corner
         val w = right - left
         val h = top - bottom

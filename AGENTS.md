@@ -208,7 +208,11 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
 `.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` / `Codex` / `Combat` draws one of the sprite
 frames vanilla uses (the title screen's menu box, codex panels and title dialogs, combat text boxes), inside the
-component and under its content, untinted as vanilla draws them.
+component and under its content, untinted as vanilla draws them. Like a CSS border, either one takes its space: its
+depth (the line's width, or `VanillaFrame.depth`: 8 for TitleMenu, 4 otherwise) is added to the padding on every
+side, so `padding` is the gap inside the border. A wrapping axis grows by it; an exact or fill one keeps its size
+and the content gets less room. (Compose's border takes no space; StarUI's modifiers are not order-sensitive, so
+Compose's `.border().padding()` trick is not available.)
 
 Modifiers work on every component, vanilla ones included, because they attach to the native object. The input
 handlers receive the event (`{ event -> }`); a handler that does not need it just ignores it (`{ clicks++ }`).

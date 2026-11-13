@@ -63,10 +63,11 @@ fun registerApiShapeTests() {
         }
         frame()
         expect(section.getChildrenCopy().none { it is LabelAPI }, "a Section with a null title has no heading")
-        near(bar.relTop(section), 6f, "its content starts at the content padding")
-        near(bar.w, 300f - 12f, "Size.fillMaxWidth(height =) fills the width inside the padding")
+        // plus the section's 1 px border on every side
+        near(bar.relTop(section), 1f + 6f, "its content starts at the content padding, inside the border")
+        near(bar.w, 300f - 2f - 12f, "Size.fillMaxWidth(height =) fills the width inside the border and padding")
         near(bar.h, 12f, "at the exact height")
-        near(section.h, 12f + 12f, "and the section wraps it")
+        near(section.h, 2f + 12f + 12f, "and the section wraps it")
         screenshot("final")
     }
 }

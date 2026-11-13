@@ -79,6 +79,35 @@ fun registerModifierVisualTests() {
         screenshot("final")
     }
 
+    StarUITestSuite.group("modifier-border-reserves-space") {
+        // CSS's box model: a border takes its depth inside the component's edge, and padding is the gap inside it
+        lateinit var lineChild: UIComponentAPI; lateinit var frameChild: UIComponentAPI; lateinit var exactChild: UIComponentAPI
+        val line = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(60f, 60f))
+            .border(Color(40, 220, 40), 3f).padding(5f)) {
+            lineChild = Spacer(Size.exact(50f, 20f), Modifier.background(Color(220, 40, 40)))
+        }
+        val framed = root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(200f, 60f))
+            .border(VanillaFrame.TitleMenu).padding(7f)) {
+            frameChild = Spacer(Size.exact(50f, 20f), Modifier.background(Color(220, 40, 40)))
+        }
+        val exact = root.Column(Size.exact(100f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(340f, 60f))
+            .border(VanillaFrame.TitleMenu)) {
+            exactChild = Spacer(Size.fillMaxSize(), Modifier.background(Color(220, 40, 40)))
+        }
+        frame(); frame()
+        val depth = VanillaFrame.TitleMenu.depth
+        near(depth, 8f, "TitleMenu's frame is 8 deep (its corner sprite)")
+        near(lineChild.relLeft(line), 3f + 5f, "a 3 px line plus padding 5: the child starts 8 in")
+        near(lineChild.relTop(line), 8f, "and 8 down")
+        near(line.position.width, 50f + 2 * 8f, "a wrapping container grows by border and padding on both sides")
+        near(frameChild.relLeft(framed), depth + 7f, "TitleMenu plus padding 7: the child starts 15 in, as vanilla's menu box does")
+        near(framed.position.height, 20f + 2 * (depth + 7f), "and the wrapping container grows to match")
+        near(exact.position.width, 100f, "an exact size stays as asked")
+        near(exactChild.position.width, 100f - 2 * depth, "and its content gets the frame's depth less on each side")
+        near(exactChild.position.height, 60f - 2 * depth, "on both axes")
+        screenshot("final")
+    }
+
     StarUITestSuite.group("modifier-border-corners") {
         // a thick translucent line: every corner filled, painted once (an overlap would blend twice and come out
         // brighter), nothing outside the component or inside the band
