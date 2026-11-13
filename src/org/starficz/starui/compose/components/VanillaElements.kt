@@ -11,7 +11,11 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.IconRenderMode
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import com.fs.starfarer.api.impl.campaign.intel.events.BaseEventIntel
+import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
+import org.starficz.starui.core.buildTooltipBlock
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.layout.VanillaElementEngine
@@ -32,6 +36,15 @@ private fun UIPanelAPI.VanillaElement(
     modifier: Modifier,
     fixedWidth: Float? = null,
     build: TooltipMakerAPI.(width: Float) -> Unit
+): CustomPanelAPI = VanillaComponent(kind, size, modifier, fixedWidth) { width -> buildFromTooltip(width) { build(width) } }
+
+/** Like [VanillaElement], with [make] building the component for a width itself. */
+private fun UIPanelAPI.VanillaComponent(
+    kind: String,
+    size: Size,
+    modifier: Modifier,
+    fixedWidth: Float? = null,
+    make: (width: Float) -> UIComponentAPI
 ): CustomPanelAPI {
     checkDslTarget()
     val slot = childSlot(kind)
@@ -40,7 +53,7 @@ private fun UIPanelAPI.VanillaElement(
     engine.fixedWidth = fixedWidth
     engine.afterBuild = null
     engine.afterLayout = null
-    engine.build = { width -> buildFromTooltip(width) { build(width) } }
+    engine.build = make
 
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
     slot.remember(panel, panel)
@@ -281,4 +294,64 @@ fun UIPanelAPI.CodexEntries(
     sort: Boolean = true
 ): CustomPanelAPI = VanillaElement("CodexEntries", size, modifier) { _ ->
     addCodexEntries(title, entryIds, sort, 0f)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Campaign content: needs a running campaign (people, intel)
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Vanilla's skill panel for [person]: their skills by aptitude, with elite markers and each skill's tooltip, as on
+ * the character and officer screens. `admin = true` shows an administrator's skills; `oneColumn = true` stacks the
+ * aptitudes in one column (for narrow places). Needs a campaign.
+ */
+fun UIPanelAPI.SkillPanel(
+    person: PersonAPI,
+    size: Size = Size.wrapContent(),
+    modifier: Modifier = Modifier,
+    admin: Boolean = false,
+    oneColumn: Boolean = false
+): CustomPanelAPI = VanillaElement("SkillPanel", size, modifier) { _ ->
+    if (oneColumn) addSkillPanelOneColumn(person, admin, 0f) else addSkillPanel(person, admin, 0f)
+}
+
+/**
+ * An event's progress bar as its intel screen shows it (Hostile Activity, Hyperspace Topography, ...): the bar,
+ * the icon of each stage above it at its progress, the marker of the current progress below it, and the event's own
+ * tooltips on the bar and the stage icons. Fills the width it gets. Needs a campaign.
+ */
+fun UIPanelAPI.EventProgressBar(
+    intel: BaseEventIntel,
+    size: Size = Size.fillMaxWidth(),
+    modifier: Modifier = Modifier
+): CustomPanelAPI = VanillaComponent("EventProgressBar", size, modifier) { width ->
+    buildTooltipBlock(width) {
+        // the stages shown, as BaseEventIntel.createLargeDescription picks them
+        val shown = intel.stages.filter { curr ->
+            !(curr.progress <= 0 && !curr.showIconIfFirstStage) &&
+                BaseEventIntel.RANDOM_EVENT_NONE != curr.rollData &&
+                !(curr.wasEverReached && curr.isOneOffEvent && !curr.isRepeatable) &&
+                !(curr.hideIconWhenPastStageUnlessLastActive && curr.progress <= intel.progress &&
+                    intel.getLastActiveStage(true) != curr)
+        }
+        val displays = shown.map { intel.createDisplayData(it.id) }
+        // room above the bar for the stage icons and their lines
+        val above = displays.maxOfOrNull { it.size + it.downLineLength } ?: 0f
+        val extraXOff = intel.barXOffset
+        val bar = addEventProgressBar(intel, above + 2f)
+        if (extraXOff != 0f) bar.position.setXAlignOffset(extraXOff)
+        intel.barTooltip?.let { addTooltipToPrevious(it, TooltipLocation.BELOW, false) }
+        for ((stage, data) in shown.zip(displays)) {
+            val marker = addEventStageMarker(data)
+            val xOff = bar.getXCoordinateForProgress(stage.progress.toFloat()) - bar.position.x + extraXOff
+            marker.position.aboveLeft(bar, data.downLineLength).setXAlignOffset(xOff - data.size / 2f - 1)
+            intel.getStageTooltip(stage.id)?.let { addTooltipTo(it, marker, TooltipLocation.LEFT, false) }
+        }
+        val marker = addEventProgressMarker(intel)
+        val xOff = bar.getXCoordinateForProgress(intel.progress.toFloat()) - bar.position.x
+        marker.position.belowLeft(bar, -intel.barProgressIndicatorHeight * 0.5f - 2)
+            .setXAlignOffset(xOff - intel.barProgressIndicatorWidth / 2 - 1)
+        // the progress marker reaches below the bar
+        addSpacer(intel.barProgressIndicatorHeight * 0.5f)
+    }
 }

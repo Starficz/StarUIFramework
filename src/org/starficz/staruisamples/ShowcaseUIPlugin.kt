@@ -75,7 +75,8 @@ object ShowcaseUIPlugin {
     // ------------------------------------------------------------------------------------------------------------
     // State. Everything a builder reads is a UIState; handlers change it and the builders that read it run again.
     // ------------------------------------------------------------------------------------------------------------
-    private val open = UIState(true)
+    /** Collapsed to a single button on the title screen until opened. */
+    internal val open = UIState(false)
     private val outlines = UIState(false)
     private val tasks = UIState(listOf(Task(1, "Refit the Onslaught"), Task(2, "Buy 200 supplies"), Task(3, "Survey Askonia")))
     private var nextTaskId = 4

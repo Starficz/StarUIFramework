@@ -273,6 +273,22 @@ fun ButtonAPI.onClick(function: () -> Unit) {
         listener.addOnClick(function)
     }
 }
+
+/**
+ * Builds [block] on a temporary tooltip [width] wide and returns the tooltip itself, detached and sized to what was
+ * added: for vanilla content made of several components placed against each other (a bar and its markers).
+ */
+fun buildTooltipBlock(width: Float, block: TooltipMakerAPI.() -> Unit): UIComponentAPI {
+    val tempPanel = Global.getSettings().createCustom(width, 4000f, null)
+    val tooltip = tempPanel.createUIElement(width, 4000f, false)
+    tempPanel.addUIElement(tooltip)
+    tooltip.block()
+    tempPanel.removeComponent(tooltip)
+    tooltip.position.setSize(width, tooltip.heightSoFar)
+    return tooltip
+}
+
+
 /**
  * Builds vanilla tooltip content at [width] on a temporary TooltipMakerAPI and returns the component it added last,
  * detached, for adding anywhere else. Most TooltipMakerAPI builders (grids, bars, tables, ship lists) add exactly one

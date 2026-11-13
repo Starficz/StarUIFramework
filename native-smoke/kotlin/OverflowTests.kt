@@ -24,6 +24,8 @@ import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.children
 import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.compose.runtime.dumpLayout
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import java.awt.Color
 
 private fun overflowAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
@@ -348,6 +350,7 @@ fun registerOverflowTests() {
         // the showcase reads the player faction's colours: a sector is needed (left in place: vanilla code that ran
         // meanwhile may hold on to it)
         if (com.fs.starfarer.api.Global.getSector() == null) com.fs.starfarer.api.Global.setSector(com.fs.starfarer.campaign.CampaignEngine.getInstance())
+        org.starficz.staruisamples.ShowcaseUIPlugin.open.value = true   // it starts collapsed to a button
         val build = org.starficz.staruisamples.ShowcaseUIPlugin.Plugin().addPanelToTitleScreen
         val t0 = System.nanoTime()
         root.CustomPanel(Size.exact(screenW, screenH)) { build() }
@@ -360,7 +363,53 @@ fun registerOverflowTests() {
         for (i in 0 until 20) frame(1)
         log("20 idle showcase frames: ${(System.nanoTime() - t1) / 1_000_000} ms")
         org.starficz.starui.compose.runtime.StarUIPanelPlugin.traceLayoutRequests = 0
-        val requests = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests - before
+        val idleRequests = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests - before
+        // the wrapped paragraph in the Text card must not run into the label below it
+        fun findLabel(c: com.fs.starfarer.api.ui.UIComponentAPI, prefix: String): com.fs.starfarer.api.ui.LabelAPI? {
+            if (c is com.fs.starfarer.api.ui.LabelAPI && c.text.startsWith(prefix)) return c
+            if (c is com.fs.starfarer.api.ui.UIPanelAPI) for (child in c.getChildrenCopy2()) findLabel(child, prefix)?.let { return it }
+            return null
+        }
+        val para = findLabel(root, "A Text with a fill width")
+        val below = findLabel(root, "An exact width of 220")
+        if (para != null && below != null) {
+            log("showcase paragraph ${para.position.width}x${para.position.height} at y ${para.position.y}; label below top ${below.position.y + below.position.height}")
+            log(para.parent!!.dumpLayout())
+            expect(below.position.y + below.position.height <= para.position.y + 0.5f,
+                "showcase Text card: the label below starts under the wrapped paragraph (paragraph ${para.position.width}x${para.position.height}, bottom ${para.position.y}; label top ${below.position.y + below.position.height})")
+        } else expect(false, "showcase Text card labels found")
+
+        // scroll the page down and back, as a player does: nothing may change size, and the Text card must stay apart
+        val page = (function@{
+            fun find(c: com.fs.starfarer.api.ui.UIComponentAPI): com.fs.starfarer.api.ui.ScrollPanelAPI? {
+                if (c is com.fs.starfarer.api.ui.ScrollPanelAPI && c.contentContainer.position.height > 2000f) return c
+                if (c is com.fs.starfarer.api.ui.UIPanelAPI) for (child in c.getChildrenCopy2()) find(child)?.let { return it }
+                return null
+            }
+            find(root)
+        })()
+        val range = findLabel(root, "valueRange = 0..1000")
+        if (page != null && para != null && below != null && range != null) {
+            val rangeH = range.position.height
+            val band2 = (((page.contentContainer.getChildrenCopy2()[0] as com.fs.starfarer.api.ui.UIPanelAPI).getChildrenCopy2()[0] as com.fs.starfarer.api.ui.UIPanelAPI).getChildrenCopy2()[1])
+            fun top(): String = band2.dumpLayout().lines().filter { it.length - it.trimStart().length <= 4 }.joinToString(System.lineSeparator())
+            val maxY = page.contentContainer.position.height - page.position.height
+            var y = 0f
+            var step = 0
+            while (y < maxY) {
+                y = minOf(maxY, y + 250f); step++
+                page.yOffset = y
+                frame(2)
+                if (range.position.height != rangeH) log("step $step (y $y): valueRange label height $rangeH -> ${range.position.height}, width ${range.position.width} " + top())
+                val overlap = (below.position.y + below.position.height) - para.position.y
+                if (overlap > 0.5f) log("step $step (y $y): paragraph ${para.position.width}x${para.position.height} overlaps the label below by $overlap")
+                expect(overlap <= 0.5f, "after scrolling to $y the Text card's label below still starts under the paragraph (${para.position.width}x${para.position.height}, overlap $overlap)")
+            }
+            page.yOffset = 0f
+            frame(2)
+            near(range.position.height, rangeH, "after scrolling down and back the valueRange label has its first height")
+        } else expect(false, "showcase page scroll panel and labels found (page=$page)")
+        val requests = idleRequests
         // its two status labels change text twice a second; anything per frame is a bug (a layout every frame)
         expect(requests <= 4L, "the idle showcase does not lay out every frame ($requests requests in 20 frames; traces in the log)")
         screenshot("final")

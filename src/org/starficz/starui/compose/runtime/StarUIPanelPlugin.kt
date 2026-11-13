@@ -337,6 +337,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     private var lastHandledEvents: Set<InputEventAPI> = emptySet()
 
     internal fun runLayout() {
+        // A node its parent lays out never lays itself out: it does not know the room its parent gives it (measuring
+        // with the parent's whole size gave a Column in a Row the Row's width, not its share). A request reaches the
+        // top-level node or a layout boundary, which lays this one out on the next frame.
+        if (!isTopLevelNode && (layoutEngine as? ViewportLayoutEngine)?.isLayoutBoundary != true) return
         if (!hasLayoutRun) {
             // Resolved before anything runs: a requestLayout() made by a layout callback (a label that changes its
             // own text in onLayout, say) must survive this pass and schedule the next one.
