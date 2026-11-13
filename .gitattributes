@@ -1,0 +1,2 @@
+# bash breaks on CRLF: shell scripts stay LF whatever core.autocrlf says
+*.sh text eol=lf
