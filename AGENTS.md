@@ -149,7 +149,8 @@ Three types, each a superset of the one before, so the compiler rules out sizes 
 Layout rules, each of which throws a clear exception when broken:
 - a fill child on a Column's or Row's main axis needs that container to have a known size on that axis (not wrap);
 - a fill child along a scrolling axis gets what is left of the visible size (0 once the content overflows);
-- `Modifier.anchor` is not allowed inside a Column or Row (they place their children themselves).
+- `Modifier.anchor` is only for children of a `CustomPanel`: a Column, Row, Box or lazy list places its children
+  itself, so an anchor there throws.
 
 ## Overflow: clipping, scrolling and long lists
 
@@ -212,6 +213,7 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }`,
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
 `.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
+`a then b` joins two modifiers (a component of your own that adds its look to the caller's `modifier`).
 The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so `width`, `height`, `left`, `top`,
 `right`, `bottom` (from `core`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
 
@@ -287,10 +289,14 @@ Column {
 10. Layout updates by itself: adding or removing children, changing a `Text`'s string, or a rebuild all re-lay out
     the tree on the next frame. Call `component.requestLayout()` only after changing something StarUI cannot see,
     for example a native component's size set by hand.
-11. `plugin.dispose()` (or `StarUIPanelPlugin.getAttached(component)?.dispose()`) tears down StarUI's handlers,
-    bindings and scopes under a component you are throwing away. Children removed by a vanilla `clearChildren()`
-    are disposed automatically. `removeComponent` alone does not dispose, so moving a component (remove, then add
-    elsewhere) keeps it working.
+11. UI you throw away needs nothing: StarUI's state lives on the vanilla objects themselves, so a panel nobody
+    holds any more (a screen vanilla rebuilt, a closed dialog) is collected with everything StarUI attached to it.
+    `plugin.dispose()` (or `StarUIPanelPlugin.getAttached(component)?.dispose()`) switches StarUI off under a
+    component right away (handlers, bindings, `UIState` listeners and scopes), for UI you keep but no longer want
+    reacting; children removed by a rebuild or a vanilla `clearChildren()` are disposed automatically.
+    `removeComponent` alone does not dispose, so moving a component (remove, then add elsewhere) keeps it working.
+    One exception: a label taken out of a panel must be added elsewhere before that panel is thrown away, or it
+    comes back without its modifiers (labels keep StarUI's state in their parent).
 
 ## Where StarUI differs from Jetpack Compose
 
@@ -331,26 +337,44 @@ src/org/starficz/starui/
   compose/components/   Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
                         LazyLists.kt (LazyColumn, LazyRow),
                         Content.kt (Text, Image, ShipDisplay), Controls.kt (Button, TextField, checkboxes), Spacers.kt
-  compose/layout/       LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt
+  compose/layout/       LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, ViewportLayoutEngine.kt
+                        (scrolling containers), VanillaElementEngine.kt (tooltip-built vanilla ports)
   compose/modifier/     Modifier.kt, LayoutModifiers.kt, EventModifiers.kt, VisualModifiers.kt
-  compose/runtime/      StarUIPanelPlugin.kt (per-component state, handlers, layout, scopes),
-                        Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
+  compose/runtime/      StarUIPanelPlugin.kt (handlers, layout, scopes), UINode.kt (each component's record: size
+                        rule, padding, margin, alignment, anchor, measure, layout, reuse record, plugin; NodeStore:
+                        where nodes live), Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
                         (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
   core/                 vanilla helpers, Boxed* (image, ship preview, slider, sector map, holo), Anchor, Font,
-                        ReflectionUtils (internal), VanillaFactory.kt (how components make vanilla elements: SettingsAPI
-                        factories where they exist, else one kept scratch tooltip; text measuring; the tooltip-built
-                        vanilla ports' temporary tooltips)
-  internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt: lifecycle, culling, clip input;
-                        ScrollWheelPatch.kt: the wheel for nested and horizontal scrolling)
+                        ReflectionUtils (internal), VanillaClasses.kt (the engine classes StarUI constructs, found at
+                        load), VanillaFactory.kt (how components make vanilla elements: SettingsAPI factories where
+                        they exist, else one kept scratch tooltip; text measuring; the vanilla ports' temporary
+                        tooltips)
+  patches/              PatchLib hooks, one per file: UIComponentLifecyclePatch (render, advance, input, culling),
+                        UIPanelContainerPatch (child changes, box unwrapping), ClipInputPatch, LabelTextPatch,
+                        NativeValuePatches (text field, checkbox, slider values), ButtonListenerChainPatch,
+                        ScrollWheelPatch (nested and horizontal wheel), ShipDisplayExactScalePatch
+  internal/             ModPlugin and the scripts that drive StarUIManager
 native-smoke/           in-game test suite (test-only, never shipped)
 docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md (overflow, wheel, long-list numbers)
 ```
 
 ## How it works, in one paragraph per piece
 
-- **Zero wrapper.** Leaves (labels, buttons) get a `StarUIPanelPlugin` stored in a weak map. CustomPanels use it
-  as their plugin, wrapping any foreign plugin as `delegate`. PatchLib hooks on the vanilla base component call the
-  plugin's render, advance and input methods.
+- **Zero wrapper.** CustomPanels use a `StarUIPanelPlugin` as their plugin, wrapping any foreign plugin as
+  `delegate`. A leaf (label, button) gets one only when it needs handlers. PatchLib hooks on the vanilla base
+  component call the plugin's render, advance and input methods.
+- **Nodes, and their lifetime.** Every component StarUI knows about has a `UINode`: its size rule, padding (a
+  container's own, a leaf's around its content), margin, alignment, anchor, measure and layout, reuse record and
+  plugin. Engines read their children's nodes; calls and modifiers write the component's own. A node lives exactly
+  as long as its component, with nothing in StarUI holding either, so UI that vanilla throws away (a rebuilt tab, a
+  closed dialog) is collected without being disposed (`NodeStore`): a CustomPanel's plugin holds its node; any other
+  component's node sits in vanilla's per-component object store (`addListener` / `getListeners` on the engine's base
+  UI component, readable names); labels have none, so a label's node sits in its parent's store and moves with the
+  label (the `add` hook); a label with no parent yet is held strongly until it is added or disposed. Two lookup
+  indexes, weak on both sides: every node, and (for the lifecycle hooks, which look up every vanilla component) only
+  the leaves that have a plugin. The one loss: a label taken out of a panel and
+  added elsewhere only after that panel was thrown away comes back without its node (and handlers). Tests:
+  `leaks-*`.
 - **Layout.** Containers have a `LayoutEngine`. The top-level StarUI node runs measure and layout lazily in
   `renderBelow` when `requestLayout()` has marked it; the request marks the path up from the changed node, so
   measures of unchanged nodes are reused and they are not laid out again (`StarUIPanelPlugin.measure`,
@@ -365,7 +389,11 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   mark it dirty. A dirty scope is rebuilt from an ancestor's `renderBelow` or `advance` (`Scope.flush`), never
   during input or from scripts. A rebuild hands the old children to a `ReuseCursor`, and each component function
   asks `childSlot(kind, props)` for its match.
-- **Holo.** `Holo` makes vanilla's own holo panel (found at load by its readable methods, `StarUIManager`) and
+- **Component functions.** A leaf call gets its `childSlot`, makes or reuses its native object, adds it, and ends in
+  `finishLeaf` (starting size, sizing, measure and layout on its node, the reuse record, modifiers). A container
+  call goes through `containerParts` and `register`. A reused component's node is reset (`resetForBuild`) when the
+  rebuild hands it out, and its call records it anew.
+- **Holo.** `Holo` makes vanilla's own holo panel (found at load by its readable methods, `VanillaClasses`) and
   hands it a StarUI Box with `setNext`: the holo draws, advances and feeds input to that content itself, so the
   content is not a child in the UI tree. It is a layout root of its own (its exact size is set from the holo's) and
   its scope flushes itself; the holo's plugin owns it (`ownedOutsideTree`) and disposes it with itself.
@@ -396,5 +424,5 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   API wins over compatibility: rename, remove and change return types without shims or deprecated copies. Combat AI
   Tweaks, Scy Nation and Refit Filters are compiled against StarUI; rebuild them (or note what they need) after a
   change that affects them. After the first release: add and deprecate, don't remove or change.
-- Source files are CRLF. Keep each file's existing line endings.
+- Keep each file's existing line endings (most source files are LF, some CRLF).
 - `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it.

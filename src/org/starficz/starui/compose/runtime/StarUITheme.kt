@@ -2,7 +2,6 @@ package org.starficz.starui.compose.runtime
 
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CutStyle
-import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.ContentScale
 import org.starficz.starui.compose.ImageSize

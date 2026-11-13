@@ -11,11 +11,12 @@ import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.NodeSize
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.runtime.Scope
-import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.compose.runtime.parentPluginOf
 import org.starficz.starui.core.BoxedUIHolo
 import org.starficz.starui.core.HoloBackground
 import org.starficz.starui.core.ReflectionUtils.invoke
+import org.starficz.starui.core.VanillaClasses
 
 /**
  * Vanilla's holo panel around [builder]'s components: the framed window vanilla's dialogs and the title screen's
@@ -67,9 +68,6 @@ fun UIPanelAPI.Holo(
     if (reused != null && boxed.lastContentKey != contentKey) swapContent(boxed)
     boxed.lastContentKey = contentKey
 
-    registerComponentSizing(holo, size, isContainer = false)
-    slot.remember(holo, boxed)
-
     fun sizeContent(w: Float, h: Float) {
         // The holo's own setSize also resizes its content and rebuilds its backgrounds at the new size, the noise
         // included: a fresh noise layer at rest. Called on every layout it wiped each burst of static as it started
@@ -79,21 +77,17 @@ fun UIPanelAPI.Holo(
         val inset = boxed.contentInset
         val contentPlugin = boxed.content.plugin as StarUIPanelPlugin
         val node = NodeSize(Dimension.Exact(maxOf(0f, w - 2 * inset)), Dimension.Exact(maxOf(0f, h - 2 * inset)))
-        if (contentPlugin.myNodeSize != node) {
-            contentPlugin.myNodeSize = node
+        if (contentPlugin.node.size != node) {
+            contentPlugin.node.size = node
             contentPlugin.requestLayout()
         }
     }
-    if (!StarUIContext.isTopLevel) {
-        val parentPlugin = StarUIContext.currentPlugin
-        parentPlugin.childMeasurables[holo] = { maxW, maxH ->
-            Pair(if (maxW == Float.MAX_VALUE) initW else maxW, if (maxH == Float.MAX_VALUE) initH else maxH)
-        }
-        parentPlugin.childLayoutDelegates[holo] = { w, h -> sizeContent(w, h) }
-    } else {
-        sizeContent(initW, initH)
-    }
-    modifier.operations.forEach { it(holo) }
+    // not sized here: the holo's own setSize rebuilds its backgrounds (see sizeContent)
+    finishLeaf(slot, holo, size, modifier, handle = boxed, startSize = false,
+        measure = { maxW, maxH -> Pair(if (maxW == Float.MAX_VALUE) initW else maxW, if (maxH == Float.MAX_VALUE) initH else maxH) },
+        layout = { w, h -> sizeContent(w, h) }
+    )
+    if (parentPluginOf(holo)?.layoutEngine == null) sizeContent(initW, initH)
 
     // The content's builder is its own scope, attached here so a rebuild of this builder runs it again and reuses
     // the content's children. The holo draws, advances and feeds input to the content itself.
@@ -109,7 +103,7 @@ private fun newContent(width: Float, height: Float): CustomPanelAPI {
     plugin.customPanel = content
     plugin.layoutEngine = BoxLayoutEngine(plugin)
     plugin.isTopLevelNode = true
-    plugin.myNodeSize = NodeSize(Dimension.Exact(content.position.width), Dimension.Exact(content.position.height))
+    plugin.node.size = NodeSize(Dimension.Exact(content.position.width), Dimension.Exact(content.position.height))
     return content
 }
 
@@ -130,9 +124,9 @@ private fun swapContent(boxed: BoxedUIHolo) {
 private fun UIPanelAPI.createHolo(
     width: Float, height: Float, inset: Float, open: Boolean, animate: Boolean, duration: Float
 ): BoxedUIHolo {
-    val constructor = BoxedUIHolo.CONSTRUCTOR ?: throw IllegalStateException(
+    val constructor = VanillaClasses.holoConstructor ?: throw IllegalStateException(
         "StarUI: Holo needs vanilla's holo panel, which was not found at application load (see the starsector.log " +
-            "warning from StarUIManager). A game update may have changed it.")
+            "warning from VanillaClasses). A game update may have changed it.")
     val holo = constructor.newInstance(width, height, "ui_border1", inset) as UIComponentAPI
     val content = newContent(width - 2 * inset, height - 2 * inset)
 

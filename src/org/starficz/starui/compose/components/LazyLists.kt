@@ -80,7 +80,6 @@ private fun <T> UIPanelAPI.LazyList(
     @Suppress("UNCHECKED_CAST")
     val engine = (plugin.layoutEngine as? LazyLayoutEngine<T>)?.takeIf { it.vertical == vertical }
         ?: LazyLayoutEngine<T>(plugin, vertical).also { plugin.layoutEngine = it }
-    plugin.isStackLayout = true   // children are placed by the list: Modifier.anchor inside is an error
     plugin.pausesOffscreenAdvance = true
     engine.update(items, itemSize, spacing, keyOf)
     parts.register(slot, size, modifier)
@@ -173,7 +172,7 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
         return Pair(minOf(target, drawn) - leadPadding, maxOf(target, drawn) + view - leadPadding)
     }
 
-    private val leadPadding get() = if (vertical) plugin.myPadding.top else plugin.myPadding.left
+    private val leadPadding get() = if (vertical) plugin.node.padding.top else plugin.node.padding.left
 
     /** The items to make: the visible ones and a viewport's worth on each side. */
     fun range(): IntRange {
@@ -206,7 +205,7 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
 
     private fun contentLength(): Float {
         val n = items.size
-        val padding = plugin.myPadding
+        val padding = plugin.node.padding
         val pad = if (vertical) padding.vertical else padding.horizontal
         return pad + n * itemSize + maxOf(0, n - 1) * spacing
     }
@@ -215,7 +214,7 @@ internal class LazyLayoutEngine<T>(private val plugin: StarUIPanelPlugin, val ve
         if (vertical) Pair(maxWidth, contentLength()) else Pair(contentLength(), maxHeight)
 
     override fun layout(assignedWidth: Float, assignedHeight: Float) {
-        val padding = plugin.myPadding
+        val padding = plugin.node.padding
         val cross = if (vertical) assignedWidth - padding.horizontal else assignedHeight - padding.vertical
         for (child in plugin.panel.getChildrenNonCopy()) {
             val index = indices[child] ?: continue

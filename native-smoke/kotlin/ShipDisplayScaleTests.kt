@@ -12,7 +12,7 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
-import org.starficz.starui.internal.ShipDisplayExactScalePatch
+import org.starficz.starui.patches.ShipDisplayExactScalePatch
 import patchlib.api.PatchLib
 
 /** The lit pixels of a component's on-screen rectangle (1 UI unit = 1 pixel in the suite's window). */

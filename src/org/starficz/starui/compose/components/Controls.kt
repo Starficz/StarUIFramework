@@ -13,7 +13,7 @@ import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.runtime.ButtonGroup
-import org.starficz.starui.compose.runtime.StarUIContext
+
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.runtime.UIState
@@ -55,36 +55,24 @@ fun UIPanelAPI.TextField(
 
     // A reused field keeps its caret, selection and keyboard focus; font and placeholder are fixed when it is made.
     val slot = childSlot("TextField", listOf(font, placeholder))
-    val reused: TextFieldAPI? = slot.reused()
-    val textField: TextFieldAPI
-    if (reused != null) {
-        textField = reused
-        applyReuseBounds(textField, size, calcIntrinsic(), contentPadding)
-    } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
+    val textField: TextFieldAPI = slot.reused() ?: run {
         // what TooltipMakerAPI.addTextField does: vanilla's text field with a 3 px inner pad
-        textField = Global.getSettings().createTextField("", font.path)
-        textField.invoke("setPad", 3f)
-        textField.position.setSize(initW, initH)
-        this.addComponent(textField)
-        if (placeholder != null) textField.invoke("setHint", placeholder)
+        val made = Global.getSettings().createTextField("", font.path)
+        made.invoke("setPad", 3f)
+        this.addComponent(made)
+        if (placeholder != null) made.invoke("setHint", placeholder)
+        made
     }
+    finishLeaf(slot, textField, size, modifier, intrinsic = calcIntrinsic(), contentPadding = contentPadding,
+        measure = { _, _ -> calcIntrinsic() })
 
-    registerComponentSizing(textField, size, isContainer = false, contentPadding = contentPadding)
-    slot.remember(textField, textField)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[textField] = { _, _ -> calcIntrinsic() }
-    }
-
-    modifier.operations.forEach { it(textField) }
-
-    val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(textField)
     if (textField.text != bind.peek()) textField.text = bind.peek()
-    bind.onChange(ownerPlugin) { newValue ->
+    val plugin = StarUIPanelPlugin.getOrCreate(textField)
+    bind.onChange(plugin) { newValue ->
         if (textField.text != newValue) textField.text = newValue
     }
     // Every text change (typing, backspace, paste, any setText call) reaches here through TextFieldValuePatch.
-    StarUIPanelPlugin.getOrCreate(textField).onNativeValueChanged {
+    plugin.onNativeValueChanged {
         if (textField.text != bind.peek()) bind.value = textField.text
     }
 
@@ -122,7 +110,6 @@ fun UIPanelAPI.Button(
         btn = reused
         if (btn.text != text) btn.text = text
         btn.clearOnClick()
-        applyReuseBounds(btn, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         btn = VanillaFactory.onScratch {
@@ -143,13 +130,8 @@ fun UIPanelAPI.Button(
     }
     made = btn
 
-    registerComponentSizing(btn, size, isContainer = false, contentPadding = contentPadding)
-    slot.remember(btn, btn)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[btn] = { _, _ -> calcIntrinsic() }
-    }
-
-    modifier.operations.forEach { it(btn) }
+    finishLeaf(slot, btn, size, modifier, intrinsic = calcIntrinsic(), contentPadding = contentPadding,
+        measure = { _, _ -> calcIntrinsic() })
     if (onClick != null) btn.onClick(onClick)
 
     return btn
@@ -183,7 +165,6 @@ fun UIPanelAPI.AreaCheckbox(
     if (reused != null) {
         button = reused
         button.clearOnClick()
-        applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         button = VanillaFactory.onScratch {
@@ -194,13 +175,8 @@ fun UIPanelAPI.AreaCheckbox(
         button.clearScratchOffsets()
     }
 
-    registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
-    slot.remember(button, button)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
-    }
-
-    modifier.operations.forEach { it(button) }
+    finishLeaf(slot, button, size, modifier, intrinsic = calcIntrinsic(), contentPadding = contentPadding,
+        measure = { _, _ -> calcIntrinsic() })
     bindChecked(button, bind, buttonGroup)
     return button
 }
@@ -235,22 +211,14 @@ fun UIPanelAPI.Checkbox(
     if (reused != null) {
         button = reused
         button.clearOnClick()
-        applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
-        val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
         // what TooltipMakerAPI.addCheckbox makes, from SettingsAPI's own factory
         button = Global.getSettings().createCheckbox(text, font.path, color, checkboxSize)
-        button.position.setSize(initW, initH)
         this.addComponent(button)
     }
 
-    registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
-    slot.remember(button, button)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[button] = { _, _ -> calcIntrinsic() }
-    }
-
-    modifier.operations.forEach { it(button) }
+    finishLeaf(slot, button, size, modifier, intrinsic = calcIntrinsic(), contentPadding = contentPadding,
+        measure = { _, _ -> calcIntrinsic() })
     bindChecked(button, bind, buttonGroup)
     return button
 }
@@ -272,10 +240,10 @@ private fun bindChecked(button: ButtonAPI, bind: UIState<Boolean>?, buttonGroup:
         button.isChecked = bind.peek()
         button.onClick { bind.value = button.isChecked }
     }
-    val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(button)
-    bind.onChange(ownerPlugin) { newValue -> button.isChecked = newValue }
+    val plugin = StarUIPanelPlugin.getOrCreate(button)
+    bind.onChange(plugin) { newValue -> button.isChecked = newValue }
     // A setChecked call from code (vanilla, another mod, whoever holds the ButtonAPI): see ButtonCheckedPatch.
-    StarUIPanelPlugin.getOrCreate(button).onNativeValueChanged {
+    plugin.onNativeValueChanged {
         if (bind.peek() != button.isChecked) bind.value = button.isChecked
     }
 }
@@ -315,11 +283,10 @@ fun UIPanelAPI.Slider(
     }
     show(bind.peek())
 
-    val component = slider.asComponent
-    val ownerPlugin = if (!StarUIContext.isTopLevel) StarUIContext.currentPlugin else StarUIPanelPlugin.getOrCreate(component)
-    bind.onChange(ownerPlugin) { newValue -> show(newValue) }
+    val plugin = StarUIPanelPlugin.getOrCreate(slider.asComponent)
+    bind.onChange(plugin) { newValue -> show(newValue) }
     // Every progress change (the player's drag, any setProgress call) reaches here through SliderProgressPatch.
-    StarUIPanelPlugin.getOrCreate(component).onNativeValueChanged {
+    plugin.onNativeValueChanged {
         if (showingState) return@onNativeValueChanged
         var value = slider.progress
         if (step != null && step > 0f) {
@@ -372,25 +339,16 @@ private fun UIPanelAPI.nativeSlider(
     val slider: BoxedUISlider
     if (reused != null) {
         slider = reused
-        applyReuseBounds(slider.asComponent, size)
         slider.setText(text)
     } else {
-        val (initW, initH) = getInitialBounds(size)
         slider = BoxedUISlider(Global.getSettings().createSlider(text, valueRange.start, valueRange.endInclusive))
-        slider.position.setSize(initW, initH)
         this.addComponent(slider.asComponent)
     }
     slider.rangeMin = valueRange.start
     slider.rangeMax = valueRange.endInclusive
     slider.max = valueRange.endInclusive
 
-    val component = slider.asComponent
-    registerComponentSizing(component, size, isContainer = false)
-    slot.remember(component, slider)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[component] = { _, _ -> Pair(1f, 1f) }
-    }
-    modifier.operations.forEach { it(component) }
+    finishLeaf(slot, slider.asComponent, size, modifier, handle = slider, measure = { _, _ -> Pair(1f, 1f) })
     return slider
 }
 

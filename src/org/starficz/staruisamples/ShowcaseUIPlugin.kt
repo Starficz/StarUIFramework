@@ -15,7 +15,6 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.CutStyle
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import com.fs.starfarer.api.util.Misc
 import org.lazywizard.lazylib.opengl.ColorUtils.glColor
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11

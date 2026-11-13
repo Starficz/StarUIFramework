@@ -14,7 +14,6 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.compose.modifier.onAdvance
 import org.starficz.starui.compose.runtime.requestLayout
 import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.UIState
@@ -26,8 +25,8 @@ import java.awt.Color
 
 fun registerHoloTests() {
     StarUITestSuite.group("holo-basics") {
-        expect(BoxedUIHolo.HOLO_CLASS != null && BoxedUIHolo.CONSTRUCTOR != null,
-            "vanilla's holo panel class and constructor were found at load (${BoxedUIHolo.HOLO_CLASS?.name})")
+        expect(org.starficz.starui.core.VanillaClasses.holoClass != null && org.starficz.starui.core.VanillaClasses.holoConstructor != null,
+            "vanilla's holo panel class and constructor were found at load (${org.starficz.starui.core.VanillaClasses.holoClass?.name})")
         val open = UIState(true)
         val count = UIState(0)
         val show = UIState(true)

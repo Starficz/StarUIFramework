@@ -1,16 +1,15 @@
 package org.starficz.starui.compose.modifier
 
-import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.compose.runtime.nodeFor
+import org.starficz.starui.compose.runtime.nodeOf
+import org.starficz.starui.compose.runtime.parentPluginOf
 import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.applyAnchor
-import org.starficz.starui.core.children
+import org.starficz.starui.core.getChildrenNonCopy
 
 // ==========================================
 // SPACING MODIFIERS
@@ -24,10 +23,6 @@ import org.starficz.starui.core.children
 /** Makes the parameters after it named-only: nothing can be passed for it. */
 class NamedArgumentsOnly private constructor()
 
-internal data class Margin(val left: Float = 0f, val top: Float = 0f, val right: Float = 0f, val bottom: Float = 0f) {
-    val horizontal get() = left + right
-    val vertical get() = top + bottom
-}
 
 data class PaddingValues(val left: Float = 0f, val top: Float = 0f, val right: Float = 0f, val bottom: Float = 0f) {
     val horizontal get() = left + right
@@ -53,9 +48,7 @@ fun Modifier.margin(
     horizontal: Float = 0f, vertical: Float = 0f,
     left: Float = horizontal, top: Float = vertical, right: Float = horizontal, bottom: Float = vertical
 ) = this.then { component ->
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMargins[component.actual] = Margin(left = left, right = right, top = top, bottom = bottom)
-    }
+    nodeFor(component.actual).margin = PaddingValues(left = left, top = top, right = right, bottom = bottom)
 }
 
 /** Space inside the component on every side. */
@@ -72,23 +65,13 @@ fun Modifier.padding(
 /** Space inside the component: between a container's edge and its children, or around a leaf's content. Adds up. */
 fun Modifier.padding(values: PaddingValues) = this.then { component -> component.addPadding(values) }
 
-/** Adds [values] to the padding of a container (its own) or of a leaf (kept by its container). */
+/** Adds [values] to the component's padding (a container's between its edge and its children). */
 internal fun UIComponentAPI.addPadding(values: PaddingValues) {
     if (values == PaddingValues.Zero) return
-    val actualComponent = this.actual
-    val pluginAsContainer = ((actualComponent as? CustomPanelAPI)?.plugin as? StarUIPanelPlugin)
-        ?.takeIf { it.layoutEngine != null }
+    val actual = this.actual
     // a scrolling container's padding is inside the StarUI container it holds (it scrolls with the content)
-    val scrollContainerPlugin = (actualComponent as? ScrollPanelAPI)
-        ?.let { StarUIPanelPlugin.getAttached(it)?.scrollContent }
-    val containerPlugin = pluginAsContainer ?: scrollContainerPlugin
-
-    if (containerPlugin != null) {
-        containerPlugin.myPadding = containerPlugin.myPadding + values
-    } else if (!StarUIContext.isTopLevel) {
-        val plugin = StarUIContext.currentPlugin
-        plugin.childPadding[actualComponent] = (plugin.childPadding[actualComponent] ?: PaddingValues.Zero) + values
-    }
+    val node = (actual as? ScrollPanelAPI)?.let { StarUIPanelPlugin.getAttached(it)?.scrollContent?.node } ?: nodeFor(actual)
+    node.padding = node.padding + values
 }
 
 // ==========================================
@@ -97,58 +80,52 @@ internal fun UIComponentAPI.addPadding(values: PaddingValues) {
 
 /** Where this child sits in a Box: one of the nine [Alignment] values. */
 fun Modifier.align(alignment: Alignment) = this.then { component ->
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childAlignments[component.actual] = alignment
-    }
+    nodeFor(component.actual).alignment = alignment
 }
 
+/**
+ * Places the component relative to its parent or a sibling (see [Anchor]). Only inside a `CustomPanel` (or a panel
+ * StarUI does not lay out): a Column, Row, Box or list places its children itself, so an anchor there is an error.
+ */
 fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
-    if (!StarUIContext.isTopLevel && StarUIContext.currentPlugin.isStackLayout) {
+    val actual = component.actual
+    val parentPlugin = parentPluginOf(actual)
+    if (parentPlugin?.layoutEngine != null) {
         throw IllegalStateException(
-            "Modifier.anchor() cannot be used inside a StackLayout! " +
-            "StackLayouts automatically position their children based on flow. Use Margin/Padding/Sizing instead."
+            "StarUI: Modifier.anchor() is only for children of a CustomPanel. This component's container " +
+            "(${parentPlugin.kind ?: "a StarUI layout"}) places its children itself, so the anchor would be overwritten. " +
+            "Use Modifier.align in a Box, the container's alignment and spacing in a Column or Row, or margin."
         )
     }
 
     val targetComponent = when (anchor.reference) {
-        is Anchor.AnchorReference.Parent -> component.actual.parent
+        is Anchor.AnchorReference.Parent -> actual.parent
         is Anchor.AnchorReference.Previous -> {
-            component.actual.parent?.children?.dropLast(1)?.lastOrNull()
-                ?: throw Error("Previous Component does not exist!")
+            actual.parent?.getChildrenNonCopy()?.let { it.getOrNull(it.size - 2) }
+                ?: throw IllegalStateException("StarUI: Anchor ...previousComponent: there is no component before this one")
         }
         is Anchor.AnchorReference.Sibling -> anchor.reference.component.actual
     }
 
-    var targetPadX = 0f
-    var targetPadY = 0f
-    var myPadX = 0f
-    var myPadY = 0f
-
-    if (!StarUIContext.isTopLevel) {
-        val parentPlugin = StarUIContext.currentPlugin
-        parentPlugin.childAnchors[component.actual] = anchor
-
-        targetComponent?.let { parentPlugin.childMargins[it.actual] }?.let { targetMargin ->
-            if (anchor.reference !is Anchor.AnchorReference.Parent) {
-                if (anchor.refAnchorX == 0f && anchor.targetAnchorX == 1f) targetPadX += targetMargin.right
-                if (anchor.refAnchorX == 1f && anchor.targetAnchorX == 0f) targetPadX -= targetMargin.left
-                if (anchor.refAnchorY == 0f && anchor.targetAnchorY == 1f) targetPadY += targetMargin.top
-                if (anchor.refAnchorY == 1f && anchor.targetAnchorY == 0f) targetPadY -= targetMargin.bottom
-            }
-        }
-
-        parentPlugin.childMargins[component.actual]?.let { myMargin ->
-            if (anchor.refAnchorX == 0f) myPadX += myMargin.left
-            if (anchor.refAnchorX == 1f) myPadX -= myMargin.right
-            if (anchor.refAnchorY == 0f) myPadY += myMargin.bottom
-            if (anchor.refAnchorY == 1f) myPadY -= myMargin.top
+    // margins: this component's push it away from the edge it is anchored by, the target's push it further off
+    var offsetX = anchor.offsetX
+    var offsetY = anchor.offsetY
+    if (anchor.reference !is Anchor.AnchorReference.Parent && targetComponent != null) {
+        nodeOf(targetComponent.actual)?.margin?.let { targetMargin ->
+            if (anchor.refAnchorX == 0f && anchor.targetAnchorX == 1f) offsetX += targetMargin.right
+            if (anchor.refAnchorX == 1f && anchor.targetAnchorX == 0f) offsetX -= targetMargin.left
+            if (anchor.refAnchorY == 0f && anchor.targetAnchorY == 1f) offsetY += targetMargin.top
+            if (anchor.refAnchorY == 1f && anchor.targetAnchorY == 0f) offsetY -= targetMargin.bottom
         }
     }
+    nodeOf(actual)?.margin?.let { myMargin ->
+        if (anchor.refAnchorX == 0f) offsetX += myMargin.left
+        if (anchor.refAnchorX == 1f) offsetX -= myMargin.right
+        if (anchor.refAnchorY == 0f) offsetY += myMargin.bottom
+        if (anchor.refAnchorY == 1f) offsetY -= myMargin.top
+    }
 
-    val bakedAnchor = anchor.copy(
-        offsetX = anchor.offsetX + myPadX + targetPadX,
-        offsetY = anchor.offsetY + myPadY + targetPadY
-    )
-    StarUIPanelPlugin.getAttached(component.actual)?.myAnchor = bakedAnchor
-    component.actual.applyAnchor(bakedAnchor)
+    val bakedAnchor = anchor.copy(offsetX = offsetX, offsetY = offsetY)
+    nodeFor(actual).anchor = bakedAnchor
+    actual.applyAnchor(bakedAnchor)
 }

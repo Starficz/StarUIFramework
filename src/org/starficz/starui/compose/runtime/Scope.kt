@@ -102,8 +102,7 @@ internal class Scope(
         if (disposed) return
         dirty = false
         val panel = plugin.panel
-        val cursor = ReuseCursor(panel, plugin.childRecords)
-        plugin.clearChildLayoutData()
+        val cursor = ReuseCursor(panel)
         runCleanups()
         plugin.reuseCursor = cursor
         try {
@@ -237,6 +236,8 @@ internal class Scope(
             }
             if (component is UIPanelAPI) disposeChildrenOf(component)
             StarUIPanelPlugin.getAttached(component)?.disposeSelf()
+            // a node held by its parent (a label's) would otherwise stay for as long as the parent does
+            NodeStore.release(component)
         }
 
         // ---- deferred disposal for UI removed by clearChildren() from outside StarUI ----
@@ -270,7 +271,7 @@ internal class Scope(
 internal class ChildRecord(val kind: String, val key: Any?, val props: Any?, val handle: Any)
 
 /** The old children of a container during one rebuild: handed out to matching calls, the rest removed at the end. */
-internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComponentAPI, ChildRecord>) {
+internal class ReuseCursor(private val panel: UIPanelAPI) {
     private val records = IdentityHashMap<UIComponentAPI, ChildRecord>()
     private val unkeyed = HashMap<String, ArrayList<UIComponentAPI>>()
     private val keyed = HashMap<Pair<String, Any>, UIComponentAPI>()
@@ -290,7 +291,7 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
     init {
         for (child in panel.getChildrenNonCopy()) {
             unused.add(child)
-            val record = oldRecords[child] ?: continue   // not made by a component function: never reused
+            val record = nodeOf(child)?.record ?: continue   // not made by a component function: never reused
             records[child] = record
             if (record.key != null) keyed[Pair(record.kind, record.key)] = child
             else unkeyed.getOrPut(record.kind) { ArrayList() }.add(child)
@@ -325,8 +326,15 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
         }
         unused.remove(child)
         reused.add(child)
+        // what the old call recorded (size, padding, margin, measure, ...) is recorded anew by the new one
+        nodeOf(child)?.resetForBuild()
         StarUIPanelPlugin.getAttached(child)?.resetForReuse()
         return records[child]
+    }
+
+    /** After the build: what a reused child's old call set up but its new call did not (its tooltip) is undone. */
+    fun finishReused() {
+        for (child in reused) StarUIPanelPlugin.getAttached(child)?.dropTooltipIfNotReapplied()
     }
 
     /**
@@ -335,11 +343,6 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
      * vanilla's bringToTop also moves every ancestor to the top of its parent, which would lift the whole screen
      * this container lives in above tooltips and overlays. And not with remove + add, which closes open tooltips.
      */
-    /** After the build: what a reused child's old call set up but its new call did not (its tooltip) is undone. */
-    fun finishReused() {
-        for (child in reused) StarUIPanelPlugin.getAttached(child)?.dropTooltipIfNotReapplied()
-    }
-
     fun restoreCallOrder() {
         @Suppress("UNCHECKED_CAST")
         val live = panel.getChildrenNonCopy() as MutableList<UIComponentAPI>
@@ -371,7 +374,6 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
 
 /** One component call's place in its container: the old child to reuse (if any) and how to remember the result. */
 internal class ChildSlot(
-    private val container: StarUIPanelPlugin?,
     private val kind: String,
     private val key: Any?,
     private val props: Any?,
@@ -383,13 +385,15 @@ internal class ChildSlot(
 
     val isReuse: Boolean get() = record != null
 
-    /** Remembers [component] (the native object) and [handle] (what the function returns) for the next rebuild. */
-    fun remember(component: UIComponentAPI, handle: Any) {
-        if (container != null) {
-            container.childRecords[component] = ChildRecord(kind, key, props, handle)
-            container.reuseCursor?.noteEmitted(component)
-        } else {
-            StarUIPanelPlugin.getAttached(component)?.kind = kind
-        }
+    /**
+     * Remembers [component] (the native object, already in its parent) and [handle] (what the function returns) for
+     * the next rebuild of the StarUI container it is in. Returns its node.
+     */
+    fun remember(component: UIComponentAPI, handle: Any): UINode {
+        val node = nodeFor(component)
+        node.record = ChildRecord(kind, key, props, handle)
+        node.plugin?.kind = kind
+        parentPluginOf(component)?.reuseCursor?.noteEmitted(component)
+        return node
     }
 }

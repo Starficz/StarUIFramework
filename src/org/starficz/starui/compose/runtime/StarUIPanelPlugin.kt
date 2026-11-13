@@ -4,7 +4,6 @@ import org.starficz.starui.compose.modifier.actual
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.input.InputEventAPI
-import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.PositionAPI
@@ -19,14 +18,11 @@ import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.LayoutEngine
 import org.starficz.starui.compose.layout.NodeSize
 import org.starficz.starui.compose.layout.ViewportLayoutEngine
-import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIElement
 import org.starficz.starui.core.applyAnchor
 import org.starficz.starui.core.removeTooltip
 import org.starficz.starui.core.bottom
-import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.left
 import org.starficz.starui.core.right
@@ -35,7 +31,6 @@ import org.starficz.starui.core.setPlugin
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.top
 import org.starficz.starui.core.width
-import java.util.WeakHashMap
 
 internal data class SlotBounds(
     val offsetX: Float,
@@ -47,7 +42,6 @@ internal data class SlotBounds(
 class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     companion object {
-        private val attachedPlugins = WeakHashMap<UIComponentAPI, StarUIPanelPlugin>()
         private var serialCounter = 0L
 
         /** False until the first StarUI plugin exists, so hooks on vanilla code can leave early. */
@@ -78,18 +72,19 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         /** A number larger than the serial of every plugin created so far. */
         internal fun nextSerial(): Long = ++serialCounter
 
+        /** True once a component that is not a CustomPanel has a plugin, so hooks on leaves can leave early until then. */
         @Volatile
         internal var hasAttachedPlugins = false
 
+        /** [component]'s plugin: a CustomPanel's own, or the one a leaf got on its [UINode]; null when it has none. */
         fun getAttached(component: UIComponentAPI): StarUIPanelPlugin? {
             val target = if (component is BoxedUIElement) component.obf else component
             if (target is CustomPanelAPI) return target.plugin as? StarUIPanelPlugin
             if (!hasAttachedPlugins) return null
-            synchronized(attachedPlugins) {
-                return attachedPlugins[target]
-            }
+            return NodeStore.leafPlugin(target)
         }
 
+        /** [component]'s plugin, made when it has none. It lives on the component's [UINode], as long as the component. */
         fun getOrCreate(component: UIComponentAPI): StarUIPanelPlugin {
             val target = if (component is BoxedUIElement) component.obf else component
             if (target is CustomPanelAPI) {
@@ -100,17 +95,18 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
                 // A CustomPanel has one plugin slot. Wrap a foreign plugin (vanilla's or another mod's) instead of
                 // replacing it, so modifiers on someone else's panel never switch its own behaviour off.
                 created.delegate = existing
+                // a node recorded for the panel before it had a StarUI plugin stays its node
+                NodeStore.lookup(target)?.let { created.adoptNode(it) }
                 target.setPlugin(created)
                 return created
             }
-            synchronized(attachedPlugins) {
-                return attachedPlugins.getOrPut(target) {
-                    hasAttachedPlugins = true
-                    StarUIPanelPlugin().also {
-                        it.component = target
-                        it.consumeEvents = false
-                    }
-                }
+            val node = NodeStore.nodeFor(target)
+            node.plugin?.let { return it }
+            hasAttachedPlugins = true
+            return StarUIPanelPlugin().also {
+                it.component = target
+                it.consumeEvents = false
+                NodeStore.attachLeafPlugin(target, node, it)
             }
         }
     }
@@ -157,7 +153,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     // ==========================================
     // ENGINE & SELF STATE
     // ==========================================
-    internal var isStackLayout: Boolean = false
     internal var layoutEngine: LayoutEngine? = null
     internal var isTopLevelNode: Boolean = false
     /**
@@ -190,10 +185,19 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     // Used when a leaf component is placed inside a larger padded/aligned layout slot.
     internal var slotBounds: SlotBounds? = null
 
-    // Used exclusively if this panel is the Absolute Root of the UI tree.
-    internal var myNodeSize: NodeSize = NodeSize(Dimension.WrapContent, Dimension.WrapContent)
-    internal var myPadding: PaddingValues = PaddingValues()
-    internal var myAnchor: Anchor.AnchorData? = null
+    private var ownNode: UINode? = null
+
+    /**
+     * This component's node (its size rule, padding, margin, anchor, ...). A CustomPanel's plugin holds it; a leaf's
+     * plugin sits on the node the component's store holds (see [NodeStore]).
+     */
+    internal val node: UINode
+        get() = ownNode ?: UINode().also { adoptNode(it) }
+
+    internal fun adoptNode(node: UINode) {
+        ownNode = node
+        node.plugin = this
+    }
 
     // ==========================================
     // OVERFLOW
@@ -241,25 +245,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     // ==========================================
-    // CHILD LAYOUT TRACKING MAPS
+    // CHILDREN
     // ==========================================
-    internal val childSizing = mutableMapOf<UIComponentAPI, NodeSize>()
-    internal val childPadding = mutableMapOf<UIComponentAPI, PaddingValues>()
-    internal val childMargins = mutableMapOf<UIComponentAPI, Margin>()
-    internal val childInnerOffset = mutableMapOf<UIComponentAPI, Pair<Float, Float>>()
-    /** The children the last build made through component functions, for dumps and for reuse on the next build. */
-    internal val childRecords = mutableMapOf<UIComponentAPI, ChildRecord>()
-
     /** Set while this container's builder runs again: the old children its calls may reuse. */
     internal var reuseCursor: ReuseCursor? = null
-
-    // Positioning maps (Box uses Alignments, Absolute uses Anchors)
-    internal val childAlignments = mutableMapOf<UIComponentAPI, Alignment>()
-    internal val childAnchors = mutableMapOf<UIComponentAPI, Anchor.AnchorData>()
-
-    // Measurement and Layout delegates
-    internal val childMeasurables = mutableMapOf<UIComponentAPI, (maxWidth: Float, maxHeight: Float) -> Pair<Float, Float>>()
-    internal val childLayoutDelegates = mutableMapOf<UIComponentAPI, (assignedWidth: Float, assignedHeight: Float) -> Unit>()
 
     // ==========================================
     // EVENTS & LIFECYCLE CALLBACKS
@@ -332,7 +321,12 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
      * patch sees both overloads, so the same event objects arrive twice. The engine creates new event objects on
      * every poll, so an event already seen here is the same dispatch, not a new one.
      */
-    private var lastHandledEvents: Set<InputEventAPI> = emptySet()
+    private var lastHandledEvents: MutableSet<InputEventAPI> = identitySet()
+    /** The set the next call fills, swapped with [lastHandledEvents] (two kept sets, nothing made per call). */
+    private var spareHandledEvents: MutableSet<InputEventAPI> = identitySet()
+
+    private fun identitySet(): MutableSet<InputEventAPI> =
+        java.util.Collections.newSetFromMap(java.util.IdentityHashMap<InputEventAPI, Boolean>())
 
     internal fun runLayout() {
         // A node its parent lays out never lays itself out: it does not know the room its parent gives it (measuring
@@ -368,9 +362,9 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             // A top-level root's room is its own size where that is exact; otherwise its parent's (a Holo's content
             // is drawn by the holo and has no real parent to measure)
             val p = component.parent
-            val rootMaxWidth = (myNodeSize.width as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
+            val rootMaxWidth = (node.size.width as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
                 ?: if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
-            val rootMaxHeight = (myNodeSize.height as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
+            val rootMaxHeight = (node.size.height as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
                 ?: if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
 
             // 1. Measure the children's intrinsic footprint
@@ -378,18 +372,18 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
             // 2. SELF SIZING: If this panel is a top-level root, size itself right now!
             if (isTopLevelNode) {
-                val finalW = when (val wDim = myNodeSize.width) {
+                val finalW = when (val wDim = node.size.width) {
                     is Dimension.Exact -> wDim.pixels
-                    is Dimension.WrapContent -> contentW + myPadding.horizontal
+                    is Dimension.WrapContent -> contentW + node.padding.horizontal
                     else -> if (component.width > 1f) component.width else rootMaxWidth
                 }
-                val finalH = when (val hDim = myNodeSize.height) {
+                val finalH = when (val hDim = node.size.height) {
                     is Dimension.Exact -> hDim.pixels
-                    is Dimension.WrapContent -> contentH + myPadding.vertical
+                    is Dimension.WrapContent -> contentH + node.padding.vertical
                     else -> if (component.height > 1f) component.height else rootMaxHeight
                 }
                 component.setSize(finalW, finalH)
-                myAnchor?.let { component.applyAnchor(it) }
+                node.anchor?.let { component.applyAnchor(it) }
             }
 
             // 3. Layout the children within our finalized boundaries
@@ -421,13 +415,13 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         val engine = layoutEngine ?: return Pair(component.width, component.height)
         val cached = measuredResult
         if (cached != null && (measuredPass == layoutPass || hasLayoutRun) && measuredW == maxWidth &&
-            measuredH == maxHeight && measuredSize == myNodeSize && measuredPadding == myPadding) return cached
+            measuredH == maxHeight && measuredSize == node.size && measuredPadding == node.padding) return cached
         val result = engine.measure(maxWidth, maxHeight)
         measuredPass = layoutPass
         measuredW = maxWidth
         measuredH = maxHeight
-        measuredSize = myNodeSize
-        measuredPadding = myPadding
+        measuredSize = node.size
+        measuredPadding = node.padding
         measuredResult = result
         return result
     }
@@ -531,11 +525,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         created.build()
     }
 
-    /**
-     * Back to a blank plugin before the component function that made this component configures it again: every
-     * handler, binding and flag the previous build set through modifiers is dropped, then the function re-applies
-     * the current ones. What the engine or the user's input owns (hover, pressed state) is kept.
-     */
     /** A tooltip from Modifier.tooltip is on this component; [tooltipAppliedThisBuild]: the current build applied it. */
     private var hasStarUITooltip = false
     private var tooltipAppliedThisBuild = false
@@ -556,6 +545,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         component.removeTooltip()
     }
 
+    /**
+     * Back to a blank plugin before the component function that made this component configures it again: every
+     * handler, binding and flag the previous build set through modifiers is dropped, then the function re-applies
+     * the current ones. What the engine or the user's input owns (hover, pressed state) is kept.
+     */
     internal fun resetForReuse() {
         tooltipAppliedThisBuild = false
         scope?.runCleanups()
@@ -567,8 +561,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
         consumeEvents = false
         customData = null
-        myAnchor = null
-        myPadding = PaddingValues()
         slotBounds = null
     }
 
@@ -596,26 +588,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    /**
-     * Re-anchors every child to this panel at its current place. Stack layouts anchor each child on its previous
-     * sibling; the engine rejects any resize while a child is anchored on a sibling that has been removed.
-     */
-    internal fun pinChildrenToPanel() {
-        (layoutEngine as? org.starficz.starui.compose.layout.StackLayoutEngine)?.forgetPlacements()
-        val panelPosition = panel.position
-        val panelTop = panelPosition.y + panelPosition.height
-        for (child in panel.getChildrenNonCopy()) {
-            val p = child.position
-            p.inTL(p.x - panelPosition.x, panelTop - (p.y + p.height))
-        }
-    }
-
-    /** Forgets everything recorded about the children (they are about to be replaced). */
-    internal fun clearChildLayoutData() {
-        childSizing.clear(); childPadding.clear(); childMargins.clear(); childInnerOffset.clear()
-        childAlignments.clear(); childAnchors.clear(); childMeasurables.clear(); childLayoutDelegates.clear()
-        childRecords.clear()
-    }
 
     /**
      * Components this one draws itself but that are not its children in the UI tree (a Holo's content): disposed with
@@ -635,7 +607,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         activeBindings.forEach { (state, binding) -> state.removeBinding(binding) }
         activeBindings.clear()
         handlerLists().forEach { it.clear() }
-        clearChildLayoutData()
     }
 
     /**
@@ -759,15 +730,18 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         inProcessInput = true
         try {
             val alreadyHandled = lastHandledEvents
-            lastHandledEvents = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<InputEventAPI, Boolean>()).also { it.addAll(events) }
-            val fresh = events.filter { it !in alreadyHandled }
+            val handledNow = spareHandledEvents
+            handledNow.clear()
+            handledNow.addAll(events)
+            lastHandledEvents = handledNow
+            spareHandledEvents = alreadyHandled
 
             // Consumed events are skipped: the engine's InputEvent throws "Attempt to access data of a consumed
             // InputEvent" from getX/getY/getEventType, and a patched leaf can still see events it or an earlier
             // sibling consumed (the parent purges them only after dispatching to every child).
 
-            fresh.filter { it.isMouseEvent }.forEach { event ->
-                if (event.isConsumed) return@forEach
+            for (event in events) {
+                if (event in alreadyHandled || !event.isMouseEvent || event.isConsumed) continue
                 val inElement = event.x.toFloat() in (left - inputCaptureLeftPad)..(right + inputCaptureRightPad) &&
                         event.y.toFloat() in (bottom - inputCaptureBottomPad)..(top + inputCaptureTopPad)
                 if (inElement) {
@@ -796,8 +770,8 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
                 }
             }
 
-            fresh.filter { it.isKeyboardEvent }.forEach { event ->
-                if (event.isConsumed) return@forEach
+            for (event in events) {
+                if (event in alreadyHandled || !event.isKeyboardEvent || event.isConsumed) continue
                 if (event.isKeyDownEvent) onKeyDownFunctions.forEach { it(event) }
                 if (event.isKeyUpEvent) onKeyUpFunctions.forEach { it(event) }
                 if (!event.isConsumed && event.isRepeat) onKeyHeldFunctions.forEach { it(event) }

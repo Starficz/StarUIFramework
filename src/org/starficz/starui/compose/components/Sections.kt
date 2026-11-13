@@ -12,10 +12,9 @@ import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.border
 import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.compose.runtime.StarUIContext
+
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.toNodeSize
-import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.VanillaFactory
 import org.starficz.starui.core.measure
@@ -44,15 +43,7 @@ fun UIPanelAPI.SectionHeading(
     // vanilla's height (one line plus 3 px); the width is the text plus vanilla's 5 px either side
     val barHeight = heading.position.height
     fun intrinsic() = Pair(heading.measure(heading.text).first + 10f, barHeight)
-    if (reused != null) applyReuseBounds(heading, size, intrinsic())
-    else getInitialBounds(size, intrinsic()).let { (w, h) -> heading.position.setSize(w, h) }
-
-    registerComponentSizing(heading, size, isContainer = false)
-    slot.remember(heading, heading)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[heading] = { _, _ -> intrinsic() }
-    }
-    modifier.operations.forEach { it(heading) }
+    finishLeaf(slot, heading, size, modifier, intrinsic = intrinsic(), measure = { _, _ -> intrinsic() })
     return heading
 }
 
@@ -72,8 +63,7 @@ fun UIPanelAPI.Section(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     val fillsHeight = size.toNodeSize().height is Dimension.FillMax
-    val frame = Modifier.background(backgroundColor).border(borderColor)
-    return Column(size, Modifier.then { c -> frame.operations.forEach { it(c) }; modifier.operations.forEach { it(c) } }) {
+    return Column(size, Modifier.background(backgroundColor).border(borderColor) then modifier) {
         if (title != null) SectionHeading(title)
         Column(
             size = if (fillsHeight) Size.fillMaxSize() else Size.fillMaxWidth(),

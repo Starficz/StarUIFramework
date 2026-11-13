@@ -8,7 +8,7 @@ import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.runtime.StarUIContext
+
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import java.awt.Color
@@ -26,25 +26,14 @@ fun UIPanelAPI.Spacer(
     val (initW, initH) = getInitialBounds(size)
 
     val slot = childSlot("Spacer")
-    val reused: CustomPanelAPI? = slot.reused()
-    val panel: CustomPanelAPI
-    if (reused != null) {
-        panel = reused
-        applyReuseBounds(panel, size)
-    } else {
+    val panel: CustomPanelAPI = slot.reused() ?: run {
         val plugin = StarUIPanelPlugin()
-        panel = Global.getSettings().createCustom(initW, initH, plugin)
-        plugin.customPanel = panel
-        this.addComponent(panel)
+        val made = Global.getSettings().createCustom(initW, initH, plugin)
+        plugin.customPanel = made
+        this.addComponent(made)
+        made
     }
-
-    registerComponentSizing(panel, size, isContainer = false)
-    slot.remember(panel, panel)
-    if (!StarUIContext.isTopLevel) {
-        StarUIContext.currentPlugin.childMeasurables[panel] = { _, _ -> Pair(initW, initH) }
-    }
-
-    modifier.operations.forEach { it(panel) }
+    finishLeaf(slot, panel, size, modifier, measure = { _, _ -> Pair(initW, initH) })
     return panel
 }
 
@@ -55,7 +44,7 @@ fun UIPanelAPI.Divider(
     color: Color = StarUITheme.current.divider.color
 ) = Spacer(
     size = Size.mixed(Axis.Fill(), Axis.Exact(thickness)),
-    modifier = Modifier.background(color).then { c -> modifier.operations.forEach { it(c) } }
+    modifier = Modifier.background(color) then modifier
 )
 
 /**

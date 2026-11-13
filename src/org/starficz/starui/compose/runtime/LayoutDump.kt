@@ -10,8 +10,8 @@ import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.layout.Dimension
 import org.starficz.starui.compose.layout.NodeSize
+import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.actual
-import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.getChildrenNonCopy
 
 /**
@@ -46,15 +46,17 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
     val left = position.x - rootPosition.x
     val top = (rootPosition.y + rootPosition.height) - (position.y + position.height)
 
+    val childNode = nodeOf(node)
     repeat(depth) { out.append("  ") }
-    out.append(parentPlugin?.childRecords?.get(node)?.kind ?: plugin?.kind ?: fallbackKind(node))
+    out.append(childNode?.record?.kind ?: plugin?.kind ?: fallbackKind(node))
     textOf(node)?.let { text ->
         out.append(" \"").append(if (text.length > 40) text.take(37) + "..." else text).append('"')
     }
     out.append(' ').append(number(position.width)).append('x').append(number(position.height))
     out.append(" at (").append(number(left)).append(", ").append(number(top)).append(')')
 
-    val sizing = parentPlugin?.childSizing?.get(node) ?: plugin?.takeIf { it.isTopLevelNode }?.myNodeSize
+    // the size rule its container lays it out by, or a top-level node's own
+    val sizing = childNode?.size?.takeIf { parentPlugin?.layoutEngine != null || plugin?.isTopLevelNode == true }
     if (sizing != null) out.append(" size=").append(describe(sizing))
     val overflowOf = inner ?: plugin
     if (overflowOf != null && overflowOf.overflow != Overflow.Visible) out.append(" overflow=").append(overflowOf.overflow)
@@ -65,14 +67,13 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
             out.append(" offset=(").append(number(-node.xOffset)).append(", ").append(number(node.yOffset)).append(')')
         }
     }
-    // a container's padding is its own (space inside it); a leaf's padding is recorded by its parent
-    val padding = parentPlugin?.childPadding?.get(node)
-        ?: (inner ?: plugin)?.takeIf { it.layoutEngine != null }?.myPadding?.takeIf { it.horizontal != 0f || it.vertical != 0f }
+    // a scrolling container's padding is on the StarUI container inside its scroll panel
+    val padding = (inner?.node ?: childNode)?.padding?.takeIf { it != PaddingValues.Zero }
     padding?.let { p ->
         out.append(" padding=(").append(number(p.left)).append(", ").append(number(p.top)).append(", ")
             .append(number(p.right)).append(", ").append(number(p.bottom)).append(')')
     }
-    parentPlugin?.childMargins?.get(node)?.let { m ->
+    childNode?.margin?.takeIf { it != PaddingValues.Zero }?.let { m ->
         out.append(" margin=(").append(number(m.left)).append(", ").append(number(m.top)).append(", ")
             .append(number(m.right)).append(", ").append(number(m.bottom)).append(')')
     }

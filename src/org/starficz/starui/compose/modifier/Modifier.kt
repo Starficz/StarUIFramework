@@ -23,6 +23,10 @@ interface Modifier {
         return ModifierImpl(this.operations + action)
     }
 
+    /** This modifier, then [other]: `Modifier.background(color).then(modifier)` adds a caller's modifier to one's own. */
+    infix fun then(other: Modifier): Modifier =
+        if (other.operations.isEmpty()) this else ModifierImpl(this.operations + other.operations)
+
     companion object : Modifier {
         override val operations: List<(UIComponentAPI) -> Unit> = emptyList()
     }

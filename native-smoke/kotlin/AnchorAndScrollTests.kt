@@ -5,8 +5,6 @@ import org.starficz.starui.compose.Overflow
 import org.starficz.starui.compose.Alignment
 import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Axis
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Column
 import org.starficz.starui.compose.components.CustomPanel

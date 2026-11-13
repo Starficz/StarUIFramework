@@ -11,8 +11,6 @@ import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.ImageSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.components.Box
 import org.starficz.starui.compose.components.Button
@@ -29,7 +27,6 @@ import org.starficz.starui.compose.modifier.align
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
@@ -81,7 +78,7 @@ fun registerBoxTests() {
 
 fun registerContractTests() {
     StarUITestSuite.group("contract-zero-wrapper") {
-        NativeSmokeSupport.check(StarUIManager.inited, "StarUIManager.inited (ShipDisplay reflection) at onApplicationLoad")
+        NativeSmokeSupport.check(org.starficz.starui.core.VanillaClasses.hasShipPreview, "vanilla's ship preview class (ShipDisplay) was found at onApplicationLoad")
         val state = UIState("typed")
         val flag = UIState(false)
         val made = linkedMapOf<String, UIComponentAPI>()

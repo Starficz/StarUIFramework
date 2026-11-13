@@ -21,7 +21,6 @@ import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.runtime.ButtonGroup
 import org.starficz.starui.compose.runtime.DynamicInjection
-import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.UIState
@@ -163,8 +162,17 @@ fun registerGuardTests() {
         // Anchors are meaningless inside a stack: rejected while building.
         r = scratchRoot()
         err = thrown { r.Column(Size.exact(100f, 100f)) { Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
-        expect(err is IllegalStateException && err.message?.contains("StackLayout") == true,
+        expect(err is IllegalStateException && err.message?.contains("only for children of a CustomPanel") == true,
             "Modifier.anchor inside a Column throws while building (got $err)")
+        // a Box places its children by alignment, which would overwrite the anchor just as silently
+        r = scratchRoot()
+        err = thrown { r.Box(Size.exact(100f, 100f)) { Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
+        expect(err is IllegalStateException && err.message?.contains("(Box)") == true,
+            "Modifier.anchor inside a Box throws while building (got $err)")
+        // inside a CustomPanel it is what places the child
+        r = scratchRoot()
+        err = thrown { r.CustomPanel(Size.exact(100f, 100f)) { Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
+        expect(err == null, "Modifier.anchor inside a CustomPanel is fine (got $err)")
 
         // A WrapContent Box holding only FillMax children only warns, and collapses to zero.
         r = scratchRoot()

@@ -1,8 +1,9 @@
 package org.starficz.starui.compose.layout
 
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.compose.modifier.PaddingValues
+import org.starficz.starui.compose.runtime.childNode
 import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
@@ -23,8 +24,8 @@ internal interface LayoutEngine {
 // ==========================================
 
 /**
- * Shared logic to safely measure a child's intrinsic size, including its padding,
- * and handling fallbacks for NaN or nested LayoutEngines.
+ * A child's size with its padding in a room of [availableW] x [availableH]: its component's own measure, a nested
+ * container's engine, or else its current size. NaN (a measure that could not tell) counts as 10.
  */
 internal fun measureChildPaddedIntrinsic(
     child: UIComponentAPI,
@@ -32,13 +33,16 @@ internal fun measureChildPaddedIntrinsic(
     availableW: Float,
     availableH: Float
 ): Pair<Float, Float> {
-    val padding = plugin.childPadding[child] ?: PaddingValues()
+    val node = childNode(child)
+    val childPlugin = StarUIPanelPlugin.getAttached(child)
+    // a container's measure includes its own padding; a leaf's padding is around what it measures
+    val padding = if (childPlugin?.layoutEngine != null) PaddingValues.Zero else node.padding
     val contentAvailW = if (availableW == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availableW - padding.horizontal)
     val contentAvailH = if (availableH == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availableH - padding.vertical)
 
-    val childPlugin = StarUIPanelPlugin.getAttached(child)
-    val rawIntrinsic = if (plugin.childMeasurables.containsKey(child)) {
-        plugin.childMeasurables[child]!!.invoke(contentAvailW, contentAvailH)
+    val measure = node.measure
+    val rawIntrinsic = if (measure != null) {
+        measure(contentAvailW, contentAvailH)
     } else if (childPlugin?.layoutEngine != null) {
         childPlugin.measure(contentAvailW, contentAvailH)
     } else {
@@ -51,9 +55,7 @@ internal fun measureChildPaddedIntrinsic(
     return Pair(rawW + padding.horizontal, rawH + padding.vertical)
 }
 
-/**
- * Shared logic to physically apply sizes and trigger downward layout cascades.
- */
+/** Gives [child] its size, then runs its component's layout and, for a container, its own layout. */
 internal fun commitChildLayout(
     child: UIComponentAPI,
     plugin: StarUIPanelPlugin,
@@ -61,7 +63,7 @@ internal fun commitChildLayout(
     finalH: Float
 ) {
     child.setSize(finalW, finalH)
-    plugin.childLayoutDelegates[child]?.invoke(finalW, finalH)
+    childNode(child).layout?.invoke(finalW, finalH)
 
     // Every child with a plugin is told, engine or not, so onLayout on a leaf fires on each pass of its container.
     val childPlugin = StarUIPanelPlugin.getAttached(child) ?: return
@@ -76,4 +78,10 @@ internal fun commitChildLayout(
         engine.layout(finalW, finalH)
     }
     childPlugin.finishLayout()
+}
+
+/** A child's width / height for an aspect-ratio axis (an `ImageSize.aspectWrap()` image); 1 when it has none. */
+internal fun aspectRatioOf(child: UIComponentAPI, plugin: StarUIPanelPlugin): Float {
+    val ratio = childNode(child).aspectRatio?.invoke() ?: return 1f
+    return if (ratio.isFinite() && ratio > 0f) ratio else 1f
 }

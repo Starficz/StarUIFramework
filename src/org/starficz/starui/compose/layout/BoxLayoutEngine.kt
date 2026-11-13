@@ -5,7 +5,8 @@ import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.modifier.Margin
+import org.starficz.starui.compose.runtime.childNode
+
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.relativeToBase
 
@@ -31,7 +32,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         var maxW = 0f
         var maxH = 0f
 
-        val containerPadding = plugin.myPadding
+        val containerPadding = plugin.node.padding
 
         // --- PADDING OVERFLOW WARNINGS ---
         if (maxWidth != Float.MAX_VALUE && maxWidth < containerPadding.horizontal) {
@@ -51,7 +52,8 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         // ==========================================
         debugLog { "[$debugId] --- PASS 1: Intrinsic Scrape ---" }
         children.forEachIndexed { i, child ->
-            val sizeConfig = plugin.childSizing[child] ?: NodeSize()
+            val node = childNode(child)
+            val sizeConfig = node.size
 
             // --- THE HARD MATH EXCEPTIONS ---
             if (innerAvailableW == Float.MAX_VALUE && sizeConfig.width is Dimension.FillMax) {
@@ -62,7 +64,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
             }
 
             // A child's margin is space outside it: it gets that much less room, and the Box wraps around it too
-            val margin = plugin.childMargins[child] ?: Margin()
+            val margin = node.margin
             val childAvailableW = if (innerAvailableW == Float.MAX_VALUE) innerAvailableW else maxOf(0f, innerAvailableW - margin.horizontal)
             val childAvailableH = if (innerAvailableH == Float.MAX_VALUE) innerAvailableH else maxOf(0f, innerAvailableH - margin.vertical)
 
@@ -90,13 +92,13 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         }
 
         // --- ALL-FILL PARADOX WARNING ---
-        if (plugin.myNodeSize.width is Dimension.WrapContent && maxW == 0f && children.isNotEmpty()) {
-            if (children.all { (plugin.childSizing[it] ?: NodeSize()).width is Dimension.FillMax }) {
+        if (plugin.node.size.width is Dimension.WrapContent && maxW == 0f && children.isNotEmpty()) {
+            if (children.all { childNode(it).size.width is Dimension.FillMax }) {
                 log.warn("StarUI Layout Paradox: A Box set to WrapContent width contains only children set to FillMax width. The Box has no intrinsic width to wrap around, causing it to collapse to 0.")
             }
         }
-        if (plugin.myNodeSize.height is Dimension.WrapContent && maxH == 0f && children.isNotEmpty()) {
-            if (children.all { (plugin.childSizing[it] ?: NodeSize()).height is Dimension.FillMax }) {
+        if (plugin.node.size.height is Dimension.WrapContent && maxH == 0f && children.isNotEmpty()) {
+            if (children.all { childNode(it).size.height is Dimension.FillMax }) {
                 log.warn("StarUI Layout Paradox: A Box set to WrapContent height contains only children set to FillMax height. The Box has no intrinsic height to wrap around, causing it to collapse to 0.")
             }
         }
@@ -113,7 +115,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         debugLog { "[$debugId] === LAYOUT START ===" }
         debugLog { "[$debugId] Assigned Bounds: W=$assignedWidth, H=$assignedHeight" }
 
-        val containerPadding = plugin.myPadding
+        val containerPadding = plugin.node.padding
         val innerAvailableW = maxOf(0f, assignedWidth - containerPadding.horizontal)
         val innerAvailableH = maxOf(0f, assignedHeight - containerPadding.vertical)
 
@@ -124,10 +126,11 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         // ==========================================
         debugLog { "[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---" }
         children.forEachIndexed { i, child ->
-            val sizeConfig = plugin.childSizing[child] ?: NodeSize()
+            val node = childNode(child)
+            val sizeConfig = node.size
 
             // The room this child has: the Box's inside minus the child's own margin (applyBoxAlignment offsets it)
-            val margin = plugin.childMargins[child] ?: Margin()
+            val margin = node.margin
             val childAvailableW = maxOf(0f, innerAvailableW - margin.horizontal)
             val childAvailableH = maxOf(0f, innerAvailableH - margin.vertical)
 
@@ -144,9 +147,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
                         is Dimension.FillMax -> childAvailableH
                         else -> paddedIntrinsicH
                     }
-                    val rawIntrinsic = plugin.childMeasurables[child]?.invoke(childAvailableW, childAvailableH) ?: Pair(1f, 1f)
-                    val ar = if (rawIntrinsic.second == 0f) 1f else rawIntrinsic.first / rawIntrinsic.second
-                    baseH * (if (ar.isNaN() || ar.isInfinite() || ar == 0f) 1f else ar)
+                    baseH * aspectRatioOf(child, plugin)
                 }
             }
 
@@ -154,11 +155,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
                 is Dimension.Exact -> sizeConfig.height.pixels
                 is Dimension.FillMax -> childAvailableH
                 is Dimension.WrapContent -> paddedIntrinsicH
-                is Dimension.AspectRatio -> {
-                    val rawIntrinsic = plugin.childMeasurables[child]?.invoke(childAvailableW, childAvailableH) ?: Pair(1f, 1f)
-                    val ar = if (rawIntrinsic.second == 0f) 1f else rawIntrinsic.first / rawIntrinsic.second
-                    finalW / (if (ar.isNaN() || ar.isInfinite() || ar == 0f) 1f else ar)
-                }
+                is Dimension.AspectRatio -> finalW / aspectRatioOf(child, plugin)
             }
 
             debugLog { "  [$debugId] Child[$i] Final Physical Size -> W: $finalW x H: $finalH" }
@@ -169,25 +166,21 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
             // ==========================================
             // POSITIONING
             // ==========================================
-            val alignment = plugin.childAlignments[child] ?: Alignment.TopLeft
-            applyBoxAlignment(child, alignment, containerPadding, i)
+            applyBoxAlignment(child, node.alignment ?: Alignment.TopLeft, margin, containerPadding, i)
         }
 
         debugLog { "[$debugId] LAYOUT END" }
     }
 
-    private fun applyBoxAlignment(child: UIComponentAPI, alignment: Alignment, containerPadding: PaddingValues, childIndex: Int) {
-        var offsetX = 0f
-        var offsetY = 0f
-
+    private fun applyBoxAlignment(
+        child: UIComponentAPI, alignment: Alignment, margin: PaddingValues, containerPadding: PaddingValues, childIndex: Int
+    ) {
         val alignX = alignment.x
         val alignY = alignment.y
 
         // 1. Margins push the child away from its aligned edge
-        plugin.childMargins[child]?.let { margin ->
-            offsetX += margin.left * (1f - alignX) - margin.right * alignX
-            offsetY += margin.bottom * (1f - alignY) - margin.top * alignY
-        }
+        var offsetX = margin.left * (1f - alignX) - margin.right * alignX
+        var offsetY = margin.bottom * (1f - alignY) - margin.top * alignY
 
         // 2. Container Padding squeezes the aligned edge inwards
         offsetX += containerPadding.left * (1f - alignX) - containerPadding.right * alignX

@@ -44,7 +44,7 @@ internal class ViewportLayoutEngine(
 
     /** Measures the children with the content container [exactW] x [exactH] (null: wrapping), into [needed]. */
     private fun measureContent(roomW: Float, roomH: Float, exactW: Float?, exactH: Float?) {
-        content.myNodeSize = NodeSize(
+        content.node.size = NodeSize(
             exactW?.let { Dimension.Exact(it) } ?: Dimension.WrapContent,
             exactH?.let { Dimension.Exact(it) } ?: Dimension.WrapContent
         )
@@ -97,7 +97,7 @@ internal class ViewportLayoutEngine(
             measureContent(contentW, contentH, contentW, contentH)
         }
 
-        content.myNodeSize = NodeSize(Dimension.Exact(contentW), Dimension.Exact(contentH))
+        content.node.size = NodeSize(Dimension.Exact(contentW), Dimension.Exact(contentH))
         content.panel.setSize(contentW, contentH)
         host.setContentSize(contentW, contentH)
         content.beginLayout()

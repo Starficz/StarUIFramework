@@ -147,13 +147,6 @@ class BoxedUIShipPreview(obf: UIPanelAPI):
     UIPanelAPI by obf,
     ShipPreviewAPI
 {
-    internal companion object{
-        var SHIP_PREVIEW_CLASS: Class<*>? = null
-        var FLEETMEMBER_CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
-        var ENUM_CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
-        var ENUM_ARRAY: Array<*>? = null
-    }
-
     enum class Style {
         NONE,
         NORMAL,
@@ -273,13 +266,6 @@ class BoxedUIHolo internal constructor(holo: UIComponentAPI, content: CustomPane
     BoxedUIElement(holo),
     UIComponentAPI by holo
 {
-    internal companion object {
-        /** The holo class, found by its readable methods at application load (StarUIManager). */
-        var HOLO_CLASS: Class<*>? = null
-        /** (width, height, frame sprite set, content inset). */
-        var CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
-    }
-
     /** The StarUI container the holo shows now (a `contentKey` change swaps in a new one). */
     var content: CustomPanelAPI = content
         internal set

@@ -3,7 +3,6 @@ package org.starficz.starui.core
 
 import com.fs.starfarer.api.ui.SectorMapAPI
 import com.fs.graphics.util.Fader
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.ui.*
 import org.starficz.starui.core.ReflectionUtils.getMethodsMatching
@@ -149,8 +148,8 @@ fun UIComponentAPI.applyAnchor(anchor: AnchorData){
     val base = when(anchor.reference){
         is AnchorReference.Parent -> null
         is AnchorReference.Previous -> {
-            parent?.children?.dropLast(1)?.lastOrNull()
-                ?: throw Error("Previous Component does not exist!")
+            parent?.getChildrenNonCopy()?.let { it.getOrNull(it.size - 2) }
+                ?: throw IllegalStateException("StarUI: Anchor ...previousComponent: there is no component before this one")
         }
         is AnchorReference.Sibling -> anchor.reference.component
     }
@@ -193,8 +192,19 @@ val UIPanelAPI.lastComponent
 
 
 // UIPanelAPI extensions that expose UIPanel methods
+private val childrenNonCopyMethods = HashMap<Class<*>, ReflectionUtils.ReflectedMethod>()
+
+/**
+ * The panel's live child list (vanilla's own, not a copy: do not change it, and copy it before changing the panel
+ * while going through it). Runs often (layouts, input, injection checks), so the method is looked up once per class.
+ */
+@Suppress("UNCHECKED_CAST")
 fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
-    return invoke("getChildrenNonCopy") as List<UIComponentAPI>
+    val target: Any = if (this is BoxedUIElement) obf else this
+    val method = childrenNonCopyMethods.getOrPut(target.javaClass) {
+        target.getMethodsMatching("getChildrenNonCopy", numOfParams = 0).single()
+    }
+    return method.invoke(target) as List<UIComponentAPI>
 }
 
 /** A snapshot of the children (the API's `getChildrenCopy2`: a new list that later changes do not touch). */

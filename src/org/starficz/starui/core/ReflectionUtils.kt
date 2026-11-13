@@ -1100,9 +1100,12 @@ internal object ReflectionUtils {
          * @param instance The object instance from which to get the field value. Use `null` for static fields.
          * @return The value of the field. Primitive types will be boxed. Returns `null` if the field value is `null`.
          */
+        // made accessible once, on first use (the flag stays on the field object)
+        private val accessible by lazy { setFieldAccessibleHandle.invoke(field, true); true }
+
         fun get(instance: Any?): Any? {
             val target = if(instance is BoxedUIElement) instance.obf else instance
-            setFieldAccessibleHandle.invoke(field, true)
+            accessible
             return getFieldHandle.invoke(field, target)
         }
 
@@ -1115,7 +1118,7 @@ internal object ReflectionUtils {
          */
         fun set(instance: Any?, value: Any?) {
             val target = if(instance is BoxedUIElement) instance.obf else instance
-            setFieldAccessibleHandle.invoke(field, true)
+            accessible
             setFieldHandle.invoke(field, target, value)
         }
     }
@@ -1144,9 +1147,12 @@ internal object ReflectionUtils {
          * @return The value returned by the method. Primitive return types will be boxed. Returns `null` if the method
          *         has a `void` return type or explicitly returns `null`.
          */
+        // made accessible once, on first use (the flag stays on the method object)
+        private val accessible by lazy { setMethodAccessibleHandle.invoke(method, true); true }
+
         fun invoke(instance: Any?, vararg arguments: Any?): Any? {
             val target = if(instance is BoxedUIElement) instance.obf else instance
-            setMethodAccessibleHandle.invoke(method, true)
+            accessible
             return invokeMethodHandle.invoke(method, target, arguments)
         }
     }
@@ -1169,8 +1175,11 @@ internal object ReflectionUtils {
          * @param arguments The arguments to pass to the constructor invocation.
          * @return The newly created object instance.
          */
+        // made accessible once, on first use (the flag stays on the constructor object)
+        private val accessible by lazy { setConstructorAccessibleHandle.invoke(constructor, true); true }
+
         fun newInstance(vararg arguments: Any?): Any {
-            setConstructorAccessibleHandle.invoke(constructor, true)
+            accessible
             return invokeConstructorHandle.invoke(constructor, arguments)
         }
     }

@@ -56,23 +56,9 @@ private fun UIPanelAPI.VanillaComponent(
     inputs: Any?,
     fixedWidth: Float? = null,
     make: (width: Float) -> UIComponentAPI
-): CustomPanelAPI {
-    checkDslTarget()
-    val slot = childSlot(kind)
-    val (panel, plugin) = containerPanel(slot, size)
-    val engine = (plugin.layoutEngine as? VanillaElementEngine) ?: VanillaElementEngine(plugin).also { plugin.layoutEngine = it }
+): CustomPanelAPI = VanillaHolder(kind, size, modifier, inputs) { engine ->
     engine.fixedWidth = fixedWidth
-    engine.afterBuild = null
-    engine.afterLayout = null
-    engine.buildSized = null
-    engine.onSwap = null
     engine.build = make
-
-    registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
-    slot.remember(panel, panel)
-    modifier.operations.forEach { it(panel) }
-    engine.update(inputs)
-    return panel
 }
 
 /**
@@ -86,6 +72,18 @@ private fun UIPanelAPI.VanillaSizedComponent(
     inputs: Any?,
     onSwap: ((old: UIComponentAPI?, made: UIComponentAPI) -> Unit)? = null,
     make: (width: Float, height: Float) -> UIComponentAPI
+): CustomPanelAPI = VanillaHolder(kind, size, modifier, inputs) { engine ->
+    engine.onSwap = onSwap
+    engine.buildSized = make
+}
+
+/** The StarUI panel holding a vanilla component, its engine reset and then set up by [configure]. */
+private inline fun UIPanelAPI.VanillaHolder(
+    kind: String,
+    size: Size,
+    modifier: Modifier,
+    inputs: Any?,
+    configure: (VanillaElementEngine) -> Unit
 ): CustomPanelAPI {
     checkDslTarget()
     val slot = childSlot(kind)
@@ -94,8 +92,9 @@ private fun UIPanelAPI.VanillaSizedComponent(
     engine.fixedWidth = null
     engine.afterBuild = null
     engine.afterLayout = null
-    engine.onSwap = onSwap
-    engine.buildSized = make
+    engine.buildSized = null
+    engine.onSwap = null
+    configure(engine)
 
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
     slot.remember(panel, panel)

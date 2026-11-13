@@ -4,7 +4,6 @@
 import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import org.starficz.starui.compose.Axis

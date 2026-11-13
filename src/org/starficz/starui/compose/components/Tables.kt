@@ -13,12 +13,16 @@ import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.layout.VanillaElementEngine
 import org.starficz.starui.compose.layout.commitChildLayout
 import org.starficz.starui.compose.modifier.Modifier
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.buildFromTooltip
 import java.awt.Color
 import kotlin.experimental.ExperimentalTypeInference
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
 
 /** What one table cell shows: text (see [TableCellScope.cell]) or StarUI components ([TableCellScope.custom]). */
 sealed class TableCell {
@@ -178,9 +182,9 @@ fun <T> UIPanelAPI.Table(
         fun rowHeightFor(widths: List<Float>): Float {
             var rowHeight = itemHeight
             for ((_, col, box) in customCells) {
-                val needed = org.starficz.starui.compose.runtime.StarUIPanelPlugin.getAttached(box)
+                val needed = StarUIPanelPlugin.getAttached(box)
                     ?.measure(widths[col], Float.MAX_VALUE)?.second ?: continue
-                rowHeight = maxOf(rowHeight, kotlin.math.ceil(needed))
+                rowHeight = maxOf(rowHeight, ceil(needed))
             }
             return rowHeight
         }
@@ -234,7 +238,7 @@ fun <T> UIPanelAPI.Table(
             // measured before the cells are placed: placing a cell marks its Box laid out, and its measure is then
             // taken as current
             if (customCells.isNotEmpty() && state.builtWidths.size == specs.size &&
-                kotlin.math.abs(rowHeightFor(state.builtWidths) - state.builtRowHeight) > 0.5f) rowsNeedRemaking = true
+                abs(rowHeightFor(state.builtWidths) - state.builtRowHeight) > 0.5f) rowsNeedRemaking = true
             waitingForCells = !placeCustomCells(panel, table, customCells)
         }
         if (customCells.isNotEmpty()) plugin.advance {
@@ -269,7 +273,7 @@ private const val TABLE_FRAME_WIDTH = 3f
 private fun <T> columnWidths(specs: List<TableColumnSpec<T>>, width: Float, exactWidth: Float, weightSum: Float): List<Float> {
     val columnsWidth = width - TABLE_FRAME_WIDTH
     val leftover = maxOf(0f, columnsWidth - exactWidth)
-    val widths = specs.map { spec -> spec.width ?: if (weightSum > 0f) kotlin.math.floor(leftover * spec.weight / weightSum) else 0f }.toMutableList()
+    val widths = specs.map { spec -> spec.width ?: if (weightSum > 0f) floor(leftover * spec.weight / weightSum) else 0f }.toMutableList()
     // the rounding remainder goes to the last weighted column, so the columns fill the width exactly
     val lastWeighted = specs.indexOfLast { it.width == null }
     if (lastWeighted >= 0) widths[lastWeighted] += columnsWidth - widths.sum()
@@ -302,12 +306,11 @@ private fun <T> rowData(cells: List<TableCell>, specs: List<TableColumnSpec<T>>,
     return data.toTypedArray()
 }
 
-/** Puts each custom cell's Box over its cell: the row's column panel, read from the table itself. */
-/** Places the custom cells over their cell panels; false when some cell panel does not exist yet. */
+/** Puts each custom cell's Box over its cell panel (the row's column panel, read from the table); false when some cell panel does not exist yet. */
 private fun placeCustomCells(panel: CustomPanelAPI, table: UIComponentAPI,
                              customCells: List<Triple<Int, Int, CustomPanelAPI>>): Boolean {
     if (customCells.isEmpty()) return true
-    val plugin = panel.plugin as org.starficz.starui.compose.runtime.StarUIPanelPlugin
+    val plugin = panel.plugin as StarUIPanelPlugin
     val rows = table.invoke("getRows") as? List<*> ?: return true
     val panelLeft = panel.position.x
     val panelTop = panel.position.y + panel.position.height

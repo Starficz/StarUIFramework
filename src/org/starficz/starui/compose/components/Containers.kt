@@ -25,11 +25,14 @@ import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.compose.modifier.actual
+import org.starficz.starui.compose.runtime.UINode
 import org.starficz.starui.compose.runtime.ChildSlot
 import org.starficz.starui.compose.runtime.ClipStack
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
+import org.starficz.starui.compose.runtime.nodeFor
+import org.starficz.starui.compose.runtime.parentPluginOf
 import org.starficz.starui.compose.toNodeSize
 import org.starficz.starui.core.renderShadows
 import org.starficz.starui.core.shadowColor
@@ -38,11 +41,10 @@ import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
 
-// =====================================================================
-// SIZING HELPER
-// Evaluates Tick-0 dimensions for elements before the 3-Pass Solver runs.
-// =====================================================================
-/** [contentPadding] is a leaf's own inside space (a button's around its label): part of its size on a wrap axis. */
+/**
+ * The size a component starts at, before its container lays it out: exact axes as given, wrap axes at [intrinsic]
+ * plus [contentPadding] (a leaf's own inside space, a button's around its label), fill axes at 1 until the layout.
+ */
 internal fun getInitialBounds(
     size: ImageSize, intrinsic: Pair<Float, Float>? = null, contentPadding: PaddingValues = PaddingValues.Zero
 ): Pair<Float, Float> {
@@ -50,7 +52,7 @@ internal fun getInitialBounds(
         is Mixed -> when (val x = size.x) {
             is Axis.Exact -> x.pixels
             is Axis.Wrap -> (intrinsic?.first ?: 1f) + contentPadding.horizontal
-            is Axis.Fill -> 1f // Fill strictly resolves in Pass 3 Layout
+            is Axis.Fill -> 1f
         }
         is NativeImage -> size.maxWidth ?: intrinsic?.first ?: 10f
         is AspectWrapImage -> 1f
@@ -92,13 +94,12 @@ internal fun UIPanelAPI.checkDslTarget() {
  * its props are equal.
  */
 internal fun UIPanelAPI.childSlot(kind: String, props: Any? = null): ChildSlot {
-    val container = StarUIContext.currentPluginOrNull
     val key = StarUIContext.nextKey()
-    val cursor = container?.reuseCursor
+    val cursor = StarUIContext.currentPluginOrNull?.reuseCursor
     val record = if (cursor != null && cursor.isFor((this as? ScrollPanelAPI)?.contentContainer ?: this)) {
         cursor.take(kind, key, props)
     } else null
-    return ChildSlot(container, kind, key, props, record)
+    return ChildSlot(kind, key, props, record)
 }
 
 /**
@@ -158,8 +159,9 @@ internal fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<C
 fun <R> key(id: Any, block: () -> R): R = StarUIContext.withKey(id, block)
 
 /**
- * Records how [component] is sized, with its container or (top level) on itself. [contentPadding] is a leaf's own
- * inside space from its component function; `Modifier.padding` adds to it afterwards.
+ * Records how [component] (already in its parent) is sized, on its node. [contentPadding] is a leaf's own inside space
+ * from its component function; `Modifier.padding` adds to it afterwards (a container's padding is all modifiers'). A
+ * component no StarUI container lays out is a top-level node: it sizes itself.
  */
 internal fun registerComponentSizing(
     component: UIComponentAPI,
@@ -169,27 +171,45 @@ internal fun registerComponentSizing(
     contentPadding: PaddingValues = PaddingValues.Zero
 ) {
     val actual = component.actual
-    val nodeSize = size.toNodeSize()
+    val node = nodeFor(actual)
+    node.size = size.toNodeSize()
+    if (!isContainer) node.padding = contentPadding
+    val topLevel = parentPluginOf(actual)?.layoutEngine == null
+    if (isContainer) containerPlugin?.isTopLevelNode = topLevel
+    else if (topLevel) StarUIPanelPlugin.getOrCreate(actual).isTopLevelNode = true
+}
 
-    val isManagedByParent = !StarUIContext.isTopLevel && StarUIContext.currentPlugin.layoutEngine != null
-
-    if (isContainer && containerPlugin != null) {
-        containerPlugin.myNodeSize = nodeSize
-        containerPlugin.isTopLevelNode = !isManagedByParent
+/**
+ * The common end of a leaf component call (Text, Button, Image, ...), once its native [component] is made or reused
+ * and in this panel: sizes it as a new or reused one starts ([intrinsic] is its content size now, null for a
+ * component without one; [contentPadding] its own inside space), records on its node how it is sized,
+ * measured ([measure]: its content size in a room) and laid out ([layout]: after it got its size), remembers it for
+ * the next rebuild with [handle] (what the call returns) and applies [modifier]. [startSize] = false leaves its size
+ * alone (a component whose own size setter has side effects). Returns its node.
+ */
+internal fun finishLeaf(
+    slot: ChildSlot,
+    component: UIComponentAPI,
+    size: ImageSize,
+    modifier: Modifier,
+    handle: Any = component,
+    intrinsic: Pair<Float, Float>? = null,
+    contentPadding: PaddingValues = PaddingValues.Zero,
+    startSize: Boolean = true,
+    measure: ((maxWidth: Float, maxHeight: Float) -> Pair<Float, Float>)? = null,
+    layout: ((width: Float, height: Float) -> Unit)? = null
+): UINode {
+    if (startSize) {
+        if (slot.isReuse) applyReuseBounds(component, size, intrinsic, contentPadding)
+        else getInitialBounds(size, intrinsic, contentPadding).let { (w, h) -> component.setSize(w, h) }
     }
-
-    if (isManagedByParent) {
-        val parentPlugin = StarUIContext.currentPlugin
-        parentPlugin.childSizing[actual] = nodeSize
-        if (!isContainer) {
-            if (contentPadding != PaddingValues.Zero) parentPlugin.childPadding[actual] = contentPadding
-            else parentPlugin.childPadding.remove(actual)
-        }
-    } else if (!isContainer) {
-        val selfPlugin = StarUIPanelPlugin.getOrCreate(actual)
-        selfPlugin.myNodeSize = nodeSize
-        selfPlugin.isTopLevelNode = true
-    }
+    registerComponentSizing(component, size, isContainer = false, contentPadding = contentPadding)
+    val node = slot.remember(component, handle)
+    node.measure = measure
+    node.layout = layout
+    val target = handle as? UIComponentAPI ?: component
+    modifier.operations.forEach { it(target) }
+    return node
 }
 
 /**
@@ -245,7 +265,9 @@ internal fun UIPanelAPI.containerParts(slot: ChildSlot, size: Size, overflow: Ov
     if (reused != null) {
         panel = reused
         plugin = reused.plugin as StarUIPanelPlugin
-        plugin.resetForReuse()   // the rebuild reset the scroll panel's plugin; this one sits below it
+        // the rebuild reset the scroll panel's plugin and node; this container sits below it (and holds the padding)
+        plugin.resetForReuse()
+        plugin.node.padding = PaddingValues.Zero
         host = plugin.scrollHost!!
         applyReuseBounds(host, size)
     } else {
@@ -327,7 +349,7 @@ fun UIPanelAPI.Box(
     checkDslTarget()
     val slot = childSlot("Box", overflow)
     val parts = containerParts(slot, size, overflow)
-    parts.plugin.layoutEngine = BoxLayoutEngine(parts.plugin)
+    if (parts.plugin.layoutEngine !is BoxLayoutEngine) parts.plugin.layoutEngine = BoxLayoutEngine(parts.plugin)
     parts.register(slot, size, modifier)
     parts.plugin.attachScope("Box", builder) { parts.panel.builder() }
     return parts.panel
@@ -346,13 +368,14 @@ private fun UIPanelAPI.StackLayout(
     val kind = if (direction.isVertical) "Column" else "Row"
     val slot = childSlot(kind, overflow)
     val parts = containerParts(slot, size, overflow)
-    parts.plugin.isStackLayout = true
-    parts.plugin.layoutEngine = StackLayoutEngine(
-        plugin = parts.plugin,
-        direction = direction,
-        crossAlignValue = crossAlignValue,
-        spacing = spacing
-    )
+    // a reused container keeps its engine (and what it cached about its children's placements)
+    val kept = (parts.plugin.layoutEngine as? StackLayoutEngine)?.takeIf { it.direction == direction }
+    val engine = kept ?: StackLayoutEngine(parts.plugin, direction).also { parts.plugin.layoutEngine = it }
+    if (engine.crossAlignValue != crossAlignValue || engine.spacing != spacing) {
+        engine.crossAlignValue = crossAlignValue
+        engine.spacing = spacing
+        engine.forgetPlacements()
+    }
     parts.register(slot, size, modifier)
     parts.plugin.attachScope(kind, builder) { parts.panel.builder() }
     return parts.panel

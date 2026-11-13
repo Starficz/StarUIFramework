@@ -1,4 +1,4 @@
-package org.starficz.starui.internal
+package org.starficz.starui.patches
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI

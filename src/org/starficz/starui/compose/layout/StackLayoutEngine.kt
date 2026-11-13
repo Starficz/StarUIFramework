@@ -1,13 +1,12 @@
 package org.starficz.starui.compose.layout
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.apache.log4j.Logger
 import org.starficz.starui.compose.AxisOverflow
-import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.modifier.Margin
+import org.starficz.starui.compose.runtime.childNode
+
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.relativeToBase
 import org.starficz.starui.core.height
@@ -29,10 +28,12 @@ internal enum class StackDirection {
 
 internal class StackLayoutEngine(
     private val plugin: StarUIPanelPlugin,
-    internal val direction: StackDirection,
-    private val crossAlignValue: Float,
-    private val spacing: Float
+    internal val direction: StackDirection
 ) : LayoutEngine {
+    /** Where children sit across the main axis: 0 left / bottom .. 1 right / top. */
+    internal var crossAlignValue = 0f
+    /** The gap between children. */
+    internal var spacing = 0f
 
     companion object {
         val log: Logger = Global.getLogger(StackLayoutEngine::class.java)
@@ -76,7 +77,7 @@ internal class StackLayoutEngine(
 
         debugLog { "[$debugId] === MEASURE START ===" }
         debugLog { "[$debugId] Inherited Envelope Bounds -> maxW: $maxWidth, maxH: $maxHeight" }
-        debugLog { "[$debugId] My Engine Sizing -> ${plugin.myNodeSize}" }
+        debugLog { "[$debugId] My Engine Sizing -> ${plugin.node.size}" }
 
         var fixedPrimarySpace = 0f
         var maxSecondarySpace = 0f
@@ -84,9 +85,9 @@ internal class StackLayoutEngine(
         childPaddedIntrinsics.clear()
 
         val children = plugin.panel.getChildrenCopy2()
-        val containerPadding = plugin.myPadding
+        val containerPadding = plugin.node.padding
 
-        val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.myNodeSize, isVertical)
+        val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.node.size, isVertical)
         debugLog { "[$debugId] Resolved Engine Axes -> Primary: $myPrimaryDim, Cross: $myCrossDim" }
 
         val primaryPaddingSum = if (isVertical) containerPadding.vertical else containerPadding.horizontal
@@ -123,9 +124,9 @@ internal class StackLayoutEngine(
         // siblings' cross size and never widens the container, so it is measured once that size is known.
         val isMyCrossFromContent = myCrossDim !is Dimension.Exact && myCrossDim !is Dimension.FillMax
 
-        fun dimsOf(child: UIComponentAPI) = getAxisDimension(plugin.childSizing[child] ?: NodeSize(), isVertical)
-        fun primaryMarginOf(child: UIComponentAPI) = (plugin.childMargins[child] ?: Margin()).let { if (isVertical) it.vertical else it.horizontal }
-        fun crossMarginOf(child: UIComponentAPI) = (plugin.childMargins[child] ?: Margin()).let { if (isVertical) it.horizontal else it.vertical }
+        fun dimsOf(child: UIComponentAPI) = getAxisDimension(childNode(child).size, isVertical)
+        fun primaryMarginOf(child: UIComponentAPI) = childNode(child).margin.let { if (isVertical) it.vertical else it.horizontal }
+        fun crossMarginOf(child: UIComponentAPI) = childNode(child).margin.let { if (isVertical) it.horizontal else it.vertical }
         fun minus(space: Float, amount: Float) = if (space == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, space - amount)
 
         // --- THE HARD MATH EXCEPTIONS ---
@@ -181,11 +182,8 @@ internal class StackLayoutEngine(
                 is Dimension.WrapContent, is Dimension.AspectRatio -> if (isVertical) paddedH else paddedW
             }
             val paddedIntrinsicSecondary = if (crossDim is Dimension.AspectRatio) {
-                val rawAr = if (plugin.childMeasurables.containsKey(child)) {
-                    val ratioIntrin = plugin.childMeasurables[child]!!.invoke(100f, 100f)
-                    ratioIntrin.first / ratioIntrin.second
-                } else 1f
-                if (isVertical) finalizedPrimarySize * rawAr else finalizedPrimarySize / rawAr
+                val ratio = aspectRatioOf(child, plugin)
+                if (isVertical) finalizedPrimarySize * ratio else finalizedPrimarySize / ratio
             } else {
                 if (isVertical) paddedW else paddedH
             }
@@ -253,7 +251,7 @@ internal class StackLayoutEngine(
 
         // --- CROSS-AXIS PARADOX WARNING ---
         if (measuredSecondary == crossPaddingSum && myCrossDim is Dimension.WrapContent && children.isNotEmpty()) {
-            val allFill = children.all { getAxisDimension(plugin.childSizing[it] ?: NodeSize(), isVertical).second is Dimension.FillMax }
+            val allFill = children.all { dimsOf(it).second is Dimension.FillMax }
             if (allFill) {
                 log.warn("StarUI Layout Paradox: A StackLayout set to WrapContent its cross-axis contains only children set to FillMax that axis. The container has no intrinsic size to wrap around, causing it to collapse.")
             }
@@ -284,8 +282,8 @@ internal class StackLayoutEngine(
         debugLog { "[$debugId] === LAYOUT START ===" }
         debugLog { "[$debugId] Post-Measure Assigned Space from Parent -> assignedW: $assignedWidth, assignedH: $assignedHeight" }
 
-        val containerPadding = plugin.myPadding
-        val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.myNodeSize, isVertical)
+        val containerPadding = plugin.node.padding
+        val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.node.size, isVertical)
 
         val finalContainerPrimary = when (myPrimaryDim) {
             is Dimension.Exact -> myPrimaryDim.pixels
@@ -315,7 +313,7 @@ internal class StackLayoutEngine(
             log.warn("StarUI Layout Overflow: Cross boundaries exceeded by ${measuredSecondary - finalContainerSecondary}px in $debugId.")
         }
 
-        // Parent MUST be sized before children are positioned to allow Drift Correction math to work
+        // Sized before the children are placed: they are placed against its edges
         plugin.panel.setSize(
             if (isVertical) finalContainerSecondary else finalContainerPrimary,
             if (isVertical) finalContainerPrimary else finalContainerSecondary
@@ -328,8 +326,9 @@ internal class StackLayoutEngine(
         // ==========================================
         debugLog { "[$debugId] --- FINAL COMPONENT SIZING ASSIGNMENT ---" }
         children.forEachIndexed { i, child ->
-            val childSizing = plugin.childSizing[child] ?: NodeSize()
-            val childMargin = plugin.childMargins[child] ?: Margin()
+            val node = childNode(child)
+            val childSizing = node.size
+            val childMargin = node.margin
             val crossMarginSum = if (isVertical) childMargin.horizontal else childMargin.vertical
 
             val (paddedIntrinsicW, paddedIntrinsicH) = childPaddedIntrinsics[child]!!
@@ -350,11 +349,8 @@ internal class StackLayoutEngine(
                 is Dimension.Exact -> crossDim.pixels
                 is Dimension.WrapContent -> paddedIntrinsicSecondary
                 is Dimension.AspectRatio -> {
-                    val rawAr = if (plugin.childMeasurables.containsKey(child)) {
-                        val ratioIntrin = plugin.childMeasurables[child]!!.invoke(100f, 100f)
-                        ratioIntrin.first / ratioIntrin.second
-                    } else 1f
-                    if (isVertical) newPrimary * rawAr else newPrimary / rawAr
+                    val ratio = aspectRatioOf(child, plugin)
+                    if (isVertical) newPrimary * ratio else newPrimary / ratio
                 }
             }
 
@@ -379,7 +375,7 @@ internal class StackLayoutEngine(
             StackDirection.LEFT -> containerPadding.right
         }
         children.forEachIndexed { i, component ->
-            val myMargin = plugin.childMargins[component] ?: Margin()
+            val myMargin = childNode(component).margin
             val (leading, trailing) = when (direction) {
                 StackDirection.DOWN -> myMargin.top to myMargin.bottom
                 StackDirection.UP -> myMargin.bottom to myMargin.top
@@ -399,7 +395,7 @@ internal class StackLayoutEngine(
 
     /** Places [child] [offset] along the main axis from the container's leading edge, aligned across it. */
     private fun applyStackPositioning(
-        child: UIComponentAPI, offset: Float, containerPadding: PaddingValues, myMargin: Margin,
+        child: UIComponentAPI, offset: Float, containerPadding: PaddingValues, myMargin: PaddingValues,
         childIndex: Int
     ) {
         val targetAnchorX: Float; val targetAnchorY: Float

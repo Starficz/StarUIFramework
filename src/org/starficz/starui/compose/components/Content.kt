@@ -4,7 +4,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
+
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.compose.AspectWrapImage
 import org.starficz.starui.compose.BoundedSize
@@ -15,12 +15,14 @@ import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.TextAlign
 import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.compose.runtime.StarUIContext
+import org.starficz.starui.compose.runtime.UINode
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.BoxedUIImage
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.ReflectionUtils.invoke
+import org.starficz.starui.core.ReflectionUtils
+import org.starficz.starui.core.VanillaClasses
 import org.starficz.starui.core.VanillaFactory
 import org.starficz.starui.core.autoSize
 import org.starficz.starui.core.measure
@@ -63,41 +65,30 @@ fun UIPanelAPI.Text(
     applyTextAlign()
 
     val initialMeasure = rawLabel.measure(text)
-    if (reused != null) {
-        applyReuseBounds(rawLabel, size, initialMeasure)
-    } else {
-        val (initW, initH) = getInitialBounds(size, initialMeasure)
-        rawLabel.setSize(initW, initH)
+
+    // Vanilla lays wrapped text out again on every autoSizeToWidth, the costliest part of a layout pass with much
+    // text. The wrapped height per width is kept for the current text, and the label itself is only sized again when
+    // its text or width changed.
+    var cachedText: String? = text
+    var singleLine = initialMeasure   // rawLabel.measure(cachedText)
+    val heightAtWidth = HashMap<Float, Float>(4)
+    var labelSizedText: String? = null
+    var labelSizedWidth = Float.NaN
+    var labelSizedHeight = 0f
+    /** Wraps the label at [width] (unless it already is) and returns the wrapped height. */
+    fun autoSize(str: String, width: Float): Float {
+        if (str == labelSizedText && width == labelSizedWidth) return labelSizedHeight
+        rawLabel.autoSizeToWidth(width)
+        labelSizedText = str
+        labelSizedWidth = width
+        // the label's own height changes again when its container sizes it: keep the wrapped one
+        labelSizedHeight = rawLabel.height
+        return labelSizedHeight
     }
 
-    registerComponentSizing(rawLabel, size, isContainer = false)
-    slot.remember(rawLabel, rawLabel)
-
-    if (!StarUIContext.isTopLevel) {
-        val parentPlugin = StarUIContext.currentPlugin
-        val actual: UIComponentAPI = rawLabel
-
-        // Vanilla lays wrapped text out again on every autoSizeToWidth, the costliest part of a layout pass with
-        // much text. The wrapped height per width is kept for the current text, and the label itself is only sized
-        // again when its text or width changed.
-        var cachedText: String? = text
-        var singleLine = initialMeasure   // rawLabel.measure(cachedText)
-        val heightAtWidth = HashMap<Float, Float>(4)
-        var labelSizedText: String? = null
-        var labelSizedWidth = Float.NaN
-        var labelSizedHeight = 0f
-        /** Wraps the label at [width] (unless it already is) and returns the wrapped height. */
-        fun autoSize(str: String, width: Float): Float {
-            if (str == labelSizedText && width == labelSizedWidth) return labelSizedHeight
-            rawLabel.autoSizeToWidth(width)
-            labelSizedText = str
-            labelSizedWidth = width
-            // the label's own height changes again when its container sizes it: keep the wrapped one
-            labelSizedHeight = rawLabel.height
-            return labelSizedHeight
-        }
-
-        parentPlugin.childMeasurables[actual] = { maxW, _ ->
+    var node: UINode? = null
+    node = finishLeaf(slot, rawLabel, size, modifier, intrinsic = initialMeasure,
+        measure = { maxW, _ ->
             val currentStr = rawLabel.text
             if (currentStr.isEmpty()) {
                 Pair(0f, 0f)
@@ -115,18 +106,14 @@ fun UIPanelAPI.Text(
                     Pair(maxW, height)
                 }
             }
-        }
-
-        parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
-            val pad = parentPlugin.childPadding[actual] ?: PaddingValues()
-            val availW = maxOf(1f, assignedW - pad.horizontal)
-            autoSize(rawLabel.text, availW)
+        },
+        layout = { assignedW, assignedH ->
+            val pad = node?.padding ?: PaddingValues.Zero
+            autoSize(rawLabel.text, maxOf(1f, assignedW - pad.horizontal))
             rawLabel.setSize(assignedW, assignedH)
             applyTextAlign()
         }
-    }
-
-    modifier.operations.forEach { it(rawLabel) }
+    )
     return rawLabel
 }
 
@@ -208,24 +195,14 @@ fun UIPanelAPI.Image(
         return Pair(w, h)
     }
 
-    val (initW, initH) = getInitialBounds(size, calcIntrinsic())
-    rawImage.setSize(initW, initH)
-
-    registerComponentSizing(rawImage, size, isContainer = false)
-    slot.remember(rawImage.obf, rawImage)
-
-    if (!StarUIContext.isTopLevel) {
-        val parentPlugin = StarUIContext.currentPlugin
-        val actual = rawImage.obf
-
-        parentPlugin.childMeasurables[actual] = { availW, availH -> calcIntrinsic(availW, availH) }
-        parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
+    val node = finishLeaf(slot, rawImage.obf, size, modifier, handle = rawImage, intrinsic = calcIntrinsic(),
+        measure = { availW, availH -> calcIntrinsic(availW, availH) },
+        layout = { assignedW, assignedH ->
             applyScaleMode()
             rawImage.setSize(assignedW, assignedH)
         }
-    }
-
-    modifier.operations.forEach { it(rawImage) }
+    )
+    if (size is AspectWrapImage) node.aspectRatio = { if (origH > 0f) origW / origH else 1f }
     return rawImage
 }
 
@@ -276,7 +253,7 @@ fun UIPanelAPI.ShipDisplay(
     val theme = StarUITheme.current.shipDisplay
     val rawShip = newShipPreview(fleetMember, style ?: theme.vanillaStyle,
         labelColor ?: theme.labelColor ?: Global.getSettings().getColor("textFriendColor"))
-    rawShip.setSize(initW, initH)
+    rawShip.setSize(initW, initH)   // before the variant: vanilla lays the ship out for its size
 
     if (variant != null) {
         if (shipName != null) rawShip.setVariant(variant, shipName)
@@ -292,25 +269,10 @@ fun UIPanelAPI.ShipDisplay(
     rawShip.setScanlines(scanlines)
     if (hideLabels) rawShip.hideLabels()
 
-    registerComponentSizing(rawShip, size, isContainer = false)
-    slot.remember(rawShip.obf, rawShip)
-
-    if (!StarUIContext.isTopLevel) {
-        val parentPlugin = StarUIContext.currentPlugin
-        val actual = rawShip.obf
-
-        parentPlugin.childMeasurables[actual] = { maxW, maxH ->
-            val w = if (maxW == Float.MAX_VALUE) 100f else maxW
-            val h = if (maxH == Float.MAX_VALUE) 100f else maxH
-            Pair(w, h)
-        }
-
-        parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
-            rawShip.setSize(assignedW, assignedH)
-        }
-    }
-
-    modifier.operations.forEach { it(rawShip) }
+    finishLeaf(slot, rawShip.obf, size, modifier, handle = rawShip, intrinsic = Pair(100f, 100f),
+        measure = { maxW, maxH -> Pair(if (maxW == Float.MAX_VALUE) 100f else maxW, if (maxH == Float.MAX_VALUE) 100f else maxH) },
+        layout = { assignedW, assignedH -> rawShip.setSize(assignedW, assignedH) }
+    )
     return rawShip
 }
 
@@ -341,11 +303,16 @@ private fun UIPanelAPI.newShipPreview(
     fleetMember: FleetMemberAPI?, style: BoxedUIShipPreview.Style, labelColor: Color
 ): BoxedUIShipPreview {
     val preview = if (fleetMember != null) {
-        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR!!.newInstance(fleetMember)
+        shipPreviewConstructor(VanillaClasses.shipPreviewForMember).newInstance(fleetMember)
     } else {
-        val enum = BoxedUIShipPreview.ENUM_ARRAY!!.find { it!!.invoke("name") == style.name }
-        BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.newInstance(enum, labelColor)
+        val enum = VanillaClasses.shipPreviewStyles?.find { it?.invoke("name") == style.name }
+        shipPreviewConstructor(VanillaClasses.shipPreviewWithStyle).newInstance(enum, labelColor)
     } as UIPanelAPI
     this.addComponent(preview)
     return BoxedUIShipPreview(preview)
 }
+
+private fun shipPreviewConstructor(found: ReflectionUtils.ReflectedConstructor?): ReflectionUtils.ReflectedConstructor =
+    found ?: throw IllegalStateException(
+        "StarUI: ShipDisplay needs vanilla's ship preview, which was not found at application load. A game update " +
+            "may have changed it.")

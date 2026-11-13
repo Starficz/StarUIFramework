@@ -9,9 +9,6 @@ internal object StarUIContext {
     val isTopLevel: Boolean
         get() = pluginStack.get().isEmpty()
 
-    val isManagedByParent: Boolean
-        get() = pluginStack.get().lastOrNull()?.layoutEngine != null
-
     val currentPlugin: StarUIPanelPlugin
         get() = pluginStack.get().lastOrNull() ?: throw IllegalStateException(
             "DSL Called on non-DSL Context! " +
