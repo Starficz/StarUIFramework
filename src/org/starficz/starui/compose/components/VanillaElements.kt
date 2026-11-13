@@ -354,13 +354,19 @@ fun UIPanelAPI.SkillPanel(
 /**
  * An event's progress bar as its intel screen shows it (Hostile Activity, Hyperspace Topography, ...): the bar,
  * the icon of each stage above it at its progress, the marker of the current progress below it, and the event's own
- * tooltips on the bar and the stage icons. Fills the width it gets. Needs a campaign.
+ * tooltips on the bar and the stage icons. Vanilla's bar is the event's own `getBarWidth()` wide (750 for most
+ * events) whatever room it gets, so the component is built at that width (plus the event's bar offset and half a
+ * stage icon at the end) and wraps it. Needs a campaign.
  */
 fun UIPanelAPI.EventProgressBar(
     intel: BaseEventIntel,
-    size: Size = Size.fillMaxWidth(),
+    size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier
-): CustomPanelAPI = VanillaComponent("EventProgressBar", size, modifier) { width ->
+): CustomPanelAPI = VanillaComponent(
+    "EventProgressBar", size, modifier,
+    fixedWidth = maxOf(0f, intel.barXOffset) + intel.barWidth +
+        (intel.stages.maxOfOrNull { intel.createDisplayData(it.id).size } ?: 0f) / 2f
+) { width ->
     buildTooltipBlock(width) {
         // the stages shown, as BaseEventIntel.createLargeDescription picks them
         val shown = intel.stages.filter { curr ->
