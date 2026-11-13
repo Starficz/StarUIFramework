@@ -616,7 +616,7 @@ object ShowcaseUIPlugin {
                 "Four rectangles inside the edge, so the corners are square and a translucent colour is even.", Size.fillMaxWidth(), color = GRAY)
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
                 Box(Size.wrapContent(), Modifier.border().padding(6f)) { Text("border()") }
-                Box(Size.wrapContent(), Modifier.border(BASE).padding(6f)) { Text("border(BASE)") }
+                Box(Size.wrapContent(), Modifier.border(BASE).padding(6f)) { Text("BASE") }
                 Box(Size.wrapContent(), Modifier.border(HIGHLIGHT, 2f).padding(6f)) { Text("HIGHLIGHT, 2") }
                 Box(Size.wrapContent(), Modifier.border(POSITIVE, 4f).padding(6f)) { Text("POSITIVE, 4") }
                 Box(Size.wrapContent(), Modifier.background(INSET_BG).border(BRIGHT.withAlpha(110), 8f).padding(6f)) {
@@ -681,6 +681,9 @@ object ShowcaseUIPlugin {
                 }
                 Checkbox("Slow motion (2 s folds)", bind = slowFolds,
                     modifier = Modifier.tooltip("foldDuration = 2f instead of vanilla's 0.25 s, to watch the fold"))
+                Button("Static", modifier = Modifier.tooltip("flickerNoise(0, 1.25): vanilla's opening and closing static")) {
+                    showcaseHolo?.flickerNoise(0f, 1.25f)
+                }
             }
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
                 Button(if (holoOpen.value) "Close" else "Open",
@@ -692,9 +695,6 @@ object ShowcaseUIPlugin {
                 Button(if (holoSeeThrough.value) "TitleScreen" else "Dialog",
                     modifier = Modifier.tooltip("background = HoloBackground.Dialog (opaque, most dialogs) or .TitleScreen (see-through)")) {
                     holoSeeThrough.value = !holoSeeThrough.value
-                }
-                Button("Static", modifier = Modifier.tooltip("flickerNoise(0, 1.25): vanilla's opening and closing static")) {
-                    showcaseHolo?.flickerNoise(0f, 1.25f)
                 }
             }
             Row(Size.fillMaxWidth(), spacing = 12f) {
