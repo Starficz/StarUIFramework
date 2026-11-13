@@ -13,6 +13,7 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.border
+import org.starficz.starui.compose.modifier.VanillaFrame
 import org.starficz.starui.compose.modifier.onAdvance
 import org.starficz.starui.compose.modifier.onLayout
 import org.starficz.starui.compose.modifier.onPositionChanged
@@ -26,7 +27,7 @@ private fun Rgb.isBlue() = b > 170 && r < 120 && g < 120
 fun registerModifierVisualTests() {
     StarUITestSuite.group("modifier-background-border") {
         val panel = root.CustomPanel(Size.exact(100f, 80f), Modifier.anchor(Anchor.inside.topLeft.ofParent(100f, 100f))
-            .background(Color(220, 40, 40)).border(3f, Color(40, 220, 40)))
+            .background(Color(220, 40, 40)).border(Color(40, 220, 40), 3f))
         lateinit var label: UIComponentAPI
         root.CustomPanel(Size.exact(300f, 60f), Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 100f))) {
             label = Text("Native label with background", modifier = Modifier.background(Color(40, 40, 220))
@@ -44,6 +45,37 @@ fun registerModifierVisualTests() {
 
         val blue = fraction(label.position.x, label.position.y, label.w, label.h) { it.isBlue() }
         expect(blue > 0.4f, "background modifier on a native label (no wrapper) covers its rect (blue fraction $blue)")
+        screenshot("final")
+    }
+
+    StarUITestSuite.group("modifier-vanilla-border") {
+        // vanilla's three sprite frames in use (title menu, codex, combat), and the plain line next to them
+        val frames = VanillaFrame.entries.mapIndexed { i, frame ->
+            frame to root.CustomPanel(Size.exact(200f, 120f), Modifier.anchor(Anchor.inside.topLeft.ofParent(60f + i * 240f, 60f))
+                .border(frame))
+        }
+        root.CustomPanel(Size.exact(200f, 120f), Modifier.anchor(Anchor.inside.topLeft.ofParent(60f, 240f)).border(Color(40, 220, 40)))
+        root.CustomPanel(Size.exact(200f, 120f), Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 240f)).border(Color(40, 220, 40), 3f))
+        val big = root.CustomPanel(Size.exact(400f, 220f), Modifier.anchor(Anchor.inside.topLeft.ofParent(540f, 240f))
+            .border(VanillaFrame.TitleMenu))
+        frame(); frame()
+        val lit = { c: Rgb -> c.r + c.g + c.b > 200 }
+        for ((frame, panel) in frames) {
+            val p = panel.position
+            val edges = listOf(
+                fraction(p.x, p.y + 20f, 4f, p.height - 40f, lit),                  // left
+                fraction(p.x + p.width - 4f, p.y + 20f, 4f, p.height - 40f, lit),   // right
+                fraction(p.x + 20f, p.y, p.width - 40f, 4f, lit),                   // bottom
+                fraction(p.x + 20f, p.y + p.height - 4f, p.width - 40f, 4f, lit))   // top
+            expect(edges.all { it > 0.1f }, "$frame draws along all four edges (lit fractions $edges)")
+            val middle = fraction(p.x + 20f, p.y + 20f, p.width - 40f, p.height - 40f, lit)
+            expect(middle < 0.01f, "$frame leaves the middle alone (lit fraction $middle)")
+            val outside = fraction(p.x - 12f, p.y, 8f, p.height, lit)
+            expect(outside < 0.01f, "$frame stays inside the component (lit fraction $outside)")
+        }
+        val b = big.position
+        val farEdge = fraction(b.x + b.width - 4f, b.y + 20f, 4f, b.height - 40f, lit)
+        expect(farEdge > 0.1f, "a bigger component's frame reaches its own right edge (lit fraction $farEdge)")
         screenshot("final")
     }
 

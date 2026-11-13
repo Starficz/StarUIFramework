@@ -199,11 +199,16 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 ## Modifiers
 
 `.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel),
-`.background(color)`, `.border(width, color)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`,
+`.background(color)`, `.border(color, width)` / `.border(VanillaFrame)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`,
 `.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`,
 `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }`,
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
 `.onFirstLayout { }` (once), `.onPositionChanged { }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
+
+Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
+`.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` / `Codex` / `Combat` draws one of the sprite
+frames vanilla uses (the title screen's menu box, codex panels and title dialogs, combat text boxes), inside the
+component and under its content, untinted as vanilla draws them.
 
 Modifiers work on every component, vanilla ones included, because they attach to the native object. The input
 handlers receive the event (`{ event -> }`); a handler that does not need it just ignores it (`{ clicks++ }`).

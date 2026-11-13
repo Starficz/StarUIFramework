@@ -70,7 +70,7 @@ fun UIPanelAPI.Section(
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
 ): CustomPanelAPI {
     val fillsHeight = size.toNodeSize().height is Dimension.FillMax
-    val frame = Modifier.background(backgroundColor).border(1f, borderColor)
+    val frame = Modifier.background(backgroundColor).border(borderColor)
     return Column(size, Modifier.then { c -> frame.operations.forEach { it(c) }; modifier.operations.forEach { it(c) } }) {
         if (title != null) SectionHeading(title)
         Column(

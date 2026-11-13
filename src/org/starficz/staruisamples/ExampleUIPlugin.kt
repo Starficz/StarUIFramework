@@ -103,7 +103,7 @@ object ExampleUIPlugin {
                         .anchor(Anchor.inside.center.ofParent())
                         .padding(20f)
                         .background(Color(10, 10, 15, 240))
-                        .border(2f, Color(80, 80, 100, 255))
+                        .border(Color(80, 80, 100, 255), 2f)
                         .onRender { if (showDebug.value) drawDebugBorders(customPanel) },
                     horizontalAlignment = Alignment.CenterHorizontally,
                     spacing = 15f
@@ -146,7 +146,7 @@ object ExampleUIPlugin {
                                 color = Color.WHITE,
                                 modifier = Modifier
                                     .background(Color(100, 0, 0, 200))
-                                    .border(1f, Color.RED)
+                                    .border(Color.RED)
                                     .margin(bottom = 10f)
                             )
 
@@ -216,7 +216,7 @@ object ExampleUIPlugin {
                             spacing = 10f,
                             overflow = Overflow.ScrollVertical,
                             // Notice we don't pass shadowColor here, it inherently gets the Blue color from our Theme!
-                            modifier = Modifier.padding(10f).background(Color(5, 5, 5, 200)).border(1f, Color.DARK_GRAY)
+                            modifier = Modifier.padding(10f).background(Color(5, 5, 5, 200)).border(Color.DARK_GRAY)
                         ) {
 
                             Text("Massive Scrollable List", font = Font.ORBITRON_20_BOLD, color = Color.WHITE)
@@ -231,7 +231,7 @@ object ExampleUIPlugin {
                                     spacing = 15f,
                                     modifier = Modifier
                                         .background(if (i == 75) Color(0, 50, 0, 200) else Color(20, 20, 20, 255))
-                                        .border(1f, if (i == 75) Color.GREEN else Color.DARK_GRAY)
+                                        .border(if (i == 75) Color.GREEN else Color.DARK_GRAY)
                                         .margin(bottom = 5f)
                                         .hitBoxPadding(5f)
                                         .onHoverEnter { Global.getSoundPlayer().playUISound("ui_button_mouseover", 1f, 1f) }

@@ -28,7 +28,7 @@ fun registerPreviews() {
     StarUITestSuite.preview("example") {
         val ships = UIState(listOf("Onslaught", "Eagle", "Wolf"))
         val showHidden = UIState(true)
-        root.CustomPanel(Size.exact(320f, 220f), Modifier.anchor(Anchor.inside.center.ofParent()).background(VanillaColors.panel).border(1f, VanillaColors.dark)) {
+        root.CustomPanel(Size.exact(320f, 220f), Modifier.anchor(Anchor.inside.center.ofParent()).background(VanillaColors.panel).border(VanillaColors.dark)) {
             Column(Size.fillMaxSize(), Modifier.padding(10f), spacing = 6f) {
                 Text("Fleet (${ships.value.size} ships)")
                 Divider()

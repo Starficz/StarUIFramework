@@ -245,7 +245,7 @@ object ShowcaseUIPlugin {
             Text("Clip cuts children at the edge; Visible (the default) lets them spill out.", color = GRAY)
             Row(Size.fillMaxWidth(height = 64f), spacing = 56f) {
                 for ((name, overflow) in listOf("Clip" to Overflow.Clip, "Visible" to Overflow.Visible)) {
-                    Box(Size.exact(110f, 40f), Modifier.border(1f, BRIGHT), overflow = overflow) {
+                    Box(Size.exact(110f, 40f), Modifier.border(BRIGHT), overflow = overflow) {
                         Box(Size.exact(150f, 56f), Modifier.background(INSET_BG).padding(4f)) { Text("$name: a child bigger than its box", color = HIGHLIGHT) }
                     }
                 }
@@ -519,8 +519,10 @@ object ShowcaseUIPlugin {
 
         Section("More modifiers: border, onHover, keys, tooltip builder") {
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
-                Box(Size.exact(90f, 36f), Modifier.border(1f, BASE)) { Text("border(1)", modifier = Modifier.align(Alignment.Center)) }
-                Box(Size.exact(90f, 36f), Modifier.border(3f, HIGHLIGHT)) { Text("border(3)", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.exact(90f, 36f), Modifier.border(BASE)) { Text("border()", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.exact(90f, 36f), Modifier.border(HIGHLIGHT, 3f)) { Text("width = 3", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.exact(90f, 36f), Modifier.border(VanillaFrame.TitleMenu)) { Text("TitleMenu", modifier = Modifier.align(Alignment.Center)) }
+                Box(Size.exact(90f, 36f), Modifier.border(VanillaFrame.Codex)) { Text("Codex", modifier = Modifier.align(Alignment.Center)) }
                 Box(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG).tooltip(width = 320f) {
                     addSectionHeading("Built with TooltipMakerAPI", com.fs.starfarer.api.ui.Alignment.MID, 0f)
                     addPara("Any vanilla tooltip content: %s, %s and more.", 6f, HIGHLIGHT, "highlights", "headings")
@@ -548,7 +550,7 @@ object ShowcaseUIPlugin {
                 "storyDark" to VanillaColors.storyDark, "storyBright" to VanillaColors.storyBright, "panel" to VanillaColors.panel)
             for (row in colours.chunked(4)) Row(Size.fillMaxWidth(), spacing = 6f) {
                 for ((name, colour) in row) Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
-                    Spacer(Size.exact(16f, 16f), Modifier.background(colour).border(1f, GRAY.withAlpha(80)))
+                    Spacer(Size.exact(16f, 16f), Modifier.background(colour).border(GRAY.withAlpha(80)))
                     Text(name, color = GRAY)
                 }
             }

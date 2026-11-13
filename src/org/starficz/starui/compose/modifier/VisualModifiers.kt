@@ -1,6 +1,8 @@
 package org.starficz.starui.compose.modifier
 
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.TooltipMakerAPI
+import org.starficz.starui.core.VanillaColors
 import org.lazywizard.lazylib.opengl.ColorUtils
 import org.lwjgl.opengl.GL11
 import org.starficz.starui.compose.StarUIDsl
@@ -39,8 +41,11 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
     GL11.glEnable(GL11.GL_TEXTURE_2D)
 }
 
-/** A line [width] pixels thick around the component's edge. */
-fun Modifier.border(width: Float, color: Color) = onRender { alphaMult ->
+/**
+ * A line [width] pixels thick around the component's edge, in [color], drawn over its content. The default, a 1 px
+ * line in the player faction's dark colour, is what vanilla's campaign panels draw (intel, dialogs, codex boxes).
+ */
+fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = onRender { alphaMult ->
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)
     GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
@@ -53,4 +58,50 @@ fun Modifier.border(width: Float, color: Color) = onRender { alphaMult ->
     GL11.glVertex2f(left, top)
     GL11.glEnd()
     GL11.glEnable(GL11.GL_TEXTURE_2D)
+}
+
+/**
+ * The sprite frames vanilla draws around its screens, each a set of nine-slice sprites in `settings.json`'s `ui`
+ * graphics (corners, and edges that repeat along each side). Vanilla draws them untinted.
+ */
+enum class VanillaFrame(internal val spriteSet: String) {
+    /** The title screen's main menu box: a light frame with a cyan inner line and rounded corners (`ui_border1`). */
+    TitleMenu("ui_border1"),
+    /** Codex panels and the title screen's dialogs: a thin grey frame (`ui_border4`). */
+    Codex("ui_border4"),
+    /** Combat's text boxes: a thin frame with rounded corners (`ui_border3`). */
+    Combat("ui_border3"),
+}
+
+/**
+ * One of vanilla's sprite frames around the component, inside its edge and under its content, drawn as vanilla's
+ * own frame class draws it: the corners at their size, each edge repeated between them.
+ */
+fun Modifier.border(frame: VanillaFrame): Modifier {
+    fun sprite(part: String) = Global.getSettings().getSprite("ui", "${frame.spriteSet}_$part")
+    val botLeft = sprite("bot_left"); val botRight = sprite("bot_right")
+    val topLeft = sprite("top_left"); val topRight = sprite("top_right")
+    val leftEdge = sprite("left"); val rightEdge = sprite("right")
+    val topEdge = sprite("top"); val botEdge = sprite("bot")
+    val all = listOf(botLeft, botRight, topLeft, topRight, leftEdge, rightEdge, topEdge, botEdge)
+    return onRenderBelow { alphaMult ->
+        val c = botLeft.width   // vanilla sizes every piece by the corner
+        val w = right - left
+        val h = top - bottom
+        val across = (w - c * 2f) / c
+        val up = (h - c * 2f) / c
+        for (piece in all) piece.setAlphaMult(alphaMult)
+        botLeft.render(left, bottom)
+        botRight.render(left + w - c, bottom)
+        topLeft.render(left, bottom + h - c)
+        topRight.render(left + w - c, bottom + h - c)
+        if (up > 0f) {
+            leftEdge.renderRegion(left, bottom + c, 0f, 0f, 1f, up)
+            rightEdge.renderRegion(left + w - c, bottom + c, 0f, 0f, 1f, up)
+        }
+        if (across > 0f) {
+            topEdge.renderRegion(left + c, bottom + h - c, 0f, 0f, across, 1f)
+            botEdge.renderRegion(left + c, bottom, 0f, 0f, across, 1f)
+        }
+    }
 }
