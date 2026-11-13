@@ -18,6 +18,8 @@ import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIHolo
+import org.starficz.starui.core.ReflectionUtils.invoke
+import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import java.awt.Color
 
 fun registerHoloTests() {
@@ -87,6 +89,57 @@ fun registerHoloTests() {
         show.value = false
         frame()
         expect(StarUIManager.liveScopeCount < scopesBefore, "leaving the call out disposes the content's scopes ($scopesBefore -> ${StarUIManager.liveScopeCount})")
+        root.clearChildren()
+    }
+
+    StarUITestSuite.group("holo-background-and-swap") {
+        // over a red backdrop: the Dialog background is opaque, the TitleScreen one lets the red through
+        lateinit var dialog: BoxedUIHolo
+        lateinit var title: BoxedUIHolo
+        root.CustomPanel(Size.exact(700f, 260f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(200, 30, 30))) {
+            dialog = Holo(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(20f, 20f)), animateFirstOpen = false)
+            title = Holo(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(360f, 20f)),
+                animateFirstOpen = false, background = org.starficz.starui.core.HoloBackground.TitleScreen)
+        }
+        frame(5)
+        val red = { c: Rgb -> c.r > 60 && c.r > c.g * 2 }
+        fun redInside(h: BoxedUIHolo) = h.position.let { p -> fraction(p.x + 40f, p.y + 40f, p.width - 80f, p.height - 80f, red) }
+        val dialogRed = redInside(dialog)
+        val titleRed = redInside(title)
+        expect(dialogRed < 0.05f, "HoloBackground.Dialog (the default) hides what is behind it (red fraction $dialogRed)")
+        expect(titleRed > 0.3f, "HoloBackground.TitleScreen lets it show through (red fraction $titleRed)")
+        screenshot("backgrounds")
+        root.clearChildren()
+
+        // contentKey: a change builds the content again and swaps it in through vanilla's static transition
+        val page = UIState(0)
+        val count = UIState(0)
+        lateinit var holo: BoxedUIHolo
+        lateinit var label: LabelAPI
+        root.CustomPanel(Size.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+            val p = page.value
+            holo = Holo(Size.exact(300f, 200f), contentKey = p, animateFirstOpen = false) {
+                label = Text("page $p count ${count.value}")
+            }
+        }
+        frame(5)
+        val first = holo.content
+        expect(label.text == "page 0 count 0", "the first content shows (${label.text})")
+        page.value = 1
+        frame(1)
+        val second = holo.content
+        expect(second !== first, "a contentKey change makes new content")
+        expect(StarUIPanelPlugin.getAttached(first)?.isDisposed != false, "and disposes the old content's StarUI state")
+        frame(40)
+        expect(label.text == "page 1 count 0", "the new content is built for the new key (${label.text})")
+        expect(holo.holo.invoke("getCurr") === second, "and the holo shows it once the static has peaked")
+        count.value = 3
+        frame()
+        expect(label.text == "page 1 count 3", "the new content is reactive too (${label.text})")
+        page.value = 1
+        frame()
+        expect(holo.content === second, "the same key keeps the content")
+        screenshot("swapped")
         root.clearChildren()
     }
 }

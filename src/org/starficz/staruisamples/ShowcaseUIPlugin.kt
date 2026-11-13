@@ -27,6 +27,8 @@ import org.starficz.starui.compose.runtime.*
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.BoxedUISlider
+import org.starficz.starui.core.BoxedUIHolo
+import org.starficz.starui.core.HoloBackground
 import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
@@ -105,7 +107,28 @@ object ShowcaseUIPlugin {
     private fun CustomPanelAPI.showcase() {
         // A Box filling the screen: the page when open, one small button when hidden.
         Box(Size.fillMaxSize(), Modifier.anchor(Anchor.inside.topLeft.ofParent())) {
-            if (open.value) page()
+            if (open.value) {
+                page()
+                // A dialog over the page, as vanilla shows one: kept in the tree and folded shut when closed (it then
+                // draws nothing and takes no input), so closing animates instead of vanishing
+                Holo(Size.exact(520f, 300f), Modifier.align(Alignment.Center), open = dialogOpen.value,
+                    foldDuration = foldTime(), animateFirstOpen = false) {
+                    Column(Size.fillMaxSize(), Modifier.padding(14f), spacing = 8f) {
+                        Text("A vanilla-style dialog", font = Font.ORBITRON_20_AA_BOLD, color = BASE)
+                        Text("Holo(open = dialogOpen.value) over the page. Opening folds the frame out from a line " +
+                            "through its middle with a burst of static; the content appears in the last quarter. " +
+                            "Closing folds it back the same way.", Size.fillMaxWidth())
+                        Text("Fold time: ${"%.2f".format(foldTime())} s" + if (slowFolds.value) " (slow motion)" else " (vanilla's)",
+                            color = GRAY)
+                        FlexSpacer()
+                        Row(Size.fillMaxWidth(), spacing = 8f) {
+                            Checkbox("Slow motion", bind = slowFolds)
+                            FlexSpacer()
+                            Button("Close", shortcut = Keyboard.KEY_ESCAPE) { dialogOpen.value = false }
+                        }
+                    }
+                }
+            }
             else Button("StarUI showcase", modifier = Modifier.align(Alignment.BottomLeft).margin(20f)) { open.value = true }
         }
     }
@@ -652,23 +675,49 @@ object ShowcaseUIPlugin {
                 "vanilla: the ui_border1 frame, a dark scanline background over its inner edge, a teal tint and " +
                 "noise. open folds it open and shut over 0.25 s, as vanilla's dialogs do: the frame grows from a " +
                 "line through its middle and the content shows in the last quarter.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                Button("Open a dialog", modifier = Modifier.tooltip("A large Holo over the page, folding open like vanilla's dialogs")) {
+                    dialogOpen.value = true
+                }
+                Checkbox("Slow motion (2 s folds)", bind = slowFolds,
+                    modifier = Modifier.tooltip("foldDuration = 2f instead of vanilla's 0.25 s, to watch the fold"))
+            }
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
-                Button(if (holoOpen.value) "Close" else "Open") { holoOpen.value = !holoOpen.value }
-                Button("Content + 1") { holoCount.value++ }
-                Text("open = ${holoOpen.value}", color = GRAY)
+                Button(if (holoOpen.value) "Close" else "Open",
+                    modifier = Modifier.tooltip("open = ...: folds shut or open, with vanilla's burst of static")) { holoOpen.value = !holoOpen.value }
+                Button("Page ${holoPage.value + 1} of 3",
+                    modifier = Modifier.tooltip("contentKey = page: new content through vanilla's 0.2 s static transition")) {
+                    holoPage.value = (holoPage.value + 1) % 3
+                }
+                Button(if (holoSeeThrough.value) "TitleScreen" else "Dialog",
+                    modifier = Modifier.tooltip("background = HoloBackground.Dialog (opaque, most dialogs) or .TitleScreen (see-through)")) {
+                    holoSeeThrough.value = !holoSeeThrough.value
+                }
+                Button("Static", modifier = Modifier.tooltip("flickerNoise(0, 1.25): vanilla's opening and closing static")) {
+                    showcaseHolo?.flickerNoise(0f, 1.25f)
+                }
             }
             Row(Size.fillMaxWidth(), spacing = 12f) {
-                Holo(Size.exact(260f, 150f), open = holoOpen.value) {
+                val page = holoPage.value
+                showcaseHolo = Holo(Size.exact(260f, 150f), open = holoOpen.value, contentKey = page, foldDuration = foldTime(),
+                    background = if (holoSeeThrough.value) HoloBackground.TitleScreen else HoloBackground.Dialog) {
                     Column(Size.fillMaxSize(), Modifier.padding(8f), spacing = 4f) {
-                        Text("A holo's content", font = Font.ORBITRON_12, color = BASE)
-                        Text("A StarUI Box 7 px inside the frame (contentInset). Its builder is its own scope: " +
-                            "count = ${holoCount.value}", Size.fillMaxWidth(), highlightedText = listOf("${holoCount.value}" to HIGHLIGHT))
+                        Text("Page ${page + 1}", font = Font.ORBITRON_12, color = BASE)
+                        when (page) {
+                            0 -> Text("A StarUI Box 7 px inside the frame (contentInset). Its builder is its own scope: " +
+                                "count = ${holoCount.value}", Size.fillMaxWidth(), highlightedText = listOf("${holoCount.value}" to HIGHLIGHT))
+                            1 -> Text("A contentKey change builds the content again and swaps it in at the peak of a " +
+                                "burst of static, as vanilla's tabbed holo switches tabs.", Size.fillMaxWidth())
+                            else -> Text("The background is two interlaced sets of black scanlines over the frame's " +
+                                "inner edge: opaque in vanilla's dialogs, see-through on the title screen.", Size.fillMaxWidth())
+                        }
                         Button("Takes input when open") { holoCount.value++ }
                     }
                 }
                 Column(Size.fillMaxWidth(), spacing = 3f) {
-                    Text("Returns a BoxedUIHolo: open(), close(), forceOpen(), forceClose(), the fold (a Fader), " +
-                        "noiseAlpha, setBackgroundAlpha, setRenderBackground.", Size.fillMaxWidth(), color = GRAY)
+                    Text("Returns a BoxedUIHolo: open(), close(), forceOpen(), forceClose(), flickerNoise(), the " +
+                        "fold (a Fader), noiseAlpha, setBackgroundAlpha, setRenderBackground.", Size.fillMaxWidth(), color = GRAY)
+                    Text("The static only shows when UI noise is on in the game's settings.", Size.fillMaxWidth(), color = GRAY)
                     Text("Keep calling Holo(open = false) to close it with the animation; leaving the call out " +
                         "removes it at once.", Size.fillMaxWidth(), color = GRAY)
                 }
@@ -677,8 +726,8 @@ object ShowcaseUIPlugin {
 
         Section("Vanilla's title menu box, rebuilt") {
             Text("The title screen's menu is a holo with contentInset 3, its first button 15 px into the content: here " +
-                "Holo(contentInset = 3f) with padding(top = 15f).", Size.fillMaxWidth(), color = GRAY)
-            Holo(Size.exact(250f, 186f), contentInset = 3f) {
+                "Holo(contentInset = 3f, background = HoloBackground.TitleScreen) with padding(top = 15f).", Size.fillMaxWidth(), color = GRAY)
+            Holo(Size.exact(250f, 186f), contentInset = 3f, background = HoloBackground.TitleScreen) {
                 Column(Size.fillMaxSize(), Modifier.padding(top = 15f), horizontalAlignment = Alignment.CenterHorizontally, spacing = 4f) {
                     for (label in listOf("Continue", "New Game", "Load Game", "Settings")) {
                         Button(label, Size.exact(200f, 30f), font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Right,
@@ -689,6 +738,14 @@ object ShowcaseUIPlugin {
         }
     }
     private val holoOpen = UIState(true)
+    /** The large dialog over the page (the Holo card's "Open a dialog"). */
+    private val dialogOpen = UIState(false)
+    /** Slow-motion folds, to watch them: 2 s instead of vanilla's 0.25 s. */
+    private val slowFolds = UIState(false)
+    private fun foldTime() = if (slowFolds.value) 2f else 0.25f
+    private val holoPage = UIState(0)
+    private val holoSeeThrough = UIState(false)
+    private var showcaseHolo: BoxedUIHolo? = null
     private val holoCount = UIState(0)
 
     // =================================================================================================================

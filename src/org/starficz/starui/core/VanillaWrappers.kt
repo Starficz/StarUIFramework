@@ -263,7 +263,7 @@ class BoxedSectorMap(val map: SectorMapAPI) :
  * The holo has no API interface: this box gives the component and the holo's own readable methods. [content] is the
  * StarUI container the holo frames (drawn, advanced and given input by the holo itself, not a child in the tree).
  */
-class BoxedUIHolo internal constructor(val holo: UIComponentAPI, val content: CustomPanelAPI) :
+class BoxedUIHolo internal constructor(val holo: UIComponentAPI, content: CustomPanelAPI) :
     BoxedUIElement(holo),
     UIComponentAPI by holo
 {
@@ -274,10 +274,23 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, val content: Cu
         var CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
     }
 
-    /** Folds the holo open over [duration] seconds (vanilla: `foldOut`, 0.25 s everywhere). */
-    fun open(duration: Float = 0.25f) { holo.invoke("foldOut", duration) }
-    /** Folds the holo shut over [duration] seconds (vanilla: `foldIn`). */
-    fun close(duration: Float = 0.25f) { holo.invoke("foldIn", duration) }
+    /** The StarUI container the holo shows now (a `contentKey` change swaps in a new one). */
+    var content: CustomPanelAPI = content
+        internal set
+
+    /**
+     * Folds the holo open over [duration] seconds (vanilla: `foldOut`), with the burst of static vanilla's dialogs
+     * open with ([flicker]: `flickerNoise(0, 1.25)`).
+     */
+    fun open(duration: Float = 0.25f, flicker: Boolean = true) {
+        holo.invoke("foldOut", duration)
+        if (flicker) flickerNoise(0f, 1.25f)
+    }
+    /** Folds the holo shut over [duration] seconds (vanilla: `foldIn`), with vanilla's closing static ([flicker]). */
+    fun close(duration: Float = 0.25f, flicker: Boolean = true) {
+        holo.invoke("foldIn", duration)
+        if (flicker) flickerNoise(0f, 1.25f)
+    }
     /** Fully open at once, no animation. */
     fun forceOpen() { holo.invoke("forceFoldOut") }
     /** Fully shut at once, no animation. */
@@ -295,8 +308,12 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, val content: Cu
         get() = holo.invoke("getNoiseAlpha") as Float
         set(value) { holo.invoke("setNoiseAlpha", value) }
 
-    /** Briefly flickers the noise layer, as vanilla does when a dialog's content changes. */
-    fun flickerNoise(min: Float, max: Float) { holo.invoke("flickerNoise", min, max) }
+    /**
+     * A burst of static: the noise rises over [rampUp] seconds and dies away over [decay]. Vanilla's dialogs use
+     * (0, 1.25) when they open and close, and (0, 0.5) when a click lands outside a modal one. No static shows when
+     * the player has turned UI noise off in the game's settings.
+     */
+    fun flickerNoise(rampUp: Float, decay: Float) { holo.invoke("flickerNoise", rampUp, decay) }
 
     /** The content's inset from the holo's edge on every side. */
     val contentInset: Float get() = holo.invoke("getBorderThickness") as Float
@@ -304,17 +321,36 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, val content: Cu
     /** Off: no frame, background, tint or noise; only the content (and the fold) remain. */
     fun setRenderBackground(render: Boolean) { holo.invoke("setRenderBackground", render) }
 
-    /** The dark background's alpha (0..255) at its left and right edges and across its middle (vanilla: 125, 175). */
-    fun setBackgroundAlpha(edges: Int, middle: Int) { holo.invoke("setBackgroundAlpha", edges, middle) }
+    /**
+     * The dark background's alpha (0..255): it is two interlaced sets of black scanlines, [lines] and the set one
+     * pixel lower, [offsetLines]. Vanilla's default 125 / 175 is the see-through title screen look; most of its
+     * dialogs use 255 / 255. See [HoloBackground].
+     */
+    fun setBackgroundAlpha(lines: Int, offsetLines: Int) { holo.invoke("setBackgroundAlpha", lines, offsetLines) }
 
     /** Clip the content to the frame even when fully open (it is always clipped while folding). */
     fun setAlwaysScissor(scissor: Boolean) { holo.invoke("setAlwaysScissor", scissor) }
 
     /** The `open` argument of the last `Holo` call: a change folds the holo open or shut. */
     internal var lastOpenArgument: Boolean? = null
+    /** The `background` and `contentKey` arguments of the last `Holo` call. */
+    internal var lastBackground: HoloBackground? = null
+    internal var lastContentKey: Any? = null
 
     /** Off: new content shows at once, without the noise transition. */
     var transitionsEnabled: Boolean
         get() = holo.invoke("isTransitionsEnabled") as Boolean
         set(value) { holo.invoke("setTransitionsEnabled", value) }
+}
+
+/**
+ * A holo's dark background: the alphas (0..255) of its two interlaced sets of black scanlines (the second one pixel
+ * lower). [Dialog] is what most of vanilla's dialogs use, [TitleScreen] the see-through look of the title menu (the
+ * holo's own default).
+ */
+data class HoloBackground(val lines: Int, val offsetLines: Int) {
+    companion object {
+        val Dialog = HoloBackground(255, 255)
+        val TitleScreen = HoloBackground(125, 175)
+    }
 }

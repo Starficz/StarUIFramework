@@ -55,7 +55,7 @@ To attach to vanilla screens, use one of these:
 | `CustomPanel(size, modifier, overflow) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
 | `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item, only those near the view exist; scrolls | fill; exact or fill only |
 | `Section(title, size, modifier, contentPadding, spacing, backgroundColor, borderColor) { }` | vanilla-style panel: a `SectionHeading` on top (none for `title = null`), the content in a padded column below, black inside a thin dark border | fill width, wrap height |
-| `Holo(size, modifier, open, foldDuration, animateFirstOpen, contentInset) { }` | vanilla's own holo panel (the framed window of its dialogs and title menu) around a Box of content, `contentInset` (7) in; `open` folds it open and shut as vanilla does | exact or fill only |
+| `Holo(size, modifier, open, background, contentKey, foldDuration, animateFirstOpen, contentInset) { }` | vanilla's own holo panel (the framed window of its dialogs and title menu) around a Box of content, `contentInset` (7) in; `open` folds it open and shut with vanilla's static; `background` is `HoloBackground.Dialog` (opaque, default) or `.TitleScreen` (see-through); a `contentKey` change swaps in new content through vanilla's static transition | exact or fill only |
 | `Theme(theme) { }` | not a panel: overrides `StarUITheme` defaults for the calls inside | |
 
 Column and Row default to the start (left / top) like Compose. Space inside a container's edges is
