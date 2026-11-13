@@ -366,7 +366,9 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   (`SecurityException`). Go through `ReflectionUtils` (`invoke`, `getMethodsMatching`, `ReflectedMethod`).
 - A reflective `invoke("name")` throws "Ambiguous method call" when the API declares the same method with a narrower
   return type (the class then has a bridge method too). Call the API method instead.
-- **Keep public signatures stable**: Combat AI Tweaks, Scy Nation and Refit Filters ship compiled against StarUI.
-  Add and deprecate; don't remove or change.
+- **Public signatures: break them freely until the first public release.** Nothing is released yet, so a better
+  API wins over compatibility: rename, remove and change return types without shims or deprecated copies. Combat AI
+  Tweaks, Scy Nation and Refit Filters are compiled against StarUI; rebuild them (or note what they need) after a
+  change that affects them. After the first release: add and deprecate, don't remove or change.
 - Source files are CRLF. Keep each file's existing line endings.
 - `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it.
