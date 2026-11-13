@@ -24,7 +24,13 @@ import java.awt.Color
 // extend nothing, so the box adds the component side (as BoxedUILabel did before 0.98.5a made LabelAPI a component).
 // Where the API interface already is a component (LabelAPI, ScrollPanelAPI) it is used directly, and the methods it
 // leaves out are extensions on it.
-abstract class BoxedUIElement(val boxedElement: UIComponentAPI)
+abstract class BoxedUIElement(
+    /**
+     * The vanilla object itself (an obfuscated engine class): what the box delegates to, and what StarUI and
+     * ReflectionUtils unwrap a box to. Reflective calls on the box reach it already (`box.invoke("x")`).
+     */
+    val obf: UIComponentAPI
+)
 
 // The few scroll panel methods ScrollPanelAPI still leaves out (readable engine names).
 
@@ -64,49 +70,49 @@ interface ImageAPI {
 }
 
 // The Core Wrapper implements both UIComponentAPI and ImageAPI
-class BoxedUIImage(val innerImage: UIComponentAPI) :
-    BoxedUIElement(innerImage),
-    UIComponentAPI by innerImage,
+class BoxedUIImage(obf: UIComponentAPI) :
+    BoxedUIElement(obf),
+    UIComponentAPI by obf,
     ImageAPI
 {
     override var spriteName: String
-        get() = innerImage.invoke("getSpriteName") as String
-        set(newSpriteName) { innerImage.invoke("setSprite", newSpriteName, true) }
+        get() = obf.invoke("getSpriteName") as String
+        set(newSpriteName) { obf.invoke("setSprite", newSpriteName, true) }
 
     override var sprite: Sprite
-        get() = innerImage.invoke("getSprite") as Sprite
-        set(newSprite) { innerImage.invoke("setSprite", newSprite, true) }
+        get() = obf.invoke("getSprite") as Sprite
+        set(newSprite) { obf.invoke("setSprite", newSprite, true) }
 
     override var borderColor: Color
-        get() = innerImage.invoke("getBorderColor") as Color
-        set(newColor) { innerImage.invoke("setBorderColor", newColor) }
+        get() = obf.invoke("getBorderColor") as Color
+        set(newColor) { obf.invoke("setBorderColor", newColor) }
 
     override var outline: Boolean
-        get() = innerImage.invoke("isWithOutline") as Boolean
-        set(withOutline) { innerImage.invoke("setWithOutline", withOutline) }
+        get() = obf.invoke("isWithOutline") as Boolean
+        set(withOutline) { obf.invoke("setWithOutline", withOutline) }
 
     override var textureClamp: Boolean
-        get() = innerImage.invoke("isTexClamp") as Boolean
-        set(texClamp) { innerImage.invoke("setTexClamp", texClamp) }
+        get() = obf.invoke("isTexClamp") as Boolean
+        set(texClamp) { obf.invoke("setTexClamp", texClamp) }
 
     override var forceNoRounding: Boolean
-        get() = innerImage.invoke("isForceNoRounding") as Boolean
-        set(noRounding) { innerImage.invoke("setForceNoRounding", noRounding) }
+        get() = obf.invoke("isForceNoRounding") as Boolean
+        set(noRounding) { obf.invoke("setForceNoRounding", noRounding) }
 
     override val originalAspectRatio: Float
-        get() = innerImage.invoke("getOriginalAR") as Float
+        get() = obf.invoke("getOriginalAR") as Float
 
     override var resize: Boolean
-        get() = innerImage.invoke("isResize") as Boolean
-        set(value) { innerImage.invoke("setResize", value) }
+        get() = obf.invoke("isResize") as Boolean
+        set(value) { obf.invoke("setResize", value) }
 
-    override fun setShowBorder(show: Boolean) { innerImage.invoke("setShowBorder", show) }
-    override fun setStretch(stretch: Boolean) { innerImage.invoke("setStretch", stretch) }
-    override fun setRenderSchematic(renderSchematic: Boolean) { innerImage.invoke("setRenderSchematic", renderSchematic) }
-    override fun restoreImageSize() { innerImage.invoke("restoreImageSize") }
-    override fun sizeToOriginalSpriteSize() { innerImage.invoke("autoSize") }
-    override fun sizeToOriginalAspectRatioWithWidth(width: Float) { innerImage.invoke("autoSizeToWidth", width) }
-    override fun sizeToOriginalAspectRatioWithHeight(height: Float) { innerImage.invoke("autoSizeToHeight", height) }
+    override fun setShowBorder(show: Boolean) { obf.invoke("setShowBorder", show) }
+    override fun setStretch(stretch: Boolean) { obf.invoke("setStretch", stretch) }
+    override fun setRenderSchematic(renderSchematic: Boolean) { obf.invoke("setRenderSchematic", renderSchematic) }
+    override fun restoreImageSize() { obf.invoke("restoreImageSize") }
+    override fun sizeToOriginalSpriteSize() { obf.invoke("autoSize") }
+    override fun sizeToOriginalAspectRatioWithWidth(width: Float) { obf.invoke("autoSizeToWidth", width) }
+    override fun sizeToOriginalAspectRatioWithHeight(height: Float) { obf.invoke("autoSizeToHeight", height) }
 }
 
 interface ShipPreviewAPI : UIPanelAPI {
@@ -136,9 +142,9 @@ interface ShipPreviewAPI : UIPanelAPI {
     fun hideLabels()
 }
 
-class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
-    BoxedUIElement(uiShipPreview),
-    UIPanelAPI by uiShipPreview,
+class BoxedUIShipPreview(obf: UIPanelAPI):
+    BoxedUIElement(obf),
+    UIPanelAPI by obf,
     ShipPreviewAPI
 {
     internal companion object{
@@ -161,75 +167,75 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
      * ShipDisplayExactScalePatch.
      */
     override var exactScale: Float?
-        get() = ShipDisplayScale.of(uiShipPreview)
+        get() = ShipDisplayScale.of(obf)
         set(scale) {
-            if (ShipDisplayScale.of(uiShipPreview) == scale) return
-            ShipDisplayScale.set(uiShipPreview, scale)
+            if (ShipDisplayScale.of(obf) == scale) return
+            ShipDisplayScale.set(obf, scale)
             // the ship's centring happens when its ships are made; make them again on the next render
-            uiShipPreview.invoke("cleanup")
+            obf.invoke("cleanup")
         }
 
     override fun getShips(): Array<ShipAPI> {
-        uiShipPreview.invoke("prepareShip")
-        return uiShipPreview.invoke("getShips") as Array<ShipAPI>
+        obf.invoke("prepareShip")
+        return obf.invoke("getShips") as Array<ShipAPI>
     }
-    override fun cleanupShips() { uiShipPreview.invoke("cleanup") }
+    override fun cleanupShips() { obf.invoke("cleanup") }
 
     override var showFighters
-        get() = uiShipPreview.invoke("isShowFighters") as Boolean
-        set(show) {uiShipPreview.invoke("setShowFighters", show) }
+        get() = obf.invoke("isShowFighters") as Boolean
+        set(show) {obf.invoke("setShowFighters", show) }
 
     override var showDestroyedFighters
-        get() = uiShipPreview.invoke("isShowDestroyedFighters") as Boolean
-        set(show) { uiShipPreview.invoke("setShowDestroyedFighters", show) }
+        get() = obf.invoke("isShowDestroyedFighters") as Boolean
+        set(show) { obf.invoke("setShowDestroyedFighters", show) }
 
     override var highlightBrightness
-        get() = uiShipPreview.invoke("getHighlightBrightness") as Float
-        set(brightness) { uiShipPreview.invoke("setHighlightBrightness", brightness) }
+        get() = obf.invoke("getHighlightBrightness") as Float
+        set(brightness) { obf.invoke("setHighlightBrightness", brightness) }
 
-    override fun highlight() { uiShipPreview.invoke("highlight") }
-    override fun unhighlight() { uiShipPreview.invoke("unhighlight") }
-    override fun getHighlightFader(): Fader = uiShipPreview.invoke("getHighlight") as Fader
+    override fun highlight() { obf.invoke("highlight") }
+    override fun unhighlight() { obf.invoke("unhighlight") }
+    override fun getHighlightFader(): Fader = obf.invoke("getHighlight") as Fader
 
     override var borderColor
-        get() = uiShipPreview.invoke("getBorderColor") as Color
-        set(show) { uiShipPreview.invoke("setBorderColor", show) }
+        get() = obf.invoke("getBorderColor") as Color
+        set(show) { obf.invoke("setBorderColor", show) }
 
-    override fun setShowBorder(show: Boolean) { uiShipPreview.invoke("setShowBorder", show) }
-    override fun setBorderNewStyle(newStyle: Boolean) { uiShipPreview.invoke("setShowNewBorder", newStyle) }
+    override fun setShowBorder(show: Boolean) { obf.invoke("setShowBorder", show) }
+    override fun setBorderNewStyle(newStyle: Boolean) { obf.invoke("setShowNewBorder", newStyle) }
 
     override var variant
-        get() = uiShipPreview.invoke("getVariant") as ShipVariantAPI?
-        set(variant) { uiShipPreview.invoke("setVariant", variant) }
+        get() = obf.invoke("getVariant") as ShipVariantAPI?
+        set(variant) { obf.invoke("setVariant", variant) }
 
     // vanilla's third argument only seeds a random name when the name is null; it is never shown
     override fun setVariant(variant: ShipVariantAPI, shipName: String?) {
-        uiShipPreview.invoke("setVariant", variant, shipName, null)
+        obf.invoke("setVariant", variant, shipName, null)
     }
     override fun updateWithStatus(fleetMember: FleetMemberAPI, fleetStatus: FleetMemberStatusAPI) {
-        uiShipPreview.invoke("updateWithStatus", fleetMember, fleetStatus)
+        obf.invoke("updateWithStatus", fleetMember, fleetStatus)
     }
-    override fun setWingSpec(fighterWingSpec: FighterWingSpecAPI) { uiShipPreview.invoke("setWingSpec", fighterWingSpec) }
+    override fun setWingSpec(fighterWingSpec: FighterWingSpecAPI) { obf.invoke("setWingSpec", fighterWingSpec) }
 
     // Vanilla reads any magnitude other than 1 as "on" (it also enlarges fighter wings a little as it drops);
     // 0.25 is its own default.
     override fun setScaleDownSmallerShips(enabled: Boolean) {
-        uiShipPreview.invoke("setScaleDownSmallerShipsMagnitude", if (enabled) 0.25f else 1f)
+        obf.invoke("setScaleDownSmallerShipsMagnitude", if (enabled) 0.25f else 1f)
     }
     // Vanilla's adjustOverlay(a, b) draws the scanline texture twice, b at the top and a 1 px lower, both black.
     override fun setScanlines(alpha: Float) {
-        uiShipPreview.invoke("adjustOverlay", alpha, alpha)
+        obf.invoke("adjustOverlay", alpha, alpha)
     }
 
-    override fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
-    override fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
+    override fun setLabelColor(color: Color) { obf.invoke("setLabelColor", color) }
+    override fun hideLabels(){ obf.invoke("hideLabels") }
 }
 
 /**
  * A vanilla slider or bar as one type: [SliderAPI] and the [UIComponentAPI] it is (the API interface does not say so).
  * What `Slider` and `ProgressBar` return.
  */
-class BoxedUISlider(val slider: SliderAPI) :
+class BoxedUISlider(slider: SliderAPI) :
     BoxedUIElement(slider as UIComponentAPI),
     UIComponentAPI by (slider as UIComponentAPI),
     SliderAPI by slider
@@ -239,19 +245,19 @@ class BoxedUISlider(val slider: SliderAPI) :
  * so), and the map's readable methods SectorMapAPI leaves out (centring, zoom). `.sectorMap` on a `SectorMap` gives
  * one.
  */
-class BoxedSectorMap(val map: SectorMapAPI) :
+class BoxedSectorMap(map: SectorMapAPI) :
     BoxedUIElement(map as UIPanelAPI),
     UIPanelAPI by (map as UIPanelAPI),
     SectorMapAPI by map
 {
     /** Centres the map on a point of the location it shows, in world coordinates. */
-    fun centerOn(location: Vector2f) { map.invoke("centerOn", Vector2f(location)) }
+    fun centerOn(location: Vector2f) { obf.invoke("centerOn", Vector2f(location)) }
     /** Shows [entity]'s location (switching between hyperspace and a system as needed) and centres on it. */
-    fun centerOnEntity(entity: SectorEntityToken) { map.invoke("centerOnEntity", entity) }
+    fun centerOnEntity(entity: SectorEntityToken) { obf.invoke("centerOnEntity", entity) }
     /** Zooms all the way out and centres the map. */
-    fun zoomOutAndCenter() { map.invoke("zoomOutAndCenter") }
+    fun zoomOutAndCenter() { obf.invoke("zoomOutAndCenter") }
     /** The world point at the centre of the view. */
-    val worldCenter: Vector2f get() = map.invoke("getWorldCenter") as Vector2f
+    val worldCenter: Vector2f get() = obf.invoke("getWorldCenter") as Vector2f
 }
 
 /**
@@ -263,7 +269,7 @@ class BoxedSectorMap(val map: SectorMapAPI) :
  * The holo has no API interface: this box gives the component and the holo's own readable methods. [content] is the
  * StarUI container the holo frames (drawn, advanced and given input by the holo itself, not a child in the tree).
  */
-class BoxedUIHolo internal constructor(val holo: UIComponentAPI, content: CustomPanelAPI) :
+class BoxedUIHolo internal constructor(holo: UIComponentAPI, content: CustomPanelAPI) :
     BoxedUIElement(holo),
     UIComponentAPI by holo
 {
@@ -283,21 +289,21 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, content: Custom
      * open with ([flicker]: `flickerNoise(0, 1.25)`).
      */
     fun open(duration: Float = 0.25f, flicker: Boolean = true) {
-        holo.invoke("foldOut", duration)
+        obf.invoke("foldOut", duration)
         if (flicker) flickerNoise(0f, 1.25f)
     }
     /** Folds the holo shut over [duration] seconds (vanilla: `foldIn`), with vanilla's closing static ([flicker]). */
     fun close(duration: Float = 0.25f, flicker: Boolean = true) {
-        holo.invoke("foldIn", duration)
+        obf.invoke("foldIn", duration)
         if (flicker) flickerNoise(0f, 1.25f)
     }
     /** Fully open at once, no animation. */
-    fun forceOpen() { holo.invoke("forceFoldOut") }
+    fun forceOpen() { obf.invoke("forceFoldOut") }
     /** Fully shut at once, no animation. */
-    fun forceClose() { holo.invoke("forceFoldIn") }
+    fun forceClose() { obf.invoke("forceFoldIn") }
 
     /** The fold: brightness 1 is open, 0 shut; `isFadingIn` / `isFadingOut` while it moves. */
-    val fold: Fader get() = holo.invoke("getFanOut") as Fader
+    val fold: Fader get() = obf.invoke("getFanOut") as Fader
     /** Fully open. */
     val isOpen: Boolean get() = fold.isFadedIn
     /** Fully shut (it draws nothing and takes no input then). */
@@ -305,31 +311,31 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, content: Custom
 
     /** How strongly the noise layer shows over the content (vanilla's dialogs fade it as they settle). */
     var noiseAlpha: Float
-        get() = holo.invoke("getNoiseAlpha") as Float
-        set(value) { holo.invoke("setNoiseAlpha", value) }
+        get() = obf.invoke("getNoiseAlpha") as Float
+        set(value) { obf.invoke("setNoiseAlpha", value) }
 
     /**
      * A burst of static: the noise rises over [rampUp] seconds and dies away over [decay]. Vanilla's dialogs use
      * (0, 1.25) when they open and close, and (0, 0.5) when a click lands outside a modal one. No static shows when
      * the player has turned UI noise off in the game's settings.
      */
-    fun flickerNoise(rampUp: Float, decay: Float) { holo.invoke("flickerNoise", rampUp, decay) }
+    fun flickerNoise(rampUp: Float, decay: Float) { obf.invoke("flickerNoise", rampUp, decay) }
 
     /** The content's inset from the holo's edge on every side. */
-    val contentInset: Float get() = holo.invoke("getBorderThickness") as Float
+    val contentInset: Float get() = obf.invoke("getBorderThickness") as Float
 
     /** Off: no frame, background, tint or noise; only the content (and the fold) remain. */
-    fun setRenderBackground(render: Boolean) { holo.invoke("setRenderBackground", render) }
+    fun setRenderBackground(render: Boolean) { obf.invoke("setRenderBackground", render) }
 
     /**
      * The dark background's alpha (0..255): it is two interlaced sets of black scanlines, [lines] and the set one
      * pixel lower, [offsetLines]. Vanilla's default 125 / 175 is the see-through title screen look; most of its
      * dialogs use 255 / 255. See [HoloBackground].
      */
-    fun setBackgroundAlpha(lines: Int, offsetLines: Int) { holo.invoke("setBackgroundAlpha", lines, offsetLines) }
+    fun setBackgroundAlpha(lines: Int, offsetLines: Int) { obf.invoke("setBackgroundAlpha", lines, offsetLines) }
 
     /** Clip the content to the frame even when fully open (it is always clipped while folding). */
-    fun setAlwaysScissor(scissor: Boolean) { holo.invoke("setAlwaysScissor", scissor) }
+    fun setAlwaysScissor(scissor: Boolean) { obf.invoke("setAlwaysScissor", scissor) }
 
     /** The `open` argument of the last `Holo` call: a change folds the holo open or shut. */
     internal var lastOpenArgument: Boolean? = null
@@ -339,8 +345,8 @@ class BoxedUIHolo internal constructor(val holo: UIComponentAPI, content: Custom
 
     /** Off: new content shows at once, without the noise transition. */
     var transitionsEnabled: Boolean
-        get() = holo.invoke("isTransitionsEnabled") as Boolean
-        set(value) { holo.invoke("setTransitionsEnabled", value) }
+        get() = obf.invoke("isTransitionsEnabled") as Boolean
+        set(value) { obf.invoke("setTransitionsEnabled", value) }
 }
 
 /**

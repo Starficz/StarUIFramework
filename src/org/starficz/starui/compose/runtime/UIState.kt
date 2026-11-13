@@ -97,6 +97,15 @@ class UIState<T>(initialValue: T) {
     }
 }
 
+/**
+ * A group of toggle buttons (`Checkbox`, `AreaCheckbox` or `Button` with `bind` and `buttonGroup`), each bound to its
+ * own `UIState<Boolean>`. A click:
+ * - selects only the clicked button (a radio group);
+ * - with Shift or Ctrl held, toggles just the clicked button, so several can be on;
+ * - on the only selected button, selects them all (click the one you have on to show everything again).
+ *
+ * The usual filter bar: one click to see one category, Shift-click to add more, click it again for all.
+ */
 class ButtonGroup {
     // How many live buttons use each state, in the order the states joined. A button made inside a builder leaves the
     // group when that builder runs again (its next pass adds the buttons still there) or its UI is thrown away, so a

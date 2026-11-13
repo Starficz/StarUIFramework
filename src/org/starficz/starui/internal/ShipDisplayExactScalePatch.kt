@@ -41,7 +41,7 @@ import kotlin.math.roundToInt
         ]
     )
 )
-object ShipDisplayExactScalePatch {
+internal object ShipDisplayExactScalePatch {
     private val GET_SHIPS = MethodQuery.create().methodName("getShips").parameterCount(0).build()
 
     /** render(x, y, w, h, alpha, color, additive): `glScalef(scale, scale, 1)` is its only glScalef. */

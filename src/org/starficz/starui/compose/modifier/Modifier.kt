@@ -6,22 +6,10 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.BoxedUIElement
 
 internal val UIComponentAPI.actual: UIComponentAPI
-    get() = if (this is BoxedUIElement) this.boxedElement else this
+    get() = if (this is BoxedUIElement) this.obf else this
 
 internal inline fun UIComponentAPI.applyToPlugin(action: StarUIPanelPlugin.() -> Unit) {
     StarUIPanelPlugin.getOrCreate(this.actual).action()
-}
-
-/**
- * Lays out this component's container again on the next frame. Rarely needed: StarUI already does it when children
- * are added or removed and when a Text changes. Call it after changing something StarUI can't see, such as a native
- * component's size.
- */
-fun UIComponentAPI.requestLayout() {
-    val target = this.actual
-    val own = StarUIPanelPlugin.getAttached(target)
-    if (own != null) own.requestLayout()
-    else target.parent?.let { StarUIPanelPlugin.getAttached(it) }?.requestLayout()
 }
 
 /**

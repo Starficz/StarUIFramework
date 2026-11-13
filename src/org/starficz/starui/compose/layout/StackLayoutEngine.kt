@@ -10,7 +10,6 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.relativeToBase
-import org.starficz.starui.core.getChildrenCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
@@ -84,7 +83,7 @@ internal class StackLayoutEngine(
         totalFillWeight = 0f
         childPaddedIntrinsics.clear()
 
-        val children = plugin.panel.getChildrenCopy()
+        val children = plugin.panel.getChildrenCopy2()
         val containerPadding = plugin.myPadding
 
         val (myPrimaryDim, myCrossDim) = getAxisDimension(plugin.myNodeSize, isVertical)
@@ -278,7 +277,7 @@ internal class StackLayoutEngine(
     }
 
     override fun layout(assignedWidth: Float, assignedHeight: Float) {
-        val children = plugin.panel.getChildrenCopy()
+        val children = plugin.panel.getChildrenCopy2()
 
         val isVertical = direction.isVertical
 

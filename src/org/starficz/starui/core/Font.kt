@@ -8,7 +8,7 @@ private val loadedFontPaths = HashSet<String>()
 /**
  * Starsector only preloads the fonts vanilla UI uses in each role. Using another .fnt as a paragraph font
  * (setParaFont, which measureTextSize and Text rely on) leaves the label with a null font and throws an NPE inside
- * the vanilla label's setText. So every path handed out by [getFontPath] is loaded once on first use.
+ * the vanilla label's setText. So every path handed out by [path] is loaded once on first use.
  */
 private fun ensureFontLoaded(path: String) {
     if (!loadedFontPaths.add(path)) return
@@ -71,7 +71,8 @@ enum class ButtonFont(val font: Font) {
     VICTOR_14(Font.VICTOR_14)
 }
 
-fun getFontPath(font: Font): String = fontPathOf(font).also { ensureFontLoaded(it) }
+/** The font's file, for vanilla calls that take one (`setParaFont`, `addTextField`); loads the font if needed. */
+val Font.path: String get() = fontPathOf(this).also { ensureFontLoaded(it) }
 
 private fun fontPathOf(font: Font): String {
     return when (font) {

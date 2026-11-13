@@ -25,6 +25,7 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.Font
+import org.starficz.starui.core.path
 import org.starficz.starui.core.scrollPanel
 import java.awt.Color
 
@@ -161,7 +162,7 @@ private fun TestContext.vanillaReference(name: String, rows: Int, scrolling: Boo
     val tooltip = holder.createUIElement(700f, 700f, scrolling)
     val t0 = System.nanoTime()
     for (i in 0 until rows) {
-        tooltip.setParaFont(org.starficz.starui.core.getFontPath(Font.ORBITRON_20))
+        tooltip.setParaFont(Font.ORBITRON_20.path)
         tooltip.addPara("Ship $i: Onslaught-class battleship", 4f)
         tooltip.setParaFontDefault()
         tooltip.addPara("Hull ${8000 + i}   Armor ${1500 + i % 100}   Flux ${12000 - i}", 2f)

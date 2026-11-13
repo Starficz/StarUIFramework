@@ -28,7 +28,6 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.measureTextSize
-import org.starficz.starui.core.measureTextSizeUncached
 import org.starficz.starui.core.onClick
 import java.awt.Color
 
@@ -169,16 +168,21 @@ fun registerPerfTests() {
             off, on, delta, delta * 1000 / 300))
         expect(delta < 1.0, "lifecycle hooks add under 1 ms per frame on 300 vanilla labels (${"%.3f".format(delta)} ms)")
 
-        // 2. Text measuring: uncached builds a panel + tooltip + label per call.
+        // 2. Text measuring: one kept label per font, against what it did before (a panel + tooltip + label per string)
         val texts = (0 until 200).map { "Measured text number $it" }
-        var t0 = System.nanoTime(); texts.forEach { measureTextSizeUncached(it, null) }
-        val uncachedUs = (System.nanoTime() - t0) / 1e3 / texts.size
+        fun measureTheOldWay(text: String): Pair<Float, Float> {
+            val tm = com.fs.starfarer.api.Global.getSettings().createCustom(10000f, 10000f, null).createUIElement(10000f, 10000f, false)
+            val label = tm.addPara(text, 0f)
+            return Pair(label.computeTextWidth(text), label.computeTextHeight(text))
+        }
+        var t0 = System.nanoTime(); texts.forEach { measureTheOldWay(it) }
+        val oldUs = (System.nanoTime() - t0) / 1e3 / texts.size
         texts.forEach { measureTextSize(it) }
         t0 = System.nanoTime(); repeat(5) { texts.forEach { measureTextSize(it) } }
-        val cachedUs = (System.nanoTime() - t0) / 1e3 / (texts.size * 5)
-        log(String.format("PERF measureTextSize: %.1f us uncached, %.2f us cached", uncachedUs, cachedUs))
-        expect(measureTextSize(texts[7]) == measureTextSizeUncached(texts[7], null), "cached measurement equals a fresh one")
-        expect(cachedUs * 10 < uncachedUs, "cache makes repeated measuring at least 10x cheaper")
+        val newUs = (System.nanoTime() - t0) / 1e3 / (texts.size * 5)
+        log(String.format("PERF measureTextSize: %.1f us building a label per string, %.2f us with the kept label", oldUs, newUs))
+        expect(measureTextSize(texts[7]) == measureTheOldWay(texts[7]), "the kept label measures what a fresh one does")
+        expect(newUs * 10 < oldUs, "measuring with the kept label is at least 10x cheaper")
 
         // 2b. Brute-force scope rebuild: a Column of 100 rows (label + button each), rebuilt and laid out again.
         val perfTick = UIState(0)

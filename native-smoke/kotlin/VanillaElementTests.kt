@@ -25,7 +25,6 @@ import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.core.getChildrenCopy
 import org.starficz.starui.core.sectorMap
 
 private data class TestShip(val id: Int, val name: String, val cost: Int)
@@ -82,7 +81,7 @@ fun registerVanillaElementTests() {
             }
         }
         frame(); frame()
-        val boxes = table.getChildrenCopy().filterIsInstance<CustomPanelAPI>()
+        val boxes = table.getChildrenCopy2().filterIsInstance<CustomPanelAPI>()
         expect(boxes.size == 3, "one Box per custom cell (${boxes.size})")
         val rows = rowsOf(table)
         boxes.forEachIndexed { i, box ->
@@ -91,11 +90,11 @@ fun registerVanillaElementTests() {
             near(box.position.y, cell.position.y, "and its bottom edge", tolerance = 1f)
             near(box.w, cell.w, "at the cell's width", tolerance = 1f)
             near(box.h, cell.h, "and the row's height", tolerance = 1f)
-            val button = box.getChildrenCopy().filterIsInstance<ButtonAPI>().firstOrNull()
+            val button = box.getChildrenCopy2().filterIsInstance<ButtonAPI>().firstOrNull()
             if (button != null) expect(button.position.height <= cell.h + 0.5f,
                 "rows grow to fit their custom cells: the button (${button.position.height}) fits the row (${cell.h})")
         }
-        val button = boxes[1].getChildrenCopy().filterIsInstance<ButtonAPI>().firstOrNull()
+        val button = boxes[1].getChildrenCopy2().filterIsInstance<ButtonAPI>().firstOrNull()
         expect(button != null, "the second custom cell holds its button")
         if (button != null) {
             Input.sendList(root, Input.move(button.cx, button.cy))
@@ -228,6 +227,81 @@ fun registerVanillaElementTests() {
         for ((name, panel) in made) log("$name: ${panel.w} x ${panel.h}")
         screenshot("final")
     }
+
+    StarUITestSuite.group("vanilla-elements-keep-unchanged") {
+        // A builder running again for something else keeps vanilla content whose arguments did not change.
+        val members = listOf(Global.getSettings().createFleetMember(FleetMemberType.SHIP, "wolf_Assault"))
+        val tick = UIState(0)
+        val speed = UIState("100")
+        val ships = UIState(testShips)
+        var clicked: String? = null
+        var tooltipFrom = -1
+        lateinit var grid: CustomPanelAPI; lateinit var shipList: CustomPanelAPI; lateinit var table: CustomPanelAPI
+        lateinit var icons: CustomPanelAPI
+        root.Column(Size.exact(500f, 700f), elementAt(40f, 40f), spacing = 6f) {
+            val t = tick.value
+            Text("built for tick $t")
+            grid = StatGrid { entry("Speed", speed.value); entry("Armor", "500") }
+            icons = CommodityIcons { icons("supplies", 3) }
+            shipList = ShipList(members)
+            table = Table(ships.value.map { it.copy() }, Size.fillMaxWidth(),
+                rowTooltip = { tooltipFrom = t; addPara("tooltip", 0f) },
+                onRowClick = { clicked = "${it.name} at tick $t" }) {
+                column("Ship") { it.name }
+                column("Cost", width = 60f) { "${it.cost}" }
+            }
+        }
+        frame(); frame()
+        val grid0 = vanillaTable(grid); val icons0 = vanillaTable(icons); val ships0 = vanillaTable(shipList)
+        val table0 = vanillaTable(table)
+
+        tick.value = 1
+        frame(); frame()
+        expect(vanillaTable(grid) === grid0, "a rebuild with the same entries keeps the StatGrid")
+        expect(vanillaTable(icons) === icons0, "and the CommodityIcons")
+        expect(vanillaTable(table) === table0, "and the Table showing the same cells (from new, equal items)")
+        expect(vanillaTable(shipList) !== ships0, "a ShipList (live fleet members) is made again")
+
+        // the kept table calls the newest handlers, with the newest items
+        val cell = cellOf(rowsOf(table)[2], 0)
+        Input.sendList(root, Input.move(cell.cx, cell.cy))
+        Input.sendList(root, Input.down(cell.cx, cell.cy))
+        Input.sendList(root, Input.up(cell.cx, cell.cy))
+        frame()
+        expect(clicked == "Wolf at tick 1", "a kept table's row click runs the newest handler (got $clicked)")
+        val state = (StarUIPanelPlugin.getAttached(table)!!.layoutEngine as VanillaElementEngine).callerState
+        expect(state != null, "the table keeps its caller state on its engine")
+
+        speed.value = "120"
+        frame(); frame()
+        expect(vanillaTable(grid) !== grid0, "a changed entry makes the StatGrid again")
+        ships.value = ships.value.drop(1)
+        frame(); frame()
+        expect(vanillaTable(table) !== table0 && rowsOf(table).size == 2, "a changed item list makes the Table again (${rowsOf(table).size} rows)")
+        log("tooltip last built for tick $tooltipFrom")
+    }
+
+    StarUITestSuite.group("table-rows-follow-custom-cells") {
+        // Only the custom cell reads `tall`: the table's call does not change, but its rows must grow.
+        val tall = UIState(false)
+        lateinit var table: CustomPanelAPI
+        root.Column(Size.exact(400f, 400f), elementAt(40f, 40f)) {
+            table = Table(testShips.take(2), Size.fillMaxWidth()) {
+                column("Ship") { it.name }
+                column("", width = 80f) { custom { Spacer(Size.exact(10f, if (tall.value) 60f else 10f)) } }
+            }
+        }
+        frame(); frame()
+        val short = cellOf(rowsOf(table)[0], 1).h
+        expect(short < 30f, "rows start at the item height ($short)")
+        tall.value = true
+        frame(); frame(); frame()
+        val grown = cellOf(rowsOf(table)[0], 1).h
+        expect(grown >= 59f, "a custom cell that grows makes the rows taller ($grown)")
+        val box = table.getChildrenCopy2().filterIsInstance<CustomPanelAPI>().first()
+        near(box.h, grown, "and its Box follows the new row height", tolerance = 1f)
+        screenshot("final")
+    }
 }
 
 fun registerVanillaPortTests() {
@@ -258,7 +332,7 @@ fun registerVanillaPortTests() {
         expect(planetError == null, "PlanetInfo builds with a planet made at startup (got $planetError)")
         planetPanel?.let { p ->
             near(p.w, 240f, "PlanetInfo takes its exact width")
-            expect(p.getChildrenCopy().isNotEmpty(), "PlanetInfo holds vanilla's planet display")
+            expect(p.getChildrenCopy2().isNotEmpty(), "PlanetInfo holds vanilla's planet display")
         }
 
         var map: CustomPanelAPI? = null

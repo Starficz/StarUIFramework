@@ -193,14 +193,12 @@ val UIPanelAPI.lastComponent
 
 
 // UIPanelAPI extensions that expose UIPanel methods
-/** A snapshot of the children (`UIPanelAPI.getChildrenCopy2`, a new list that later changes do not touch). */
-fun UIPanelAPI.getChildrenCopy(): List<UIComponentAPI> = getChildrenCopy2()
-
 fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
     return invoke("getChildrenNonCopy") as List<UIComponentAPI>
 }
 
-val UIPanelAPI.children get() = this.getChildrenCopy()
+/** A snapshot of the children (the API's `getChildrenCopy2`: a new list that later changes do not touch). */
+val UIPanelAPI.children: List<UIComponentAPI> get() = getChildrenCopy2()
 
 fun UIPanelAPI.findChildWithMethod(
     name: String? = null,
@@ -216,36 +214,11 @@ fun UIPanelAPI.allChildrenWithMethod(methodName: String): List<UIComponentAPI> {
 }
 
 
-// Measuring builds a throwaway panel, tooltip and label, and Text's measure lambda calls this on every layout pass.
-// The result only depends on (text, font), so keep a small LRU of results.
-private const val TEXT_MEASURE_CACHE_SIZE = 1024
-private val textMeasureCache = object : LinkedHashMap<Pair<String, Font?>, Pair<Float, Float>>(256, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Pair<String, Font?>, Pair<Float, Float>>?) =
-        size > TEXT_MEASURE_CACHE_SIZE
-}
-
-// Returns Pair(Width, Height)
-fun measureTextSize(text: String, font: Font? = null): Pair<Float, Float> {
-    if (text.isEmpty()) return Pair(0f, 0f)
-    val key = text to font
-    textMeasureCache[key]?.let { return it }
-    return measureTextSizeUncached(text, font).also { textMeasureCache[key] = it }
-}
-
-internal fun measureTextSizeUncached(text: String, font: Font?): Pair<Float, Float> {
-    if (text.isEmpty()) return Pair(0f, 0f)
-
-    val tempPanel = Global.getSettings().createCustom(10000f, 10000f, null)
-    val tempTM = tempPanel.createUIElement(10000f, 10000f, false)
-
-    if (font != null) {
-        tempTM.setParaFont(getFontPath(font))
-    }
-
-    val dummyLabel = tempTM.addPara(text, 0f)
-
-    return Pair(dummyLabel.computeTextWidth(text), dummyLabel.computeTextHeight(text))
-}
+/**
+ * The size of [text] in [font] (vanilla's paragraph font for null) as (width, height): on one line, or more where it
+ * has line breaks. Cheap: it measures with one kept label per font.
+ */
+fun measureTextSize(text: String, font: Font? = null): Pair<Float, Float> = VanillaFactory.measure(text, font)
 
 // Custom CustomUIPanelPlugin extensions that map the plugin position to the panel or component
 val StarUIPanelPlugin.width: Float
@@ -284,6 +257,6 @@ val StarUIPanelPlugin.xAlignOffset: Float
 val StarUIPanelPlugin.yAlignOffset: Float
     get() = component.yAlignOffset
 
-fun CustomPanelAPI.setPlugin(plugin: CustomUIPanelPlugin) {
+internal fun CustomPanelAPI.setPlugin(plugin: CustomUIPanelPlugin) {
     set(value=plugin)
 }

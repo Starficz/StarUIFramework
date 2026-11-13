@@ -48,7 +48,7 @@ import patchlib.api.patch.Patch
         ]
     )
 )
-object UIComponentLifecyclePatch {
+internal object UIComponentLifecyclePatch {
     /** Set by the render @Before on a call it culled, so the @After skips the plugin's render too. */
     private const val CULLED = "staruiframework.culled"
 
@@ -231,7 +231,7 @@ object UIComponentLifecyclePatch {
         ]
     )
 )
-object ButtonListenerChainPatch {
+internal object ButtonListenerChainPatch {
 
     @JvmStatic
     @Before(
@@ -267,7 +267,7 @@ object ButtonListenerChainPatch {
         ]
     )
 )
-object LabelTextPatch {
+internal object LabelTextPatch {
 
     @JvmStatic
     @Before(
@@ -303,21 +303,21 @@ object LabelTextPatch {
 // 0.98.5a-RC4 Windows: matches com.fs.starfarer.ui.B (text field), com.fs.starfarer.ui.o0O0 (button),
 // com.fs.starfarer.campaign.ui.N (slider)
 @Patch(target = ClassMatch(subtype = TextFieldAPI::class))
-object TextFieldValuePatch {
+internal object TextFieldValuePatch {
     @JvmStatic
     @After(target = MethodMatch(methodName = "setText", parameterTypes = [String::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun afterSetText(context: AfterContext) = notifyValueChanged(context)
 }
 
 @Patch(target = ClassMatch(subtype = ButtonAPI::class))
-object ButtonCheckedPatch {
+internal object ButtonCheckedPatch {
     @JvmStatic
     @After(target = MethodMatch(methodName = "setChecked", parameterTypes = [Boolean::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun afterSetChecked(context: AfterContext) = notifyValueChanged(context)
 }
 
 @Patch(target = ClassMatch(subtype = SliderAPI::class))
-object SliderProgressPatch {
+internal object SliderProgressPatch {
     @JvmStatic
     @After(target = MethodMatch(methodName = "setProgress", parameterTypes = [Float::class], returnTypeName = "void", methodType = MethodType.METHOD, staticType = StaticType.INSTANCE))
     fun afterSetProgress(context: AfterContext) = notifyValueChanged(context)
@@ -353,7 +353,7 @@ private fun notifyValueChanged(context: AfterContext) {
         ]
     )
 )
-object UIPanelContainerPatch {
+internal object UIPanelContainerPatch {
 
     @JvmStatic
     @Before(
@@ -368,7 +368,7 @@ object UIPanelContainerPatch {
     fun unwrapAddComponent(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.boxedElement)
+            context.setArg(0, arg.obf)
         }
     }
 
@@ -385,7 +385,7 @@ object UIPanelContainerPatch {
     fun unwrapRemoveComponent(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.boxedElement)
+            context.setArg(0, arg.obf)
         }
     }
 
@@ -449,7 +449,7 @@ object UIPanelContainerPatch {
     fun unwrapBringToTop(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.boxedElement)
+            context.setArg(0, arg.obf)
         }
         requestLayoutOf(context.self)   // child order is flow order in a Column or Row
     }
@@ -467,7 +467,7 @@ object UIPanelContainerPatch {
     fun unwrapSendToBottom(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.boxedElement)
+            context.setArg(0, arg.obf)
         }
         requestLayoutOf(context.self)
     }
@@ -493,7 +493,7 @@ object UIPanelContainerPatch {
         ]
     )
 )
-object ClipInputPatch {
+internal object ClipInputPatch {
     private const val MOVED = "staruiframework.clipMovedEvents"
     private const val OFF_SCREEN = Int.MAX_VALUE
     private val SET_X = MethodQuery.create().methodName("setX").parameterTypes(Int::class.javaPrimitiveType).build()

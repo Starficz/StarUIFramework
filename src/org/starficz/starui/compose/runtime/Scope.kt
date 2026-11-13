@@ -300,6 +300,14 @@ internal class ReuseCursor(private val panel: UIPanelAPI, oldRecords: Map<UIComp
     fun isFor(target: UIPanelAPI): Boolean = target === panel
 
     /**
+     * Keeps [child], which no component call made (a Table's own vanilla table), where it is: not removed at the end
+     * of this build.
+     */
+    fun keep(child: UIComponentAPI) {
+        unused.remove(child)
+    }
+
+    /**
      * The old child for a call of [kind] with [key] and [props], or null. With a key: the old child that had it.
      * Without: the first unused old child of that kind (so unkeyed children are matched in order). In both cases
      * only when the unchangeable props are equal. The child stays where it is until [restoreCallOrder].

@@ -22,11 +22,28 @@ import kotlin.experimental.ExperimentalTypeInference
 
 /** What one table cell shows: text (see [TableCellScope.cell]) or StarUI components ([TableCellScope.custom]). */
 sealed class TableCell {
-    internal class Text(
-        val text: String, val color: Color?, val align: TextAlign?, val highlightedText: Collection<Pair<String, Color>>?
+    // Compared to tell whether the table must be made again (see VanillaElementEngine.update).
+    internal data class Text(
+        val text: String, val color: Color?, val align: TextAlign?, val highlightedText: List<Pair<String, Color>>?
     ) : TableCell()
 
-    internal class Custom(val builder: CustomPanelAPI.() -> Unit) : TableCell()
+    /** Equal to any other: what a custom cell shows is its own Box's business (its own scope), not the table's. */
+    internal class Custom(val builder: CustomPanelAPI.() -> Unit) : TableCell() {
+        override fun equals(other: Any?) = other is Custom
+        override fun hashCode() = 1
+    }
+}
+
+/**
+ * What a Table keeps across its calls: a table kept through a call that changed nothing it shows still calls the
+ * newest [rowTooltip] and [onRowClick], with the newest [items]; and the row height and column widths it was made with.
+ */
+private class TableCallerState<T> {
+    var items: List<T> = emptyList()
+    var rowTooltip: (TooltipMakerAPI.(T) -> Unit)? = null
+    var onRowClick: ((T) -> Unit)? = null
+    var builtRowHeight = Float.NaN
+    var builtWidths: List<Float> = emptyList()
 }
 
 /** The receiver of a column's content lambda: makes cells that are more than plain text. */
@@ -34,7 +51,7 @@ object TableCellScope {
     /** Text with its own [color], [align] (instead of the column's) or highlighted parts. Long text is cut to fit. */
     fun cell(text: String, color: Color? = null, align: TextAlign? = null,
              highlightedText: Collection<Pair<String, Color>>? = null): TableCell =
-        TableCell.Text(text, color, align, highlightedText)
+        TableCell.Text(text, color, align, highlightedText?.toList())
 
     /**
      * StarUI components in the cell: the builder runs in a Box the size of the cell, so place its children with
@@ -96,8 +113,9 @@ class TableScope<T> internal constructor() {
  * as its rows (at least three when empty, where it shows [emptyText]); every row is [itemHeight] tall, or as tall as the tallest custom cell needs.
  *
  * [rowKey] ties each row's custom cells to its item, like `key(...)`. [rowTooltip] adds a tooltip to every row and
- * [onRowClick] makes rows clickable. The table is made again when the builder that calls it runs again, or when its
- * width changes. Returns the StarUI panel that holds it.
+ * [onRowClick] makes rows clickable. The table is made again when what it shows changes (its cells, columns, colours,
+ * row height), or its width: a builder running again for something else keeps it. Returns the StarUI panel that
+ * holds it.
  */
 fun <T> UIPanelAPI.Table(
     items: List<T>,
@@ -148,16 +166,30 @@ fun <T> UIPanelAPI.Table(
         }
         val needsInput = customCells.isNotEmpty() || rowTooltip != null || onRowClick != null || specs.any { it.tooltip != null }
 
-        engine.build = { width ->
-            val widths = columnWidths(specs, width, exactWidth, weightSum)
-            // Rows are as tall as itemHeight or the tallest custom cell's content at its column's width, whichever
-            // is more: a button in a 20 px row would spill over the next one.
+        // The table's listeners read these, so a table kept through this call still calls the newest lambdas.
+        @Suppress("UNCHECKED_CAST")
+        val state = (engine.callerState as? TableCallerState<T>) ?: TableCallerState<T>().also { engine.callerState = it }
+        state.items = items
+        state.rowTooltip = rowTooltip
+        state.onRowClick = onRowClick
+
+        // Rows are as tall as itemHeight or the tallest custom cell's content at its column's width, whichever is
+        // more: a button in a 20 px row would spill over the next one.
+        fun rowHeightFor(widths: List<Float>): Float {
             var rowHeight = itemHeight
             for ((_, col, box) in customCells) {
                 val needed = org.starficz.starui.compose.runtime.StarUIPanelPlugin.getAttached(box)
                     ?.measure(widths[col], Float.MAX_VALUE)?.second ?: continue
                 rowHeight = maxOf(rowHeight, kotlin.math.ceil(needed))
             }
+            return rowHeight
+        }
+
+        engine.build = { width ->
+            val widths = columnWidths(specs, width, exactWidth, weightSum)
+            val rowHeight = rowHeightFor(widths)
+            state.builtWidths = widths
+            state.builtRowHeight = rowHeight
             val table = buildFromTooltip(width) {
                 val header = ArrayList<Any>()
                 specs.forEachIndexed { i, spec -> header += spec.title; header += widths[i] }
@@ -167,17 +199,19 @@ fun <T> UIPanelAPI.Table(
                     makeTableItemsClickable()
                     setActionListenerDelegate { data, _ ->
                         val index = (data as? IntelInfoPlugin.TableRowClickData)?.rowId as? Int
-                        if (index != null && index in items.indices) onRowClick(items[index])
+                        val now = state.items
+                        if (index != null && index in now.indices) state.onRowClick?.invoke(now[index])
                     }
                 }
-                items.forEachIndexed { row, item ->
+                items.forEachIndexed { row, _ ->
                     addRow(*rowData(cells[row], specs, baseColor))
                     if (onRowClick != null) setIdForAddedRow(row)
                     if (rowTooltip != null) addTooltipToAddedRow(object : TooltipMakerAPI.TooltipCreator {
                         override fun isTooltipExpandable(tooltipParam: Any?) = false
                         override fun getTooltipWidth(tooltipParam: Any?) = rowTooltipWidth
                         override fun createTooltip(tooltip: TooltipMakerAPI, expanded: Boolean, tooltipParam: Any?) {
-                            tooltip.rowTooltip(item)
+                            val item = state.items.getOrNull(row) ?: return
+                            state.rowTooltip?.let { tooltip.it(item) }
                         }
                     }, rowTooltipLocation)
                 }
@@ -193,15 +227,34 @@ fun <T> UIPanelAPI.Table(
         // Vanilla makes a row's cell panels when the row is first drawn, which can be after this layout (or much later,
         // while the table is scrolled out of view): check each frame until they exist, then lay out once more.
         var waitingForCells = false
-        engine.afterLayout = { table -> waitingForCells = !placeCustomCells(panel, table, customCells) }
+        // A custom cell's own scope can change what it needs (its content grows) without the table's call changing:
+        // the rows are then made again at the new height. Checked after each layout, acted on in the next advance.
+        var rowsNeedRemaking = false
+        engine.afterLayout = { table ->
+            // measured before the cells are placed: placing a cell marks its Box laid out, and its measure is then
+            // taken as current
+            if (customCells.isNotEmpty() && state.builtWidths.size == specs.size &&
+                kotlin.math.abs(rowHeightFor(state.builtWidths) - state.builtRowHeight) > 0.5f) rowsNeedRemaking = true
+            waitingForCells = !placeCustomCells(panel, table, customCells)
+        }
         if (customCells.isNotEmpty()) plugin.advance {
             val table = engine.current
-            if (waitingForCells && table != null && customCellsReady(table, customCells)) {
+            if (rowsNeedRemaking) {
+                rowsNeedRemaking = false
+                engine.invalidate()
+            } else if (waitingForCells && table != null && customCellsReady(table, customCells)) {
                 waitingForCells = false
                 plugin.requestLayout()
             }
         }
-        engine.invalidate()
+        engine.update(listOf(
+            cells, specs.map { listOf(it.title, it.width, it.weight, it.align, it.tooltip) }, itemHeight, withHeader,
+            withBorder, baseColor, darkColor, brightColor, emptyText, rowTooltipWidth, rowTooltipLocation,
+            rowTooltip != null, onRowClick != null
+        ))
+        // this build's end removes every old child no call asked for, the vanilla table too: a kept one stays. (A
+        // table about to be made again stays until the new one replaces it.)
+        engine.current?.let { plugin.reuseCursor?.keep(it) }
     }
     return panel
 }

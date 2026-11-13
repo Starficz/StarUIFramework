@@ -20,14 +20,12 @@ import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.ReflectionUtils.invoke
-import org.starficz.starui.core.addAreaCheckbox
-import org.starficz.starui.core.addButton
-import org.starficz.starui.core.addCheckbox
-import org.starficz.starui.core.addSlider
-import org.starficz.starui.core.addTextField
 import org.starficz.starui.core.asComponent
 import org.starficz.starui.core.clearOnClick
-import org.starficz.starui.core.measureTextSize
+import org.starficz.starui.core.VanillaFactory
+import org.starficz.starui.core.path
+import org.starficz.starui.core.xAlignOffset
+import org.starficz.starui.core.yAlignOffset
 import org.starficz.starui.core.onClick
 import java.awt.Color
 
@@ -51,7 +49,7 @@ fun UIPanelAPI.TextField(
 
     fun calcIntrinsic(): Pair<Float, Float> {
         val textToMeasure = bind.peek().ifEmpty { placeholder ?: "" }
-        val (tw, th) = measureTextSize(textToMeasure, font)
+        val (tw, th) = VanillaFactory.measure(textToMeasure, font)
         return Pair(maxOf(tw, 50f), maxOf(th, 20f))
     }
 
@@ -64,7 +62,11 @@ fun UIPanelAPI.TextField(
         applyReuseBounds(textField, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
-        textField = this.addTextField(initW, initH, font)
+        // what TooltipMakerAPI.addTextField does: vanilla's text field with a 3 px inner pad
+        textField = Global.getSettings().createTextField("", font.path)
+        textField.invoke("setPad", 3f)
+        textField.position.setSize(initW, initH)
+        this.addComponent(textField)
         if (placeholder != null) textField.invoke("setHint", placeholder)
     }
 
@@ -109,9 +111,8 @@ fun UIPanelAPI.Button(
 ): ButtonAPI {
     checkDslTarget()
 
-    fun calcIntrinsic(): Pair<Float, Float> {
-        return measureTextSize(text, font.font)
-    }
+    var made: ButtonAPI? = null
+    fun calcIntrinsic(): Pair<Float, Float> = VanillaFactory.measure(made?.text ?: text, font.font)
 
     // Colours, font, alignment, cut style and shortcut are fixed when a native button is made; the label is not.
     val slot = childSlot("Button", listOf(color, backgroundColor, font, textAlign, cutStyle, shortcut))
@@ -124,8 +125,23 @@ fun UIPanelAPI.Button(
         applyReuseBounds(btn, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
-        btn = this.addButton(text, null, color, backgroundColor, textAlign.toVanilla(), cutStyle, initW, initH, font.font, shortcut)
+        btn = VanillaFactory.onScratch {
+            when (font) {
+                ButtonFont.ORBITRON_12_CONDENSED -> setButtonFontDefault()
+                ButtonFont.ORBITRON_20 -> setButtonFontOrbitron20()
+                ButtonFont.ORBITRON_20_BOLD -> setButtonFontOrbitron20Bold()
+                ButtonFont.ORBITRON_24 -> setButtonFontOrbitron24()
+                ButtonFont.ORBITRON_24_BOLD -> setButtonFontOrbitron24Bold()
+                ButtonFont.VICTOR_10 -> setButtonFontVictor10()
+                ButtonFont.VICTOR_14 -> setButtonFontVictor14()
+            }
+            addButton(text, null, color, backgroundColor, textAlign.toVanilla(), cutStyle, initW, initH, 0f)
+        }
+        shortcut?.let { btn.setShortcut(it, true) }
+        this.addComponent(btn)
+        btn.clearScratchOffsets()
     }
+    made = btn
 
     registerComponentSizing(btn, size, isContainer = false, contentPadding = contentPadding)
     slot.remember(btn, btn)
@@ -159,9 +175,7 @@ fun UIPanelAPI.AreaCheckbox(
     checkDslTarget()
     requireBindFor(buttonGroup, bind, "AreaCheckbox")
 
-    fun calcIntrinsic(): Pair<Float, Float> {
-        return measureTextSize(text, font)
-    }
+    fun calcIntrinsic(): Pair<Float, Float> = VanillaFactory.measure(text, font)
 
     val slot = childSlot("AreaCheckbox", listOf(text, baseColor, darkColor, brightColor, font, leftAlign))
     val reused: ButtonAPI? = slot.reused()
@@ -172,9 +186,12 @@ fun UIPanelAPI.AreaCheckbox(
         applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
-        button = this.addAreaCheckbox(
-            text, null, baseColor, darkColor, brightColor, initW, initH, font, leftAlign
-        )
+        button = VanillaFactory.onScratch {
+            if (font != null) setAreaCheckboxFont(font.path) else setAreaCheckboxFontDefault()
+            addAreaCheckbox(text, null, baseColor, darkColor, brightColor, initW, initH, 0f, leftAlign)
+        }
+        this.addComponent(button)
+        button.clearScratchOffsets()
     }
 
     registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
@@ -207,7 +224,7 @@ fun UIPanelAPI.Checkbox(
     requireBindFor(buttonGroup, bind, "Checkbox")
 
     fun calcIntrinsic(): Pair<Float, Float> {
-        val (tw, th) = if (text != null) measureTextSize(text, font) else Pair(0f, 0f)
+        val (tw, th) = if (text != null) VanillaFactory.measure(text, font) else Pair(0f, 0f)
         val boxSize = if (checkboxSize == ButtonAPI.UICheckboxSize.LARGE) 24f else 16f
         return Pair(tw + boxSize, maxOf(th, boxSize))
     }
@@ -221,7 +238,10 @@ fun UIPanelAPI.Checkbox(
         applyReuseBounds(button, size, calcIntrinsic(), contentPadding)
     } else {
         val (initW, initH) = getInitialBounds(size, calcIntrinsic(), contentPadding)
-        button = this.addCheckbox(initW, initH, text, null, font, color, checkboxSize)
+        // what TooltipMakerAPI.addCheckbox makes, from SettingsAPI's own factory
+        button = Global.getSettings().createCheckbox(text, font.path, color, checkboxSize)
+        button.position.setSize(initW, initH)
+        this.addComponent(button)
     }
 
     registerComponentSizing(button, size, isContainer = false, contentPadding = contentPadding)
@@ -356,7 +376,9 @@ private fun UIPanelAPI.nativeSlider(
         slider.setText(text)
     } else {
         val (initW, initH) = getInitialBounds(size)
-        slider = this.addSlider(text, valueRange.start, valueRange.endInclusive, initW, initH)
+        slider = BoxedUISlider(Global.getSettings().createSlider(text, valueRange.start, valueRange.endInclusive))
+        slider.position.setSize(initW, initH)
+        this.addComponent(slider.asComponent)
     }
     slider.rangeMin = valueRange.start
     slider.rangeMax = valueRange.endInclusive
@@ -370,4 +392,10 @@ private fun UIPanelAPI.nativeSlider(
     }
     modifier.operations.forEach { it(component) }
     return slider
+}
+
+/** The tooltip placed it with alignment offsets (5 px in for its first element); its real panel places it afresh. */
+private fun ButtonAPI.clearScratchOffsets() {
+    xAlignOffset = 0f
+    yAlignOffset = 0f
 }

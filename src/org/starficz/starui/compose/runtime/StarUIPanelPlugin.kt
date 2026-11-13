@@ -1,5 +1,6 @@
 package org.starficz.starui.compose.runtime
 
+import org.starficz.starui.compose.modifier.actual
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.input.InputEventAPI
@@ -81,7 +82,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         internal var hasAttachedPlugins = false
 
         fun getAttached(component: UIComponentAPI): StarUIPanelPlugin? {
-            val target = if (component is BoxedUIElement) component.boxedElement else component
+            val target = if (component is BoxedUIElement) component.obf else component
             if (target is CustomPanelAPI) return target.plugin as? StarUIPanelPlugin
             if (!hasAttachedPlugins) return null
             synchronized(attachedPlugins) {
@@ -90,7 +91,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         }
 
         fun getOrCreate(component: UIComponentAPI): StarUIPanelPlugin {
-            val target = if (component is BoxedUIElement) component.boxedElement else component
+            val target = if (component is BoxedUIElement) component.obf else component
             if (target is CustomPanelAPI) {
                 val existing = target.plugin
                 if (existing is StarUIPanelPlugin) return existing
@@ -115,6 +116,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     }
 
     lateinit var component: UIComponentAPI
+        internal set
 
     /** Creation order, so a scope can tell plugins that existed before its build from ones the build created. */
     private val serial = nextSerial()
@@ -145,7 +147,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     var customPanel: CustomPanelAPI
         get() = component as CustomPanelAPI
-        set(value) {
+        internal set(value) {
             component = value
         }
 
@@ -179,7 +181,11 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
 
     /** Number of measure + layout passes this node's own engine has started (as a layout root). For tests and tuning. */
     internal var layoutPassCount = 0
+    /** Free for your own use; StarUI never reads it. Cleared when a rebuild reuses the component. */
     var customData: Any? = null
+
+    /** A full-screen panel StarUIManager injected for a StarUIPlugin (how it finds its own panels again). */
+    internal var isInjectedRoot = false
 
     // Used when a leaf component is placed inside a larger padded/aligned layout slot.
     internal var slotBounds: SlotBounds? = null
@@ -301,31 +307,23 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     // progress), whoever changed it: the player or any code.
     private var onValueChangedFunctions: MutableList<() -> Unit> = mutableListOf()
 
-    var inputCaptureTopPad = 0f
+    internal var inputCaptureTopPad = 0f
         private set
-    var inputCaptureBottomPad = 0f
+    internal var inputCaptureBottomPad = 0f
         private set
-    var inputCaptureLeftPad = 0f
+    internal var inputCaptureLeftPad = 0f
         private set
-    var inputCaptureRightPad = 0f
+    internal var inputCaptureRightPad = 0f
         private set
 
     var isHovering = false
         private set
 
-    var hasClicked = false
+    internal var hasClicked = false
         private set
 
     var consumeEvents = false
 
-    /**
-     * Kept for source compatibility. Consumed events are now always skipped: the engine's InputEvent throws
-     * "Attempt to access data of a consumed InputEvent" from getX/getY/getEventType, and a patched leaf's
-     * processInput can still see events it or an earlier sibling consumed (the parent purges them only after
-     * dispatching to every child).
-     */
-    @Deprecated("Consumed events are always ignored now.")
-    var ignoreConsumedEvents = true
     private var inProcessInput = false
 
     /**
@@ -499,9 +497,6 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             }
         }
     }
-
-    @Deprecated("Use requestLayout().", ReplaceWith("requestLayout()"))
-    internal fun invalidateLayout() = requestLayout()
 
     internal fun registerBinding(state: UIState<*>, binding: Any) {
         val entry = Pair(state, binding)
@@ -690,7 +685,7 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         delegate?.buttonPressed(buttonId)
     }
 
-    fun setMouseCapturePad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
+    internal fun setMouseCapturePad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
         inputCaptureTopPad = topPad
         inputCaptureBottomPad = bottomPad
         inputCaptureLeftPad = leftPad
@@ -767,6 +762,10 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
             lastHandledEvents = java.util.Collections.newSetFromMap(java.util.IdentityHashMap<InputEventAPI, Boolean>()).also { it.addAll(events) }
             val fresh = events.filter { it !in alreadyHandled }
 
+            // Consumed events are skipped: the engine's InputEvent throws "Attempt to access data of a consumed
+            // InputEvent" from getX/getY/getEventType, and a patched leaf can still see events it or an earlier
+            // sibling consumed (the parent purges them only after dispatching to every child).
+
             fresh.filter { it.isMouseEvent }.forEach { event ->
                 if (event.isConsumed) return@forEach
                 val inElement = event.x.toFloat() in (left - inputCaptureLeftPad)..(right + inputCaptureRightPad) &&
@@ -819,4 +818,16 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
     fun onKeyDown(function: (InputEventAPI) -> Unit) { register(onKeyDownFunctions, function) }
     fun onKeyUp(function: (InputEventAPI) -> Unit) { register(onKeyUpFunctions, function) }
     fun onKeyHeld(function: (InputEventAPI) -> Unit) { register(onKeyHeldFunctions, function) }
+}
+
+/**
+ * Lays out this component's container again on the next frame. Rarely needed: StarUI already does it when children
+ * are added or removed and when a Text changes. Call it after changing something StarUI can't see, such as a native
+ * component's size.
+ */
+fun UIComponentAPI.requestLayout() {
+    val target = this.actual
+    val own = StarUIPanelPlugin.getAttached(target)
+    if (own != null) own.requestLayout()
+    else target.parent?.let { StarUIPanelPlugin.getAttached(it) }?.requestLayout()
 }

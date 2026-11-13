@@ -16,8 +16,8 @@ import java.awt.Color
 
 // --- Tooltips ---
 /** A tooltip with one paragraph of [text], shown while the cursor is over the component. */
-fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE) = this.then {
-    it.actual.addTooltip(location, width, null) { tm -> tm.addPara(text, 0f) }
+fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null) = this.then {
+    it.actual.addTooltip(location, width, margin) { tm -> tm.addPara(text, 0f) }
     StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 

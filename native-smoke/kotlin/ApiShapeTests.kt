@@ -21,7 +21,6 @@ import org.starficz.starui.compose.runtime.ButtonGroup
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.ButtonFont
-import org.starficz.starui.core.getChildrenCopy
 import org.starficz.starui.core.measureTextSize
 import java.awt.Color
 
@@ -62,7 +61,7 @@ fun registerApiShapeTests() {
             }
         }
         frame()
-        expect(section.getChildrenCopy().none { it is LabelAPI }, "a Section with a null title has no heading")
+        expect(section.getChildrenCopy2().none { it is LabelAPI }, "a Section with a null title has no heading")
         // plus the section's 1 px border on every side
         near(bar.relTop(section), 1f + 6f, "its content starts at the content padding, inside the border")
         near(bar.w, 300f - 2f - 12f, "Size.fillMaxWidth(height =) fills the width inside the border and padding")

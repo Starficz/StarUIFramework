@@ -54,7 +54,7 @@ fun UIPanelAPI.Holo(
     val (initW, initH) = getInitialBounds(size, Pair(200f, 200f))
     val reused = slot.reused<BoxedUIHolo>()
     val boxed = reused ?: createHolo(initW, initH, contentInset, open, animateFirstOpen, foldDuration)
-    val holo = boxed.holo
+    val holo = boxed.obf
 
     if (boxed.lastBackground != background) {
         boxed.setBackgroundAlpha(background.lines, background.offsetLines)
@@ -117,12 +117,12 @@ private fun newContent(width: Float, height: Float): CustomPanelAPI {
 private fun swapContent(boxed: BoxedUIHolo) {
     val old = boxed.content
     val fresh = newContent(old.position.width, old.position.height)
-    val owned = StarUIPanelPlugin.getOrCreate(boxed.holo).ownedOutsideTree
+    val owned = StarUIPanelPlugin.getOrCreate(boxed.obf).ownedOutsideTree
     owned.remove(old)
     owned += fresh
     // the holo keeps drawing the old content, fading under the static, until the burst peaks and it switches
     boxed.transitionsEnabled = true
-    boxed.holo.invoke("setNext", fresh)
+    boxed.obf.invoke("setNext", fresh)
     boxed.content = fresh
     Scope.disposeTree(old)
 }

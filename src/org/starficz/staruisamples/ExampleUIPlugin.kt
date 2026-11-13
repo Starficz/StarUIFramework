@@ -40,14 +40,13 @@ import org.starficz.starui.compose.runtime.StarUIPlugin
 import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.*
-import org.starficz.starui.drawBorder
 import java.awt.Color
 
 object ExampleUIPlugin {
 
     // Helper: Recursively draws debug borders around all UI Components in the tree
     fun drawDebugBorders(panel: UIPanelAPI) {
-        panel.getChildrenCopy().forEach { child ->
+        panel.getChildrenCopy2().forEach { child ->
             when (child) {
                 is CustomPanelAPI -> GL11.glColor4f(0.2f, 0.5f, 1f, 1f) // Blue for Layouts/Spacers
                 is UIPanelAPI -> GL11.glColor4f(0f, 1f, 1f, 1f)         // Cyan for generic Panels
@@ -57,7 +56,7 @@ object ExampleUIPlugin {
                 else -> GL11.glColor4f(1f, 0f, 0f, 1f)                  // Red for Images and unknown types
             }
 
-            drawBorder(
+            drawOutline(
                 child.position.x,
                 child.position.y,
                 child.position.x + child.width,
@@ -259,4 +258,12 @@ object ExampleUIPlugin {
             } // End Theme
         }
     }
+}
+
+/** A 1 px outline just outside the rectangle (x1, y1) to (x2, y2). */
+private fun drawOutline(x1: Float, y1: Float, x2: Float, y2: Float) {
+    GL11.glRectf(x1, y1, x2 + 1, y1 - 1)
+    GL11.glRectf(x2, y1, x2 + 1, y2 + 1)
+    GL11.glRectf(x1, y2, x1 - 1, y1 - 1)
+    GL11.glRectf(x2, y2, x1 - 1, y2 + 1)
 }

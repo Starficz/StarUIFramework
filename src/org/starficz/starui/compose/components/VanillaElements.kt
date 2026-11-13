@@ -32,23 +32,28 @@ import java.awt.Color
 
 // Vanilla TooltipMakerAPI content as StarUI components. Each is built on a temporary tooltip at the width its
 // container gives it (or a fixed one), detached and held in a StarUI panel, which is what each call returns. It is
-// made again when the builder calling it runs again and whenever its width changes. All of them wrap their content
-// by default, at the width there is room for.
+// made again whenever its width changes, and when the builder calling it runs again with different arguments: each
+// call passes its `inputs` (a fresh snapshot of what it shows) to VanillaElementEngine.update. Components that read
+// live game objects (a stat, fleet members, a person, a planet, cargo, an event) pass null and are made again on
+// every call, since those objects change without any argument changing. All of them wrap their content by default,
+// at the width there is room for.
 
 /** Holds one vanilla component made by [build] at a width (see VanillaElementEngine). */
 private fun UIPanelAPI.VanillaElement(
     kind: String,
     size: Size,
     modifier: Modifier,
+    inputs: Any?,
     fixedWidth: Float? = null,
     build: TooltipMakerAPI.(width: Float) -> Unit
-): CustomPanelAPI = VanillaComponent(kind, size, modifier, fixedWidth) { width -> buildFromTooltip(width) { build(width) } }
+): CustomPanelAPI = VanillaComponent(kind, size, modifier, inputs, fixedWidth) { width -> buildFromTooltip(width) { build(width) } }
 
 /** Like [VanillaElement], with [make] building the component for a width itself. */
 private fun UIPanelAPI.VanillaComponent(
     kind: String,
     size: Size,
     modifier: Modifier,
+    inputs: Any?,
     fixedWidth: Float? = null,
     make: (width: Float) -> UIComponentAPI
 ): CustomPanelAPI {
@@ -66,7 +71,7 @@ private fun UIPanelAPI.VanillaComponent(
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
     slot.remember(panel, panel)
     modifier.operations.forEach { it(panel) }
-    engine.invalidate()
+    engine.update(inputs)
     return panel
 }
 
@@ -78,6 +83,7 @@ private fun UIPanelAPI.VanillaSizedComponent(
     kind: String,
     size: BoundedSize,
     modifier: Modifier,
+    inputs: Any?,
     onSwap: ((old: UIComponentAPI?, made: UIComponentAPI) -> Unit)? = null,
     make: (width: Float, height: Float) -> UIComponentAPI
 ): CustomPanelAPI {
@@ -94,7 +100,7 @@ private fun UIPanelAPI.VanillaSizedComponent(
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
     slot.remember(panel, panel)
     modifier.operations.forEach { it(panel) }
-    engine.invalidate()
+    engine.update(inputs)
     return panel
 }
 
@@ -130,7 +136,7 @@ fun UIPanelAPI.StatGrid(
 ): CustomPanelAPI {
     require(columns >= 1) { "StatGrid: columns must be at least 1" }
     val items = StatGridScope().apply(entries).entries
-    return VanillaElement("StatGrid", size, modifier) { width ->
+    return VanillaElement("StatGrid", size, modifier, inputs = listOf(columns, labelColor, valueFirst, valueWidth, valuePad, items)) { width ->
         val itemWidth = width / columns
         when {
             valueFirst && labelColor != null -> beginGridFlipped(itemWidth, columns, labelColor, valueWidth, valuePad)
@@ -157,7 +163,7 @@ fun UIPanelAPI.StatModGrid(
     valueWidth: Float = 50f,
     valuePad: Float = 10f,
     getter: TooltipMakerAPI.StatModValueGetter? = null
-): CustomPanelAPI = VanillaElement("StatModGrid", size, modifier) { width ->
+): CustomPanelAPI = VanillaElement("StatModGrid", size, modifier, inputs = null /* the live stat */) { width ->
     if (getter != null) addStatModGrid(width, valueWidth, valuePad, 0f, stat, getter)
     else addStatModGrid(width, valueWidth, valuePad, 0f, stat)
 }
@@ -170,7 +176,7 @@ fun UIPanelAPI.StatModGrid(
     valueWidth: Float = 50f,
     valuePad: Float = 10f,
     getter: TooltipMakerAPI.StatModValueGetter? = null
-): CustomPanelAPI = VanillaElement("StatModGrid", size, modifier) { width ->
+): CustomPanelAPI = VanillaElement("StatModGrid", size, modifier, inputs = null /* the live stat */) { width ->
     if (getter != null) addStatModGrid(width, valueWidth, valuePad, 0f, stat, getter)
     else addStatModGrid(width, valueWidth, valuePad, 0f, stat)
 }
@@ -183,7 +189,7 @@ fun UIPanelAPI.LabelledValue(
     modifier: Modifier = Modifier,
     labelColor: Color = VanillaColors.text,
     valueColor: Color = VanillaColors.highlight
-): CustomPanelAPI = VanillaElement("LabelledValue", size, modifier) { width ->
+): CustomPanelAPI = VanillaElement("LabelledValue", size, modifier, inputs = listOf(label, value, labelColor, valueColor)) { width ->
     addLabelledValue(label, value, labelColor, valueColor, width, 0f)
 }
 
@@ -193,19 +199,19 @@ fun UIPanelAPI.LabelledValue(
 
 /** Vanilla's reputation bar for a relationship [value] from -1 (vengeful) to 1 (cooperative), 19 tall. */
 fun UIPanelAPI.RelationshipBar(value: Float, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
-    VanillaElement("RelationshipBar", size, modifier) { width -> addRelationshipBar(value, width, 0f) }
+    VanillaElement("RelationshipBar", size, modifier, inputs = value) { width -> addRelationshipBar(value, width, 0f) }
 
 /** [RelationshipBar] for the player's standing with [faction]. Needs a campaign. */
 fun UIPanelAPI.RelationshipBar(faction: FactionAPI, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
-    VanillaElement("RelationshipBar", size, modifier) { width -> addRelationshipBar(faction, width, 0f) }
+    VanillaElement("RelationshipBar", size, modifier, inputs = null /* the live standing */) { width -> addRelationshipBar(faction, width, 0f) }
 
 /** [RelationshipBar] for the player's standing with [person]. Needs a campaign. */
 fun UIPanelAPI.RelationshipBar(person: PersonAPI, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
-    VanillaElement("RelationshipBar", size, modifier) { width -> addRelationshipBar(person, width, 0f) }
+    VanillaElement("RelationshipBar", size, modifier, inputs = null /* the live standing */) { width -> addRelationshipBar(person, width, 0f) }
 
 /** Vanilla's importance pips for a contact or other person (very low to very high). */
 fun UIPanelAPI.ImportanceIndicator(importance: PersonImportance, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
-    VanillaElement("ImportanceIndicator", size, modifier) { width -> addImportanceIndicator(importance, width, 0f) }
+    VanillaElement("ImportanceIndicator", size, modifier, inputs = importance) { width -> addImportanceIndicator(importance, width, 0f) }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Commodities and costs
@@ -241,7 +247,7 @@ fun UIPanelAPI.CommodityIcons(
     icons: CommodityIconsScope.() -> Unit
 ): CustomPanelAPI {
     val items = CommodityIconsScope().apply(icons).icons
-    return VanillaElement("CommodityIcons", size, modifier) { _ ->
+    return VanillaElement("CommodityIcons", size, modifier, inputs = listOf(rowHeight, rows, centered, items)) { _ ->
         beginIconGroup()
         for ((spec, count, mode) in items) addIcons(spec, count, mode)
         when {
@@ -280,7 +286,9 @@ fun UIPanelAPI.CostDisplay(
     costs: CostDisplayScope.() -> Unit
 ): CustomPanelAPI {
     val items = CostDisplayScope().apply(costs).costs
-    return VanillaElement("CostDisplay", size, modifier) { width ->
+    // with the player's stock shown, it reads the live cargo
+    val inputs = if (withAvailable) null else listOf(title, color, darkColor, boxHeight, items)
+    return VanillaElement("CostDisplay", size, modifier, inputs) { width ->
         showCost(title, withAvailable, width, boxHeight ?: -1f, color, darkColor, 0f,
             items.map { it.first }.toTypedArray(), items.map { it.second }.toIntArray(), items.map { it.third }.toBooleanArray())
     }
@@ -302,7 +310,7 @@ fun UIPanelAPI.ShipList(
     rows: Int = 1,
     iconSize: Float = 48f,
     baseColor: Color = VanillaColors.base
-): CustomPanelAPI = VanillaElement("ShipList", size, modifier) { _ ->
+): CustomPanelAPI = VanillaElement("ShipList", size, modifier, inputs = null /* live fleet members */) { _ ->
     addShipList(columns, rows, iconSize, baseColor, ships, 0f)
 }
 
@@ -316,7 +324,7 @@ fun UIPanelAPI.FleetSummary(
     modifier: Modifier = Modifier,
     sort: Boolean = true,
     showBaseHullForDHulls: Boolean = false
-): CustomPanelAPI = VanillaElement("FleetSummary", size, modifier) { _ ->
+): CustomPanelAPI = VanillaElement("FleetSummary", size, modifier, inputs = null /* live fleet members */) { _ ->
     // max = the whole list, so vanilla adds no "... and N other ships" line after the summary
     showShips(ships, maxOf(1, ships.size), sort, showBaseHullForDHulls, 0f)
 }
@@ -328,7 +336,7 @@ fun UIPanelAPI.CodexEntries(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
     sort: Boolean = true
-): CustomPanelAPI = VanillaElement("CodexEntries", size, modifier) { _ ->
+): CustomPanelAPI = VanillaElement("CodexEntries", size, modifier, inputs = listOf(title, entryIds.toSet(), sort)) { _ ->
     addCodexEntries(title, entryIds, sort, 0f)
 }
 
@@ -347,7 +355,7 @@ fun UIPanelAPI.SkillPanel(
     modifier: Modifier = Modifier,
     admin: Boolean = false,
     oneColumn: Boolean = false
-): CustomPanelAPI = VanillaElement("SkillPanel", size, modifier) { _ ->
+): CustomPanelAPI = VanillaElement("SkillPanel", size, modifier, inputs = null /* the live person */) { _ ->
     if (oneColumn) addSkillPanelOneColumn(person, admin, 0f) else addSkillPanel(person, admin, 0f)
 }
 
@@ -363,7 +371,7 @@ fun UIPanelAPI.EventProgressBar(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier
 ): CustomPanelAPI = VanillaComponent(
-    "EventProgressBar", size, modifier,
+    "EventProgressBar", size, modifier, inputs = null /* the live event */,
     fixedWidth = maxOf(0f, intel.barXOffset) + intel.barWidth +
         (intel.stages.maxOfOrNull { intel.createDisplayData(it.id).size } ?: 0f) / 2f
 ) { width ->
@@ -412,7 +420,7 @@ fun UIPanelAPI.PlanetInfo(
     withClass: Boolean = false,
     showConditions: Boolean = false,
     showHazardRating: Boolean = false
-): CustomPanelAPI = VanillaSizedComponent("PlanetInfo", size, modifier) { width, height ->
+): CustomPanelAPI = VanillaSizedComponent("PlanetInfo", size, modifier, inputs = null /* the live planet */) { width, height ->
     val params = TooltipMakerAPI.PlanetInfoParams().apply {
         this.showName = showName
         this.withClass = withClass
@@ -432,7 +440,7 @@ fun UIPanelAPI.SurveyRequirements(
     size: Size = Size.wrapContent(),
     modifier: Modifier = Modifier,
     withText: Boolean = true
-): CustomPanelAPI = VanillaComponent("SurveyRequirements", size, modifier) { width ->
+): CustomPanelAPI = VanillaComponent("SurveyRequirements", size, modifier, inputs = null /* the live planet and cargo */) { width ->
     buildTooltipBlock(width) { showFullSurveyReqs(planet, withText, 0f) }
 }
 
@@ -448,7 +456,7 @@ fun UIPanelAPI.CargoList(
     sort: Boolean = true,
     itemHeight: Float = 20f,
     itemPad: Float = 3f
-): CustomPanelAPI = VanillaComponent("CargoList", size, modifier) { width ->
+): CustomPanelAPI = VanillaComponent("CargoList", size, modifier, inputs = null /* the live cargo */) { width ->
     buildTooltipBlock(width) { showCargo(cargo, max, sort, 0f, itemHeight, itemPad) }
 }
 
@@ -459,7 +467,7 @@ fun UIPanelAPI.CargoList(
 fun UIPanelAPI.PlaythroughData(
     size: BoundedSize = Size.fillMaxSize(),
     modifier: Modifier = Modifier
-): CustomPanelAPI = VanillaSizedComponent("PlaythroughData", size, modifier) { width, height ->
+): CustomPanelAPI = VanillaSizedComponent("PlaythroughData", size, modifier, inputs = null /* the live campaign */) { width, height ->
     buildTooltipBlock(width) { addPlaythroughDataPanel(width, height) }
 }
 
@@ -477,7 +485,7 @@ fun UIPanelAPI.SectorMap(
     title: String? = null,
     color: Color = Global.getSector()?.playerFaction?.baseUIColor ?: VanillaColors.base,
     dark: Color = Global.getSector()?.playerFaction?.darkUIColor ?: VanillaColors.dark
-): CustomPanelAPI = VanillaSizedComponent("SectorMap", size, modifier, onSwap = ::keepMapCenter) { width, height ->
+): CustomPanelAPI = VanillaSizedComponent("SectorMap", size, modifier, inputs = null /* the live sector */, onSwap = ::keepMapCenter) { width, height ->
     val tempPanel = Global.getSettings().createCustom(width, height, null)
     val tooltip = tempPanel.createUIElement(width, height, false)
     tooltip.createSectorMap(width, height, params, title, color, dark)

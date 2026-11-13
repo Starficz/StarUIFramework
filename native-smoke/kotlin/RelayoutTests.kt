@@ -14,7 +14,7 @@ import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.onFirstLayout
 import org.starficz.starui.compose.modifier.onLayout
-import org.starficz.starui.compose.modifier.requestLayout
+import org.starficz.starui.compose.runtime.requestLayout
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.core.Anchor

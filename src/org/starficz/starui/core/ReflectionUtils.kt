@@ -46,7 +46,7 @@ import java.util.concurrent.ConcurrentHashMap
  * @see ReflectedConstructor
  */
 
-object ReflectionUtils {
+internal object ReflectionUtils {
     private val fieldClass =
         Class.forName("java.lang.reflect.Field", false, Class::class.java.classLoader)
     private val setFieldHandle =
@@ -246,7 +246,7 @@ object ReflectionUtils {
     @JvmSynthetic
     @JvmName("ExtensionGet")
     fun Any.get(name: String? = null, type: Class<*>? = null, searchSuperclass: Boolean = false): Any?{
-        val target = if(this is BoxedUIElement) this.boxedElement else this
+        val target = if(this is BoxedUIElement) this.obf else this
         val reflectedFields = target.getFieldsMatching(name, fieldAssignableTo=type, searchSuperclass=searchSuperclass)
         if (reflectedFields.isEmpty())
             throw IllegalArgumentException("No field found for name: '${name ?: "<any>"}' on class: ${target::class.java.name} " +
@@ -300,7 +300,7 @@ object ReflectionUtils {
     @JvmSynthetic
     @JvmName("ExtensionSet")
     fun Any.set(name: String? = null, value: Any?, searchSuperclass: Boolean = false) {
-        val target = if(this is BoxedUIElement) this.boxedElement else this
+        val target = if(this is BoxedUIElement) this.obf else this
         val valueType = value?.let{ it::class.javaPrimitiveType ?: it::class.java }
         val reflectedFields = target.getFieldsMatching(name, fieldAccepts=valueType, searchSuperclass=searchSuperclass)
         if (reflectedFields.isEmpty())
@@ -672,7 +672,7 @@ object ReflectionUtils {
     @JvmSynthetic
     @JvmName("ExtensionInvoke")
     fun Any.invoke(name: String? = null, vararg args: Any?): Any? {
-        val target = if(this is BoxedUIElement) this.boxedElement else this
+        val target = if(this is BoxedUIElement) this.obf else this
         val paramTypes = args.map { arg -> arg?.let{ it::class.javaPrimitiveType ?: it::class.java } }.toTypedArray()
         val reflectedMethods = target.getMethodsMatching(name, parameterTypes=paramTypes)
         if (reflectedMethods.isEmpty())
@@ -1101,7 +1101,7 @@ object ReflectionUtils {
          * @return The value of the field. Primitive types will be boxed. Returns `null` if the field value is `null`.
          */
         fun get(instance: Any?): Any? {
-            val target = if(instance is BoxedUIElement) instance.boxedElement else instance
+            val target = if(instance is BoxedUIElement) instance.obf else instance
             setFieldAccessibleHandle.invoke(field, true)
             return getFieldHandle.invoke(field, target)
         }
@@ -1114,7 +1114,7 @@ object ReflectionUtils {
          * @param value The new value to assign to the field.
          */
         fun set(instance: Any?, value: Any?) {
-            val target = if(instance is BoxedUIElement) instance.boxedElement else instance
+            val target = if(instance is BoxedUIElement) instance.obf else instance
             setFieldAccessibleHandle.invoke(field, true)
             setFieldHandle.invoke(field, target, value)
         }
@@ -1145,7 +1145,7 @@ object ReflectionUtils {
          *         has a `void` return type or explicitly returns `null`.
          */
         fun invoke(instance: Any?, vararg arguments: Any?): Any? {
-            val target = if(instance is BoxedUIElement) instance.boxedElement else instance
+            val target = if(instance is BoxedUIElement) instance.obf else instance
             setMethodAccessibleHandle.invoke(method, true)
             return invokeMethodHandle.invoke(method, target, arguments)
         }

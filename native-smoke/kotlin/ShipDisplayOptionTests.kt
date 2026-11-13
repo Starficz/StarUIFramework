@@ -13,7 +13,6 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
-import org.starficz.starui.core.getChildrenCopy
 
 private fun displayAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
 
@@ -32,7 +31,7 @@ private fun litStats(c: UIComponentAPI): Pair<Int, Long> {
 }
 
 private fun labelTexts(display: BoxedUIShipPreview) =
-    display.getChildrenCopy().filterIsInstance<LabelAPI>().map { it.text }.filter { it.isNotBlank() }
+    display.getChildrenCopy2().filterIsInstance<LabelAPI>().map { it.text }.filter { it.isNotBlank() }
 
 fun registerShipDisplayOptionTests() {
     StarUITestSuite.group("shipdisplay-fleetmember-rejects-label-options") {

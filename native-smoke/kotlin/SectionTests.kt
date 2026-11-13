@@ -18,7 +18,6 @@ import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.core.getChildrenCopy
 
 private fun sectionAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
 
@@ -56,7 +55,7 @@ fun registerSectionTests() {
             }
         }
         frame()
-        heading = section.getChildrenCopy().first() as LabelAPI
+        heading = section.getChildrenCopy2().first() as LabelAPI
         expect(heading.text == "Cargo", "the section starts with its heading (${heading.text})")
         near(section.w, 320f, "a section fills its column's width")
         // the 1 px border takes its pixel (CSS's box model): everything sits 1 in from the edge

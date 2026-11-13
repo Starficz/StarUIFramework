@@ -20,11 +20,12 @@ import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.core.BoxedUIImage
 import org.starficz.starui.core.BoxedUIShipPreview
 import org.starficz.starui.core.Font
-import org.starficz.starui.core.addImage
-import org.starficz.starui.core.addPara
-import org.starficz.starui.core.addShipPreview
+import org.starficz.starui.core.ReflectionUtils.invoke
+import org.starficz.starui.core.VanillaFactory
+import org.starficz.starui.core.autoSize
+import org.starficz.starui.core.measure
+import org.starficz.starui.core.path
 import org.starficz.starui.core.height
-import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.setSize
 import org.starficz.starui.core.width
 import java.awt.Color
@@ -55,13 +56,13 @@ fun UIPanelAPI.Text(
     // label; the text itself is updated in place (highlighted labels excepted: their highlights index the text).
     val slot = childSlot("Text", listOf(font, color, highlightedText, if (highlightedText != null) text else null))
     val reused: LabelAPI? = slot.reused()
-    val rawLabel = reused ?: this.addPara(text, font, color, highlightedText)
+    val rawLabel = reused ?: newLabel(text, font, color, highlightedText)
     if (reused != null && rawLabel.text != text) rawLabel.text = text
 
     fun applyTextAlign() = rawLabel.setAlignment(textAlign.toVanilla())
     applyTextAlign()
 
-    val initialMeasure = measureTextSize(text, font)
+    val initialMeasure = rawLabel.measure(text)
     if (reused != null) {
         applyReuseBounds(rawLabel, size, initialMeasure)
     } else {
@@ -80,7 +81,7 @@ fun UIPanelAPI.Text(
         // much text. The wrapped height per width is kept for the current text, and the label itself is only sized
         // again when its text or width changed.
         var cachedText: String? = text
-        var singleLine = initialMeasure   // measureTextSize(cachedText): its shared cache is too small for a long list
+        var singleLine = initialMeasure   // rawLabel.measure(cachedText)
         val heightAtWidth = HashMap<Float, Float>(4)
         var labelSizedText: String? = null
         var labelSizedWidth = Float.NaN
@@ -103,7 +104,7 @@ fun UIPanelAPI.Text(
             } else {
                 if (currentStr != cachedText) {
                     cachedText = currentStr
-                    singleLine = measureTextSize(currentStr, font)
+                    singleLine = rawLabel.measure(currentStr)
                     heightAtWidth.clear()
                 }
                 val (unwrappedW, singleLineH) = singleLine
@@ -148,7 +149,8 @@ fun UIPanelAPI.Image(
 ): BoxedUIImage {
     checkDslTarget()
     val slot = childSlot("Image", spritePath)
-    val rawImage = slot.reused<BoxedUIImage>() ?: this.addImage(spritePath, 100f, 100f)
+    val rawImage = slot.reused<BoxedUIImage>()
+        ?: BoxedUIImage(VanillaFactory.image(spritePath).also { this.addComponent(it) })
 
     rawImage.sizeToOriginalSpriteSize()
     val origW = rawImage.width
@@ -210,11 +212,11 @@ fun UIPanelAPI.Image(
     rawImage.setSize(initW, initH)
 
     registerComponentSizing(rawImage, size, isContainer = false)
-    slot.remember(rawImage.boxedElement, rawImage)
+    slot.remember(rawImage.obf, rawImage)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
-        val actual = rawImage.boxedElement
+        val actual = rawImage.obf
 
         parentPlugin.childMeasurables[actual] = { availW, availH -> calcIntrinsic(availW, availH) }
         parentPlugin.childLayoutDelegates[actual] = { assignedW, assignedH ->
@@ -272,8 +274,9 @@ fun UIPanelAPI.ShipDisplay(
     val (initW, initH) = getInitialBounds(size, Pair(100f, 100f))
 
     val theme = StarUITheme.current.shipDisplay
-    val rawShip = this.addShipPreview(initW, initH, fleetMember, style ?: theme.vanillaStyle,
+    val rawShip = newShipPreview(fleetMember, style ?: theme.vanillaStyle,
         labelColor ?: theme.labelColor ?: Global.getSettings().getColor("textFriendColor"))
+    rawShip.setSize(initW, initH)
 
     if (variant != null) {
         if (shipName != null) rawShip.setVariant(variant, shipName)
@@ -290,11 +293,11 @@ fun UIPanelAPI.ShipDisplay(
     if (hideLabels) rawShip.hideLabels()
 
     registerComponentSizing(rawShip, size, isContainer = false)
-    slot.remember(rawShip.boxedElement, rawShip)
+    slot.remember(rawShip.obf, rawShip)
 
     if (!StarUIContext.isTopLevel) {
         val parentPlugin = StarUIContext.currentPlugin
-        val actual = rawShip.boxedElement
+        val actual = rawShip.obf
 
         parentPlugin.childMeasurables[actual] = { maxW, maxH ->
             val w = if (maxW == Float.MAX_VALUE) 100f else maxW
@@ -309,4 +312,40 @@ fun UIPanelAPI.ShipDisplay(
 
     modifier.operations.forEach { it(rawShip) }
     return rawShip
+}
+
+/**
+ * A vanilla paragraph label (only TooltipMakerAPI makes one), added to this panel. [highlightedText] goes through
+ * vanilla's String.format, so a bare % in [text] is escaped.
+ */
+private fun UIPanelAPI.newLabel(
+    text: String, font: Font?, color: Color?, highlightedText: Collection<Pair<String, Color>>?
+): LabelAPI {
+    val label = VanillaFactory.onScratch {
+        if (font != null) setParaFont(font.path) else setParaFontDefault()
+        if (highlightedText != null) {
+            val (highlights, highlightColors) = highlightedText.unzip()
+            addPara(text.replace("%", "%%"), 0f, highlightColors.toTypedArray(), *highlights.toTypedArray())
+        } else {
+            addPara(text, 0f)
+        }
+    }
+    color?.let { label.setColor(it) }
+    this.addComponent(label)
+    label.autoSize()
+    return label
+}
+
+/** Vanilla's ship preview (no API factory: its constructors, found at load), added to this panel. */
+private fun UIPanelAPI.newShipPreview(
+    fleetMember: FleetMemberAPI?, style: BoxedUIShipPreview.Style, labelColor: Color
+): BoxedUIShipPreview {
+    val preview = if (fleetMember != null) {
+        BoxedUIShipPreview.FLEETMEMBER_CONSTRUCTOR!!.newInstance(fleetMember)
+    } else {
+        val enum = BoxedUIShipPreview.ENUM_ARRAY!!.find { it!!.invoke("name") == style.name }
+        BoxedUIShipPreview.ENUM_CONSTRUCTOR!!.newInstance(enum, labelColor)
+    } as UIPanelAPI
+    this.addComponent(preview)
+    return BoxedUIShipPreview(preview)
 }

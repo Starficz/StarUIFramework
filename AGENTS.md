@@ -90,7 +90,9 @@ and last a click handler or builder where there is one.
 - Controls have a `contentPadding` (space between their edge and their content, from the theme); `Modifier.padding`
   adds to it. `contentPadding = PaddingValues.Zero` makes a control as small as its content.
 - `Button` takes a `ButtonFont`: the seven fonts a vanilla button can be made with. Any other is a compile error.
-- A `buttonGroup` needs `bind`: a group works on its buttons' states (it throws otherwise).
+- A `buttonGroup` needs `bind`: a group works on its buttons' states (it throws otherwise). A click selects only
+  that button; Shift or Ctrl + click toggles just that one; clicking the only selected button selects them all.
+- For vanilla calls that take a font file (`setParaFont`, `addTextField`), `Font.X.path` gives it.
 - `Spacer` draws nothing; give it `Modifier.background(color)` to show it.
 - `SectionHeading` is vanilla's own (`TooltipMakerAPI.addSectionHeading`) and returns its `LabelAPI`, which draws its
   own bar; it fills the width by default and its text updates in place.
@@ -101,7 +103,11 @@ and last a click handler or builder where there is one.
   `itemHeight` tall, or as tall as the tallest custom cell's content needs (a button in a 20 px row would spill).
 - The other TooltipMakerAPI ports (`StatGrid`, `RelationshipBar`, `ShipList`, ...) build vanilla's own component on a
   temporary tooltip at the width they get and hold it in a StarUI panel; they are made again when that width
-  changes or their builder runs again. `CostDisplay` and the faction or person `RelationshipBar` need a campaign.
+  changes or a call gives them different arguments (a builder running again for something else keeps them). Those
+  that read live game objects (`StatModGrid`, `ShipList`, `FleetSummary`, `SkillPanel`, the faction or person
+  `RelationshipBar`, `CostDisplay(withAvailable = true)`, the planet, cargo, event and map ones) are made again on
+  every call, since those objects change without any argument changing. `CostDisplay` and the faction or person
+  `RelationshipBar` need a campaign.
 - Vanilla's `bringComponentToTop` also raises the panel in its parent, and so on up: inside a Column or Row it
   reorders them. To move a child above its siblings, remove it and add it again.
 - For vanilla's colours use `VanillaColors` (from `core`): the player faction's `base`, `dark` and `bright`, `text`,
@@ -118,7 +124,8 @@ Each call returns the vanilla object itself where the game API covers it: `Text`
 `BoxedUISlider`, `BoxedSectorMap` and `BoxedUIHolo`: small wrappers making one type of a vanilla object whose API interface is not
 a component type (`SliderAPI`, `SectorMapAPI` extend nothing) or that has none (images, ship previews), the way
 `BoxedUILabel` did before 0.98.5a made `LabelAPI` a component. Pass them to vanilla panel methods freely (StarUI
-unwraps them). Where the API interface already is a component (`LabelAPI`, `ScrollPanelAPI`), it is returned as is,
+unwraps them); every box's `obf` is the vanilla object itself (an obfuscated engine class), and reflective calls on
+a box (`invoke`) reach it already. Where the API interface already is a component (`LabelAPI`, `ScrollPanelAPI`), it is returned as is,
 and the methods it leaves out are extensions on it (`ScrollPanelAPI.addToOverlay`, `LabelAPI.autoSize`).
 
 Vanilla ship displays fit the ship and then always shrink it to 95%, and sit it 3% above centre. For an exact scale,
@@ -329,8 +336,10 @@ src/org/starficz/starui/
   compose/runtime/      StarUIPanelPlugin.kt (per-component state, handlers, layout, scopes),
                         Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
                         (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
-  core/                 vanilla helpers, Boxed* (image, ship preview, slider, sector map), Anchor, Font,
-                        ReflectionUtils
+  core/                 vanilla helpers, Boxed* (image, ship preview, slider, sector map, holo), Anchor, Font,
+                        ReflectionUtils (internal), VanillaFactory.kt (how components make vanilla elements: SettingsAPI
+                        factories where they exist, else one kept scratch tooltip; text measuring; the tooltip-built
+                        vanilla ports' temporary tooltips)
   internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt: lifecycle, culling, clip input;
                         ScrollWheelPatch.kt: the wheel for nested and horizontal scrolling)
 native-smoke/           in-game test suite (test-only, never shipped)

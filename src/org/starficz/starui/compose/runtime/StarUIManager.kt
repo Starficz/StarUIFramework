@@ -27,7 +27,6 @@ import org.starficz.starui.core.ReflectionUtils.getFieldsWithMethodsMatching
 import org.starficz.starui.core.ReflectionUtils.invoke
 import org.starficz.starui.core.children
 import org.starficz.starui.core.findChildWithMethod
-import org.starficz.starui.core.getChildrenCopy
 import org.starficz.starui.core.getChildrenNonCopy
 import org.starficz.starui.core.height
 import org.starficz.starui.core.width
@@ -40,10 +39,10 @@ object StarUIManager {
     private val dynamicInjectionElements = mutableMapOf<String, MutableList<WeakReference<UIComponentAPI>>>()
 
     private val anchorTL = Anchor.inside.topLeft.ofParent()
-    var inited = false
+    internal var inited = false
 
-    var tabOverride: UIPanelAPI? = null
-    var tabIDOverride: CoreUITabId? = null
+    internal var tabOverride: UIPanelAPI? = null
+    internal var tabIDOverride: CoreUITabId? = null
 
     var coreUI: UIPanelAPI? = null
         internal set
@@ -89,7 +88,7 @@ object StarUIManager {
         return panel.getChildrenNonCopy().any {
             it is CustomPanelAPI &&
                     it.plugin is StarUIPanelPlugin &&
-                    (it.plugin as StarUIPanelPlugin).customData == "StarUIFrameworkPanel"
+                    (it.plugin as StarUIPanelPlugin).isInjectedRoot
         }
     }
 
@@ -222,7 +221,7 @@ object StarUIManager {
         if (BoxedUIShipPreview.SHIP_PREVIEW_CLASS != null) return
 
         val missionWidget = title.findChildWithMethod("getMissionList") as? UIPanelAPI ?: return
-        val holographicBG = missionWidget.getChildrenCopy()[1] // 2 of the same class in the tree here
+        val holographicBG = missionWidget.getChildrenCopy2()[1] // 2 of the same class in the tree here
 
         val missionDetail = holographicBG.invoke("getCurr") as? UIPanelAPI ?: return
 
@@ -237,7 +236,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(title)) {
             val newCustomPanel = title.CustomPanel(
                 Size.exact(title.width, title.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToTitleScreen?.let { builder ->
@@ -268,7 +267,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(warroomPanel)) {
             val newCustomPanel = warroomPanel.CustomPanel(
                 Size.exact(warroomPanel.width, warroomPanel.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatWarroom?.let { builder ->
@@ -285,7 +284,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(shipInfoPanel)) {
             val abovePanel = shipInfoPanel.CustomPanel(
                 Size.exact(shipInfoPanel.width, shipInfoPanel.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelAboveCombatShipInfo?.let { builder ->
@@ -297,7 +296,7 @@ object StarUIManager {
 
             val belowPanel = shipInfoPanel.CustomPanel(
                 Size.exact(shipInfoPanel.width, shipInfoPanel.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelBelowCombatShipInfo?.let { builder ->
@@ -315,7 +314,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(widgetPanel)) {
             val combatPanel = widgetPanel.CustomPanel(
                 Size.exact(widgetPanel.width, widgetPanel.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCombatScreen?.let { builder ->
@@ -331,7 +330,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(tabPanel)) {
             val newCustomPanel = tabPanel.CustomPanel(
                 Size.exact(tabPanel.width, tabPanel.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToRefitTab?.let{ builder ->
@@ -349,7 +348,7 @@ object StarUIManager {
         if (!hasFrameworkPanel(coreUI)) {
             val newCustomPanel = coreUI.CustomPanel(
                 Size.exact(coreUI.width, coreUI.height),
-                Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
             ) {
                 registeredPlugins.forEach { starUIPlugin ->
                     starUIPlugin.addPanelToCampaignUI?.let { builder ->
@@ -365,7 +364,7 @@ object StarUIManager {
             if (!hasFrameworkPanel(parent)) {
                 val newCustomPanel = parent.CustomPanel(
                     Size.exact(parent.width, parent.height),
-                    Modifier.anchor(anchorTL).plugin { customData = "StarUIFrameworkPanel" }
+                    Modifier.anchor(anchorTL).plugin { isInjectedRoot = true }
                 ) {
                     registeredPlugins.forEach { starUIPlugin ->
                         when(currentCoreUITabID){

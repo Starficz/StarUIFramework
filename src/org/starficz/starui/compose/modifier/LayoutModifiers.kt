@@ -24,7 +24,7 @@ import org.starficz.starui.core.children
 /** Makes the parameters after it named-only: nothing can be passed for it. */
 class NamedArgumentsOnly private constructor()
 
-data class Margin(val left: Float = 0f, val right: Float = 0f, val top: Float = 0f, val bottom: Float = 0f) {
+internal data class Margin(val left: Float = 0f, val top: Float = 0f, val right: Float = 0f, val bottom: Float = 0f) {
     val horizontal get() = left + right
     val vertical get() = top + bottom
 }

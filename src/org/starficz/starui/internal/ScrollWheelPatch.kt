@@ -51,7 +51,7 @@ import kotlin.math.sign
         ]
     )
 )
-object ScrollWheelPatch {
+internal object ScrollWheelPatch {
     private const val HIDDEN = "staruiframework.wheelHidden"
     private const val OFF_SCREEN = Int.MAX_VALUE
     private val SET_X = MethodQuery.create().methodName("setX").parameterTypes(Int::class.javaPrimitiveType).build()

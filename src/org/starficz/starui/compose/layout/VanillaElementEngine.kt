@@ -8,7 +8,8 @@ import org.starficz.starui.core.width
 /**
  * Lays out a container that holds one vanilla component made for a given width: most TooltipMakerAPI content (tables,
  * grids, bars) is built at a width and cannot be resized afterwards. The component is made the first time the
- * container is measured, and made again whenever the width it is given changes or [invalidate] is called.
+ * container is measured, and made again whenever the width it is given changes, a call gives it new inputs
+ * ([update]) or [invalidate] is called.
  *
  * [build] makes the component for a width; [afterBuild] and [afterLayout] let a caller (Table) add and place its own
  * children over it. Children other than the component are not touched.
@@ -41,6 +42,26 @@ internal class VanillaElementEngine(private val plugin: StarUIPanelPlugin) : Lay
      * swapping the attached one each time would ask for another layout every pass.
      */
     private val measured = LinkedHashMap<Float, UIComponentAPI>()
+
+    /** What the last call was given (see [update]). */
+    private var lastInputs: Any? = null
+
+    /** State a caller keeps across its calls, for listeners on a component that outlives the call that made it. */
+    var callerState: Any? = null
+
+    /**
+     * Called by every component call with what the component shows: it is made again on the next layout unless
+     * [inputs] equal the last call's, so a builder running again for something else keeps it. Pass a fresh snapshot
+     * (lists, copies), never a collection the caller may change in place. Null means "always make it again": content
+     * read from live game objects (a stat, a fleet member, a person) can change without any argument changing.
+     *
+     * The inputs are what [build] holds anyway and replace the last call's, so comparing keeps nothing alive.
+     */
+    fun update(inputs: Any?) {
+        val unchanged = inputs != null && current != null && inputs == lastInputs
+        lastInputs = inputs
+        if (!unchanged) invalidate()
+    }
 
     /** Makes the component again on the next layout (its arguments changed). */
     fun invalidate() {

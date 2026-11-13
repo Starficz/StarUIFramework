@@ -17,8 +17,8 @@ import org.starficz.starui.compose.runtime.StarUITheme
 import org.starficz.starui.compose.toNodeSize
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.core.addSectionHeading
-import org.starficz.starui.core.measureTextSize
+import org.starficz.starui.core.VanillaFactory
+import org.starficz.starui.core.measure
 import java.awt.Color
 
 /**
@@ -36,12 +36,14 @@ fun UIPanelAPI.SectionHeading(
     checkDslTarget()
     val slot = childSlot("SectionHeading", listOf(color, backgroundColor, textAlign))
     val reused: LabelAPI? = slot.reused()
-    val heading = reused ?: this.addSectionHeading(text, color, backgroundColor, textAlign.toVanilla())
+    val heading = reused ?: VanillaFactory.onScratch {
+        addSectionHeading(text, color, backgroundColor, textAlign.toVanilla(), 300f, 0f)
+    }.also { this.addComponent(it) }
     if (reused != null && heading.text != text) heading.text = text
 
     // vanilla's height (one line plus 3 px); the width is the text plus vanilla's 5 px either side
     val barHeight = heading.position.height
-    fun intrinsic() = Pair(measureTextSize(heading.text, Font.ORBITRON_12_CONDENSED).first + 10f, barHeight)
+    fun intrinsic() = Pair(heading.measure(heading.text).first + 10f, barHeight)
     if (reused != null) applyReuseBounds(heading, size, intrinsic())
     else getInitialBounds(size, intrinsic()).let { (w, h) -> heading.position.setSize(w, h) }
 

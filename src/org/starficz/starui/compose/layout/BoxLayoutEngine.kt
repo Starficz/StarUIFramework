@@ -8,7 +8,6 @@ import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.modifier.Margin
 import org.starficz.starui.compose.modifier.PaddingValues
 import org.starficz.starui.core.relativeToBase
-import org.starficz.starui.core.getChildrenCopy
 
 internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEngine {
 
@@ -45,7 +44,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         val innerAvailableW = if (maxWidth == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, maxWidth - containerPadding.horizontal)
         val innerAvailableH = if (maxHeight == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, maxHeight - containerPadding.vertical)
 
-        val children = plugin.panel.getChildrenCopy()
+        val children = plugin.panel.getChildrenCopy2()
 
         // ==========================================
         // PASS 1: Intrinsic Scrape & Infinite Bounds Check
@@ -118,7 +117,7 @@ internal class BoxLayoutEngine(private val plugin: StarUIPanelPlugin) : LayoutEn
         val innerAvailableW = maxOf(0f, assignedWidth - containerPadding.horizontal)
         val innerAvailableH = maxOf(0f, assignedHeight - containerPadding.vertical)
 
-        val children = plugin.panel.getChildrenCopy()
+        val children = plugin.panel.getChildrenCopy2()
 
         // ==========================================
         // FINAL ASSIGNMENT & SIZING
