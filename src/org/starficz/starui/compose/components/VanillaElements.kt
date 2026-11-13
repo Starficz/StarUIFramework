@@ -13,7 +13,6 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.IconRenderMode
 import com.fs.starfarer.api.ui.MapParams
-import com.fs.starfarer.api.ui.SectorMapAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
@@ -25,9 +24,8 @@ import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.layout.VanillaElementEngine
 import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.core.centerOn
-import org.starficz.starui.core.getChildrenCopy
-import org.starficz.starui.core.worldCenter
+import org.starficz.starui.core.BoxedSectorMap
+import org.starficz.starui.core.findSectorMap
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.buildFromTooltip
 import java.awt.Color
@@ -462,8 +460,8 @@ fun UIPanelAPI.PlaythroughData(
 /**
  * Vanilla's sector map (as in intel and mission screens) at the size it gets, showing what [params] asks for
  * (`MapParams.showSystem`, `positionToShowAllMarkersAndSystems`, filters, ...). With a [title] it sits in vanilla's
- * titled box, in [color] and [dark]. `.sectorMap` on the returned panel gives vanilla's [SectorMapAPI] (pings, and
- * `centerOn`, `centerOnEntity`, `zoomOutAndCenter` from `core`) once it is laid out. Vanilla lays a map out once, so
+ * titled box, in [color] and [dark]. `.sectorMap` on the returned panel gives the map as a [BoxedSectorMap] (pings,
+ * `centerOn`, `centerOnEntity`, `zoomOutAndCenter`) once it is laid out. Vanilla lays a map out once, so
  * a size change makes it again, keeping its centre; so does the builder calling this running again. Needs a campaign.
  */
 fun UIPanelAPI.SectorMap(
@@ -481,12 +479,7 @@ fun UIPanelAPI.SectorMap(
 
 /** A sector map made again (a new size) starts where the old one was looking. */
 private fun keepMapCenter(old: UIComponentAPI?, made: UIComponentAPI) {
-    val oldMap = old?.let { findMap(it) } ?: return
-    findMap(made)?.centerOn(oldMap.worldCenter)
-}
-
-private fun findMap(component: UIComponentAPI): SectorMapAPI? {
-    if (component is SectorMapAPI) return component
-    if (component !is UIPanelAPI) return null
-    return component.getChildrenCopy().firstNotNullOfOrNull { findMap(it) }
+    val oldMap = old?.let { findSectorMap(it) } ?: return
+    val newMap = findSectorMap(made) ?: return
+    BoxedSectorMap(newMap).centerOn(BoxedSectorMap(oldMap).worldCenter)
 }

@@ -106,17 +106,19 @@ and last a click handler or builder where there is one.
 - For vanilla's colours use `VanillaColors` (from `core`): the player faction's `base`, `dark` and `bright`, `text`,
   `gray`, `highlight`, `positive`, `negative`, the story-point colours and `panel`, each read live. The showcase
   (`staruisamples/ShowcaseUIPlugin.kt`) is styled with them.
-- `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return its `SliderAPI`; it holds
-  one value (its `min` is a floor, `max` an overflow mark). `step` is a step size (Compose's `steps` is a count).
-  `configure` is a named argument taking any `SliderAPI` setter; it runs on every build. Use `slider.asComponent`
-  (from `core`) for the `UIComponentAPI` view.
+- `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return a `BoxedUISlider` (its
+  `SliderAPI` and the component it is); it holds one value (its `min` is a floor, `max` an overflow mark). `step` is
+  a step size (Compose's `steps` is a count). `configure` is a named argument taking any `SliderAPI` setter; it runs
+  on every build. For a raw `SliderAPI` from elsewhere, `asComponent` (from `core`) gives the component view.
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
 `ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
-`Image` and `ShipDisplay` return `BoxedUIImage` / `BoxedUIShipPreview`, small wrappers for components that have no API;
-pass them to vanilla panel methods freely (StarUI unwraps them). A box is only for a vanilla object with no API
-interface at all; where one exists, the methods it leaves out are extensions on it (`ScrollPanelAPI.addToOverlay`,
-`SectorMapAPI.centerOn`).
+`Image`, `ShipDisplay`, `Slider` / `ProgressBar` and `.sectorMap` give `BoxedUIImage`, `BoxedUIShipPreview`,
+`BoxedUISlider` and `BoxedSectorMap`: small wrappers making one type of a vanilla object whose API interface is not
+a component type (`SliderAPI`, `SectorMapAPI` extend nothing) or that has none (images, ship previews), the way
+`BoxedUILabel` did before 0.98.5a made `LabelAPI` a component. Pass them to vanilla panel methods freely (StarUI
+unwraps them). Where the API interface already is a component (`LabelAPI`, `ScrollPanelAPI`), it is returned as is,
+and the methods it leaves out are extensions on it (`ScrollPanelAPI.addToOverlay`, `LabelAPI.autoSize`).
 
 Vanilla ship displays fit the ship and then always shrink it to 95%, and sit it 3% above centre. For an exact scale,
 pass `exactScale = 1f` (one sprite pixel per UI unit; `1f / screenScaleMult` for one per screen pixel), or set
@@ -314,7 +316,7 @@ src/org/starficz/starui/
   compose/runtime/      StarUIPanelPlugin.kt (per-component state, handlers, layout, scopes),
                         Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
                         (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
-  core/                 vanilla helpers, BoxedUIImage / BoxedUIShipPreview (no API for those), Anchor, Font,
+  core/                 vanilla helpers, Boxed* (image, ship preview, slider, sector map), Anchor, Font,
                         ReflectionUtils
   internal/             ModPlugin, PatchLib hooks (UIComponentLifecyclePatch.kt: lifecycle, culling, clip input;
                         ScrollWheelPatch.kt: the wheel for nested and horizontal scrolling)

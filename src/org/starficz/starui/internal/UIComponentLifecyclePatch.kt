@@ -326,6 +326,8 @@ object SliderProgressPatch {
 private fun notifyValueChanged(context: AfterContext) {
     if (!StarUIPanelPlugin.hasAttachedPlugins || !context.isMostDerivedCall) return
     val self = context.self as? UIComponentAPI ?: return
+    // a box (BoxedUISlider) implements the API interface too: its delegating call reaches the vanilla object's own
+    if (self is BoxedUIElement) return
     StarUIPanelPlugin.getAttached(self)?.nativeValueChanged()
 }
 

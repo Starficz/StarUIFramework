@@ -1,5 +1,9 @@
 package org.starficz.starui.core
 
+import com.fs.starfarer.api.campaign.SectorEntityToken
+import com.fs.starfarer.api.ui.SectorMapAPI
+import com.fs.starfarer.api.ui.SliderAPI
+import org.lwjgl.util.vector.Vector2f
 import com.fs.graphics.Sprite
 import com.fs.graphics.util.Fader
 import com.fs.starfarer.api.combat.ShipAPI
@@ -14,8 +18,11 @@ import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.core.ReflectionUtils.invoke
 import java.awt.Color
 
-// Abstract base class for Boxed vanilla elements that still have no API (images, ship previews).
-// Labels, scroll panels and sliders are used directly: LabelAPI, ScrollPanelAPI and SliderAPI cover them since 0.98.5a.
+// Abstract base class for Boxed vanilla elements: one type for a vanilla object whose API interface is not a component
+// type, or that has no API interface at all. Images and ship previews have none; SliderAPI and SectorMapAPI do, but
+// extend nothing, so the box adds the component side (as BoxedUILabel did before 0.98.5a made LabelAPI a component).
+// Where the API interface already is a component (LabelAPI, ScrollPanelAPI) it is used directly, and the methods it
+// leaves out are extensions on it.
 abstract class BoxedUIElement(val boxedElement: UIComponentAPI)
 
 // The few scroll panel methods ScrollPanelAPI still leaves out (readable engine names).
@@ -215,4 +222,33 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
 
     override fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
     override fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
+}
+
+/**
+ * A vanilla slider or bar as one type: [SliderAPI] and the [UIComponentAPI] it is (the API interface does not say so).
+ * What `Slider` and `ProgressBar` return.
+ */
+class BoxedUISlider(val slider: SliderAPI) :
+    BoxedUIElement(slider as UIComponentAPI),
+    UIComponentAPI by (slider as UIComponentAPI),
+    SliderAPI by slider
+
+/**
+ * Vanilla's sector map as one type: [SectorMapAPI] (pings), the [UIPanelAPI] it is (the API interface does not say
+ * so), and the map's readable methods SectorMapAPI leaves out (centring, zoom). `.sectorMap` on a `SectorMap` gives
+ * one.
+ */
+class BoxedSectorMap(val map: SectorMapAPI) :
+    BoxedUIElement(map as UIPanelAPI),
+    UIPanelAPI by (map as UIPanelAPI),
+    SectorMapAPI by map
+{
+    /** Centres the map on a point of the location it shows, in world coordinates. */
+    fun centerOn(location: Vector2f) { map.invoke("centerOn", Vector2f(location)) }
+    /** Shows [entity]'s location (switching between hyperspace and a system as needed) and centres on it. */
+    fun centerOnEntity(entity: SectorEntityToken) { map.invoke("centerOnEntity", entity) }
+    /** Zooms all the way out and centres the map. */
+    fun zoomOutAndCenter() { map.invoke("zoomOutAndCenter") }
+    /** The world point at the centre of the view. */
+    val worldCenter: Vector2f get() = map.invoke("getWorldCenter") as Vector2f
 }

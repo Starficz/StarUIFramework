@@ -1,5 +1,6 @@
 package org.starficz.starui.compose.components
 
+import org.starficz.starui.core.BoxedUISlider
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CutStyle
@@ -276,7 +277,7 @@ fun UIPanelAPI.Slider(
     widgetColor: Color? = StarUITheme.current.slider.widgetColor,
     configure: (SliderAPI.() -> Unit)? = null,
     step: Float? = null
-): SliderAPI {
+): BoxedUISlider {
     val slider = nativeSlider("Slider", text, valueRange, size, modifier)
     slider.setUserAdjustable(true)
     slider.isShowAdjustableIndicator = true
@@ -326,7 +327,7 @@ fun UIPanelAPI.ProgressBar(
     barColor: Color? = StarUITheme.current.progressBar.barColor,
     configure: (SliderAPI.() -> Unit)? = null,
     animate: Boolean = true
-): SliderAPI {
+): BoxedUISlider {
     val bar = nativeSlider("ProgressBar", text, valueRange, size, modifier)
     bar.setUserAdjustable(false)
     bar.isShowAdjustableIndicator = false
@@ -344,11 +345,11 @@ fun UIPanelAPI.ProgressBar(
 /** Makes or reuses the vanilla slider behind [Slider] and [ProgressBar]; every setting has a setter, so none is fixed. */
 private fun UIPanelAPI.nativeSlider(
     kind: String, text: String?, valueRange: ClosedFloatingPointRange<Float>, size: BoundedSize, modifier: Modifier
-): SliderAPI {
+): BoxedUISlider {
     checkDslTarget()
     val slot = childSlot(kind)
-    val reused: SliderAPI? = slot.reused()
-    val slider: SliderAPI
+    val reused: BoxedUISlider? = slot.reused()
+    val slider: BoxedUISlider
     if (reused != null) {
         slider = reused
         applyReuseBounds(slider.asComponent, size)

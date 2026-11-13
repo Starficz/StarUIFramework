@@ -108,7 +108,7 @@ fun registerValueHookTests() {
         val value = UIState(50f)
         val stepped = UIState(0f)
         var layouts = 0
-        lateinit var slider: SliderAPI
+        lateinit var slider: org.starficz.starui.core.BoxedUISlider
         lateinit var snapping: SliderAPI
         root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG).onLayout { layouts++ }, spacing = 10f) {
             Text("value")
@@ -118,6 +118,8 @@ fun registerValueHookTests() {
         frame()
         near(slider.progress, 50f, "the slider starts at the state's value")
         near(slider.asComponent.w, 200f, "at its default width")
+        expect(slider.position === slider.asComponent.position && slider.parent === slider.asComponent.parent,
+            "Slider returns a box that is the component itself (same position and parent)")
 
         slider.progress = 40f
         near(value.peek(), 40f, "setProgress from code reaches the state at once")

@@ -128,20 +128,20 @@ fun UIPanelAPI.addPara(
     return para
 }
 
-/**
- * A vanilla slider or bar (`SettingsAPI.createSlider`), added to this panel. The object is also a [UIComponentAPI]
- * (the API interface just doesn't say so); [asComponent] gives that view.
- */
-fun UIPanelAPI.addSlider(text: String?, rangeMin: Float, rangeMax: Float, width: Float, height: Float): SliderAPI {
-    val slider = Global.getSettings().createSlider(text, rangeMin, rangeMax)
-    val component = slider.asComponent
-    component.position.setSize(width, height)
-    this.addComponent(component)
+/** A vanilla slider or bar (`SettingsAPI.createSlider`), added to this panel, boxed: SliderAPI and a component. */
+fun UIPanelAPI.addSlider(text: String?, rangeMin: Float, rangeMax: Float, width: Float, height: Float): BoxedUISlider {
+    val slider = BoxedUISlider(Global.getSettings().createSlider(text, rangeMin, rangeMax))
+    slider.position.setSize(width, height)
+    this.addComponent(slider.slider as UIComponentAPI)
     return slider
 }
 
-/** Every vanilla [SliderAPI] is a UI component; this is that view, for positioning, modifiers and panel methods. */
-val SliderAPI.asComponent: UIComponentAPI get() = this as UIComponentAPI
+/**
+ * Every vanilla [SliderAPI] is a UI component; this is that view, for a slider from vanilla or another mod. StarUI's
+ * own (`Slider`, `ProgressBar`, [addSlider]) are [BoxedUISlider]s, components already.
+ */
+val SliderAPI.asComponent: UIComponentAPI
+    get() = if (this is BoxedUISlider) this.slider as UIComponentAPI else this as UIComponentAPI
 
 /**
  * A vanilla section heading (`TooltipMakerAPI.addSectionHeading`): a label in [textColor] on a bar of [bgColor] that
