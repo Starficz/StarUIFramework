@@ -71,8 +71,11 @@ fun UIPanelAPI.Holo(
     slot.remember(holo, boxed)
 
     fun sizeContent(w: Float, h: Float) {
-        // the holo's own setSize also resizes its content and rebuilds its backgrounds at the new size
-        holo.invoke("setSize", w, h)
+        // The holo's own setSize also resizes its content and rebuilds its backgrounds at the new size, the noise
+        // included: a fresh noise layer at rest. Called on every layout it wiped each burst of static as it started
+        // (and a content swap waits for the static to peak), so only on a real size change.
+        val p = holo.position
+        if (p.width != w || p.height != h) holo.invoke("setSize", w, h)
         val inset = boxed.contentInset
         val contentPlugin = boxed.content.plugin as StarUIPanelPlugin
         val node = NodeSize(Dimension.Exact(maxOf(0f, w - 2 * inset)), Dimension.Exact(maxOf(0f, h - 2 * inset)))

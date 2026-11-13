@@ -14,6 +14,8 @@ import org.starficz.starui.compose.modifier.Modifier
 import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.background
 import org.starficz.starui.compose.modifier.margin
+import org.starficz.starui.compose.modifier.onAdvance
+import org.starficz.starui.compose.modifier.requestLayout
 import org.starficz.starui.compose.runtime.StarUIManager
 import org.starficz.starui.compose.runtime.UIState
 import org.starficz.starui.core.Anchor
@@ -140,6 +142,48 @@ fun registerHoloTests() {
         frame()
         expect(holo.content === second, "the same key keeps the content")
         screenshot("swapped")
+        root.clearChildren()
+
+        // the same inside a scrolling Column, as the showcase has it: layouts run often there, and the holo's own
+        // setSize makes a fresh noise layer (each layout wiped the static, so a swap never reached its peak)
+        val page2 = UIState(0)
+        lateinit var scrolled: BoxedUIHolo
+        lateinit var label2: LabelAPI
+        root.Column(Size.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)),
+            overflow = org.starficz.starui.compose.Overflow.ScrollVertical) {
+            val p = page2.value
+            scrolled = Holo(Size.exact(300f, 200f), contentKey = p, animateFirstOpen = false) {
+                label2 = Text("page $p").also { Unit }
+            }
+            Spacer(Size.exact(10f, 600f))
+        }
+        frame(5)
+        val before = scrolled.content
+        page2.value = 1
+        repeat(40) { frame(1) }   // as the game runs: one advance, one render
+        log("in a scroll panel: getCurr is new content = ${scrolled.holo.invoke("getCurr") === scrolled.content}, fold ${scrolled.fold.brightness}")
+        expect(scrolled.content !== before && scrolled.holo.invoke("getCurr") === scrolled.content,
+            "inside a scrolling Column the swap completes too")
+        scrolled.forceClose(); scrolled.open(0.25f, flicker = false)
+        val folds = ArrayList<Float>()
+        repeat(20) { frame(1); folds += scrolled.fold.brightness }
+        log("in a scroll panel, fold after open(): ${folds.joinToString { "%.2f".format(it) }}")
+        expect(scrolled.isOpen, "inside a scrolling Column the holo folds open (its own advance runs)")
+
+        // the static of an open or close shows (the noise is additive teal over the black background), lasts
+        // through a relayout, and dies away
+        val sp = scrolled.position
+        fun teal() = fraction(sp.x + 20f, sp.y + 20f, sp.width - 40f, sp.height - 40f) { it.g > 30 || it.b > 30 }
+        val quiet = teal()
+        scrolled.close(); scrolled.open()
+        frame(1)
+        scrolled.requestLayout()   // a relayout used to make a fresh, silent noise layer
+        frame(1)
+        val loud = teal()
+        expect(loud > quiet + 0.05f, "open() bursts with static that survives a relayout (teal fraction $quiet -> $loud)")
+        repeat(120) { frame(1) }
+        val after = teal()
+        expect(after < loud, "and the static dies away (teal fraction $after)")
         root.clearChildren()
     }
 }
