@@ -1,41 +1,15 @@
 // Reactive scopes: plain if / for in a builder follow UIState, plus disposal and the rules around rebuild timing.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.ButtonAPI
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.TextFieldAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.AreaCheckbox
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.components.TextField
-import org.starficz.starui.compose.components.Theme
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.onAdvance
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.runtime.ButtonGroup
-import org.starficz.starui.compose.runtime.Scope
-import org.starficz.starui.compose.runtime.StarUIManager
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.runtime.StarUITheme
-import org.starficz.starui.compose.runtime.TextTheme
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import com.fs.starfarer.api.ui.ScrollPanelAPI
-import org.starficz.starui.core.children
+import com.fs.starfarer.api.ui.*
+import org.starficz.starui.*
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.runtime.Scope
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.children
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 import java.lang.ref.WeakReference
 
@@ -62,6 +36,30 @@ private fun buildUnattachedScope(state: UIState<Int>): WeakReference<CustomPanel
 }
 
 fun registerScopeTests() {
+    StarUITestSuite.group("state-delegate-and-observers") {
+        // `by mutableStateOf(..)` reads and writes value, so a builder that reads the delegate follows it
+        var count by mutableStateOf(0)
+        val column = root.Column(modifier = at(40f, 40f)) { Text("count ${count}") }
+        frame()
+        expect(column.labelTexts() == listOf("count 0"), "a builder reads a delegated state (${column.labelTexts()})")
+        count = 3
+        frame()
+        expect(column.labelTexts() == listOf("count 3"), "writing the delegate rebuilds the builder that read it (${column.labelTexts()})")
+
+        val plain = UIState("a")
+        val seen = ArrayList<String>()
+        val listener: (String) -> Unit = { seen += it }
+        plain.observeForever(listener)
+        plain.value = "b"
+        plain.removeObserver(listener)
+        plain.value = "c"
+        expect(seen == listOf("b"), "observeForever runs until removeObserver ($seen)")
+
+        var threw = false
+        try { plain.onChange { } } catch (e: IllegalStateException) { threw = "observeForever" in (e.message ?: "") }
+        expect(threw, "onChange outside a builder throws and points to observeForever")
+    }
+
     StarUITestSuite.group("scope-dispose") {
         val flag = UIState(false)
         var clicks = 0; var changes = 0

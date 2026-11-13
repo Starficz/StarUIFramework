@@ -1,39 +1,13 @@
 // BoxLayoutEngine geometry, and the zero-wrapper / BoxedUIElement contracts.
 
-import org.starficz.starui.compose.runtime.StarUITheme
-import org.starficz.starui.compose.components.Theme
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.Global
-import org.starficz.starui.compose.Alignment
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.ScrollPanelAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Box
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Image
-import org.starficz.starui.compose.components.ShipDisplay
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.components.TextField
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.align
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedUIElement
-import org.starficz.starui.core.children
-import org.starficz.starui.core.renderShadows
-import org.starficz.starui.core.shadowColor
+import com.fs.starfarer.api.ui.*
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.*
 import java.awt.Color
 
 fun registerBoxTests() {
@@ -78,7 +52,7 @@ fun registerBoxTests() {
 
 fun registerContractTests() {
     StarUITestSuite.group("contract-zero-wrapper") {
-        NativeSmokeSupport.check(org.starficz.starui.core.VanillaClasses.hasShipPreview, "vanilla's ship preview class (ShipDisplay) was found at onApplicationLoad")
+        NativeSmokeSupport.check(org.starficz.starui.vanilla.VanillaClasses.hasShipPreview, "vanilla's ship preview class (ShipDisplay) was found at onApplicationLoad")
         val state = UIState("typed")
         val flag = UIState(false)
         val made = linkedMapOf<String, UIComponentAPI>()
@@ -87,7 +61,7 @@ fun registerContractTests() {
             made["Image"] = Image("graphics/icons/cargo/supplies.png", Size.exact(40f, 40f))
             made["Button"] = Button("Button")
             made["Checkbox"] = Checkbox("Checkbox", bind = flag)
-            made["TextField"] = TextField(state, size = org.starficz.starui.compose.Size.exact(200f, 24f))
+            made["TextField"] = TextField(state, size = org.starficz.starui.Size.exact(200f, 24f))
             made["ShipDisplay"] = ShipDisplay(Size.exact(120f, 120f), variant = Global.getSettings().getVariant("hammerhead_Balanced"))
         }
         frame()
@@ -107,16 +81,16 @@ fun registerContractTests() {
         // Regression: Combat AI Tweaks' "AI Config" Button(font = ORBITRON_20) crashed the game (NPE in the vanilla
         // label's setText) because measureTextSize used a font Starsector had never loaded as a paragraph font.
         val col = root.Column(Size.exact(900f, 760f), Modifier.anchor(Anchor.inside.topLeft.ofParent(20f, 20f)), spacing = 2f) {
-            for (f in org.starficz.starui.core.Font.values()) {
+            for (f in org.starficz.starui.vanilla.Font.values()) {
                 val err = thrown {
-                    val (w, h) = org.starficz.starui.core.measureTextSize("Font $f", f)
+                    val (w, h) = org.starficz.starui.vanilla.measureTextSize("Font $f", f)
                     expect(w > 0f && h > 0f, "measureTextSize with $f gives a real size (${w}x$h)")
                     Text("Font $f", font = f)
                 }
                 expect(err == null, "Text/measure with $f does not throw ($err)")
             }
             // every ButtonFont is a font a vanilla button can be made with (any other is a compile error now)
-            for (f in org.starficz.starui.core.ButtonFont.values()) {
+            for (f in org.starficz.starui.vanilla.ButtonFont.values()) {
                 val berr = thrown { Button("Button $f", font = f) }
                 expect(berr == null, "Button with $f does not throw ($berr)")
             }
@@ -129,7 +103,7 @@ fun registerContractTests() {
 
     StarUITestSuite.group("contract-boxed-container-ops") {
         // UIPanelContainerPatch must unwrap BoxedUIElements (images, ship previews) passed to vanilla container methods.
-        lateinit var a: UIComponentAPI; lateinit var boxed: org.starficz.starui.core.BoxedUIImage; lateinit var c: UIComponentAPI
+        lateinit var a: UIComponentAPI; lateinit var boxed: org.starficz.starui.vanilla.BoxedUIImage; lateinit var c: UIComponentAPI
         val host = root.CustomPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
             a = Spacer(Size.exact(10f, 10f))
             boxed = Image("graphics/icons/cargo/supplies.png", Size.exact(20f, 20f))

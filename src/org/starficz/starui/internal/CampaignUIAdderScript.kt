@@ -1,7 +1,7 @@
 package org.starficz.starui.internal
 
 import com.fs.starfarer.api.EveryFrameScript
-import org.starficz.starui.compose.runtime.StarUIManager
+import org.starficz.starui.StarUIManager
 
 
 internal class CampaignUIAdderScript : EveryFrameScript{

@@ -1,26 +1,16 @@
 // Universal modifiers on native components: visual (pixels), sizing, lifecycle counts.
 
-import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.border
-import org.starficz.starui.compose.modifier.VanillaFrame
-import org.starficz.starui.compose.modifier.onAdvance
-import org.starficz.starui.compose.modifier.onLayout
-import org.starficz.starui.compose.modifier.onFirstLayout
-import org.starficz.starui.compose.modifier.onPositionChanged
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.width
-import org.starficz.starui.core.height
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.Spacer
+import org.starficz.starui.components.Text
+import org.starficz.starui.modifier.*
+import org.starficz.starui.Size
+import org.starficz.starui.vanilla.height
+import org.starficz.starui.vanilla.width
 import java.awt.Color
 
 private fun Rgb.isRed() = r > 170 && g < 100 && b < 100

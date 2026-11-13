@@ -1,26 +1,22 @@
 // Automatic re-layout: a StarUI layout container lays out again by itself when its children or a Text change.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.Overflow
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.onFirstLayout
-import org.starficz.starui.compose.modifier.onLayout
-import org.starficz.starui.compose.runtime.requestLayout
-import org.starficz.starui.compose.runtime.StarUIContext
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.core.Anchor
-import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import org.starficz.starui.core.children
+import com.fs.starfarer.api.ui.ScrollPanelAPI
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.Row
+import org.starficz.starui.components.Spacer
+import org.starficz.starui.components.Text
+import org.starficz.starui.modifier.*
+import org.starficz.starui.Overflow
+import org.starficz.starui.requestLayout
+import org.starficz.starui.runtime.StarUIContext
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.Size
+import org.starficz.starui.vanilla.children
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 
 private val BG = Color(30, 30, 40)

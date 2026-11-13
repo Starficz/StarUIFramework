@@ -1,20 +1,8 @@
 // dumpLayout(): the text view of a UI tree that agents and tests use instead of a screenshot.
 
-import org.starficz.starui.compose.Overflow
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.compose.runtime.dumpLayout
-import org.starficz.starui.core.Anchor
+import org.starficz.starui.*
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
 import java.awt.Color
 
 fun registerToolingTests() {

@@ -2,8 +2,8 @@ package org.starficz.starui.patches
 
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.core.ButtonListener
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.ButtonListener
 import patchlib.api.context.BeforeContext
 import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch

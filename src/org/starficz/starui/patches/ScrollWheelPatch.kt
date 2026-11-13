@@ -4,8 +4,8 @@ import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.core.getChildrenNonCopy
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.getChildrenNonCopy
 import patchlib.api.context.AfterContext
 import patchlib.api.context.BeforeContext
 import patchlib.api.match.ClassMatch

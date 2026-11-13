@@ -3,30 +3,21 @@
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Holo
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.compose.runtime.requestLayout
-import org.starficz.starui.compose.runtime.StarUIManager
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedUIHolo
-import org.starficz.starui.core.ReflectionUtils.invoke
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.*
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.margin
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.BoxedUIHolo
+import org.starficz.starui.vanilla.ReflectionUtils.invoke
 import java.awt.Color
 
 fun registerHoloTests() {
     StarUITestSuite.group("holo-basics") {
-        expect(org.starficz.starui.core.VanillaClasses.holoClass != null && org.starficz.starui.core.VanillaClasses.holoConstructor != null,
-            "vanilla's holo panel class and constructor were found at load (${org.starficz.starui.core.VanillaClasses.holoClass?.name})")
+        expect(org.starficz.starui.vanilla.VanillaClasses.holoClass != null && org.starficz.starui.vanilla.VanillaClasses.holoConstructor != null,
+            "vanilla's holo panel class and constructor were found at load (${org.starficz.starui.vanilla.VanillaClasses.holoClass?.name})")
         val open = UIState(true)
         val count = UIState(0)
         val show = UIState(true)
@@ -100,7 +91,7 @@ fun registerHoloTests() {
         root.CustomPanel(Size.exact(700f, 260f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(200, 30, 30))) {
             dialog = Holo(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(20f, 20f)), animateFirstOpen = false)
             title = Holo(Size.exact(300f, 200f), Modifier.anchor(Anchor.inside.topLeft.ofParent(360f, 20f)),
-                animateFirstOpen = false, background = org.starficz.starui.core.HoloBackground.TitleScreen)
+                animateFirstOpen = false, background = org.starficz.starui.vanilla.HoloBackground.TitleScreen)
         }
         frame(5)
         val red = { c: Rgb -> c.r > 60 && c.r > c.g * 2 }
@@ -149,7 +140,7 @@ fun registerHoloTests() {
         lateinit var scrolled: BoxedUIHolo
         lateinit var label2: LabelAPI
         root.Column(Size.exact(400f, 300f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)),
-            overflow = org.starficz.starui.compose.Overflow.ScrollVertical) {
+            overflow = org.starficz.starui.Overflow.ScrollVertical) {
             val p = page2.value
             scrolled = Holo(Size.exact(300f, 200f), contentKey = p, animateFirstOpen = false) {
                 label2 = Text("page $p").also { Unit }

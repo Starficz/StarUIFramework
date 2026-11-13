@@ -14,7 +14,7 @@ import com.fs.starfarer.api.impl.campaign.intel.events.ht.HyperspaceTopographyEv
 import com.fs.starfarer.api.ui.CustomPanelAPI;
 import com.fs.starfarer.api.ui.MapParams;
 import org.lwjgl.util.vector.Vector2f;
-import org.starficz.starui.core.BoxedSectorMap;
+import org.starficz.starui.vanilla.BoxedSectorMap;
 import org.starficz.starui.livecheck.LivePorts;
 
 import java.util.ArrayList;

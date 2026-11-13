@@ -2,7 +2,7 @@ package org.starficz.starui.internal
 
 import com.fs.starfarer.api.combat.BaseEveryFrameCombatPlugin
 import com.fs.starfarer.api.input.InputEventAPI
-import org.starficz.starui.compose.runtime.StarUIManager
+import org.starficz.starui.StarUIManager
 
 
 internal class CombatUIAdderScript : BaseEveryFrameCombatPlugin() {

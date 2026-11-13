@@ -8,21 +8,14 @@ import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.impl.campaign.intel.events.BaseEventIntel
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.MapParams
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.EventProgressBar
-import org.starficz.starui.compose.components.PlaythroughData
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.SectorMap
-import org.starficz.starui.compose.components.SkillPanel
-import org.starficz.starui.compose.components.SurveyRequirements
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedSectorMap
-import org.starficz.starui.core.sectorMap
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.Size
+import org.starficz.starui.UIState
+import org.starficz.starui.vanilla.BoxedSectorMap
+import org.starficz.starui.vanilla.sectorMap
 
 object LivePorts {
     /** Height of the sector map; a change makes vanilla's map again (it is laid out once, at its size). */
@@ -43,13 +36,13 @@ object LivePorts {
           Text("EventProgressBar")
           made["EventProgressBar"] = EventProgressBar(intel)
           Row(Size.wrapContent(), spacing = 10f) {
-            Column(Size.mixed(org.starficz.starui.compose.Axis.Exact(half), org.starficz.starui.compose.Axis.Wrap), spacing = 10f) {
+            Column(Size.mixed(org.starficz.starui.Axis.Exact(half), org.starficz.starui.Axis.WrapContent), spacing = 10f) {
                 Text("SkillPanel")
                 made["SkillPanel"] = SkillPanel(person)
                 Text("SurveyRequirements")
                 made["SurveyRequirements"] = SurveyRequirements(planet)
             }
-            Column(Size.mixed(org.starficz.starui.compose.Axis.Exact(half), org.starficz.starui.compose.Axis.Wrap), spacing = 10f) {
+            Column(Size.mixed(org.starficz.starui.Axis.Exact(half), org.starficz.starui.Axis.WrapContent), spacing = 10f) {
                 Text("SectorMap")
                 made["SectorMap"] = SectorMap(params, Size.fillMaxWidth(height = mapHeight.value), title = "StarUI sector map")
                 Text("PlaythroughData")

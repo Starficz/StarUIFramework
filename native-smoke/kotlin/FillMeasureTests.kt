@@ -5,16 +5,16 @@
 
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.core.Anchor
+import org.starficz.starui.Anchor
+import org.starficz.starui.Axis
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.Row
+import org.starficz.starui.components.Spacer
+import org.starficz.starui.components.Text
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.Size
 import java.awt.Color
 
 private val MEASURE_BG = Color(30, 30, 45)
@@ -31,9 +31,9 @@ fun registerFillMeasureTests() {
         val texts = mutableListOf<LabelAPI>()
         val columns = mutableListOf<CustomPanelAPI>()
         // The fixed spacer comes last: the fill columns must not be measured as if it took no room.
-        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.Wrap), placeAt(40f, 60f).background(MEASURE_BG), spacing = 10f) {
+        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.WrapContent), placeAt(40f, 60f).background(MEASURE_BG), spacing = 10f) {
             repeat(3) {
-                columns += Column(modifier = Modifier.background(Color(60, 40, 40))) { texts += Text(LONG_TEXT) }
+                columns += Column(Size.fillMaxWidth(), Modifier.background(Color(60, 40, 40))) { texts += Text(LONG_TEXT) }
             }
             Spacer(Size.exact(60f, 10f), Modifier.background(Color.GRAY))
         }
@@ -54,8 +54,8 @@ fun registerFillMeasureTests() {
         root.Column(Size.wrapContent(), placeAt(40f, 20f)) { oneLine = Text("One line") }
 
         lateinit var text: LabelAPI
-        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.Wrap), placeAt(40f, 60f).background(MEASURE_BG)) {
-            text = Text(LONG_TEXT, Size.mixed(Axis.Exact(150f), Axis.Wrap))
+        val row = root.Row(Size.mixed(Axis.Exact(600f), Axis.WrapContent), placeAt(40f, 60f).background(MEASURE_BG)) {
+            text = Text(LONG_TEXT, Size.mixed(Axis.Exact(150f), Axis.WrapContent))
         }
         frame()
         near(text.w, 150f, "the text is its exact width")

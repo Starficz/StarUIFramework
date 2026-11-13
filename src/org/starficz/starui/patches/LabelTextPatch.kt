@@ -2,7 +2,7 @@ package org.starficz.starui.patches
 
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.SliderAPI
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.runtime.StarUIPanelPlugin
 import patchlib.api.context.BeforeContext
 import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch

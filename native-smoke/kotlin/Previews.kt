@@ -6,22 +6,12 @@
 // <OutDir>\example.layout.txt (dumpLayout() text). Add your own with StarUITestSuite.preview("name") { ... } below, or
 // keep this file untouched and pass your own file with -PreviewSource (it must define `fun registerPreviews()`).
 
-import org.starficz.starui.compose.modifier.border
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Divider
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.Size
+import org.starficz.starui.UIState
+import org.starficz.starui.vanilla.VanillaColors
 
 fun registerPreviews() {
     // A small reactive panel: the list and the summary line follow the state.

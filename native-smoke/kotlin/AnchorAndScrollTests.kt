@@ -1,19 +1,19 @@
 // Anchor system (inside / relative / my), top-level WrapContent re-anchoring, and ScrollPanel behaviour.
 
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.Overflow
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.core.Anchor
 import com.fs.starfarer.api.ui.ScrollPanelAPI
+import org.starficz.starui.Alignment
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.Spacer
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.padding
+import org.starficz.starui.Overflow
+import org.starficz.starui.Size
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 
 private val CHILD = Color(200, 140, 60)

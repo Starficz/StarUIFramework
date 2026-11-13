@@ -3,21 +3,12 @@
 
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Keyboard
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.modifier.onClickOutside
-import org.starficz.starui.compose.modifier.onClickRelease
-import org.starficz.starui.compose.modifier.onHover
-import org.starficz.starui.compose.modifier.onHoverEnter
-import org.starficz.starui.compose.modifier.onHoverExit
-import org.starficz.starui.compose.modifier.onKeyDown
-import org.starficz.starui.compose.modifier.onKeyUp
-import org.starficz.starui.core.Anchor
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.Button
+import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.Text
+import org.starficz.starui.modifier.*
+import org.starficz.starui.Size
 
 class Counts {
     var click = 0; var release = 0; var outside = 0

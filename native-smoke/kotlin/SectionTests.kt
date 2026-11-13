@@ -1,22 +1,18 @@
 // SectionHeading (vanilla's addSectionHeading label) and Section (a heading over a bordered, padded column).
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import org.starficz.starui.compose.TextAlign
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.PaddingValues
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Section
-import org.starficz.starui.compose.components.SectionHeading
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.VanillaColors
+import org.starficz.starui.*
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.Section
+import org.starficz.starui.components.SectionHeading
+import org.starficz.starui.components.Spacer
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.PaddingValues
+import org.starficz.starui.vanilla.VanillaColors
 
 private fun sectionAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
 
@@ -25,7 +21,7 @@ fun registerSectionTests() {
         val title = UIState("Fleet")
         lateinit var full: LabelAPI
         lateinit var wrapped: LabelAPI
-        root.Column(Size.mixed(Axis.Exact(300f), Axis.Wrap), sectionAt(40f, 40f), spacing = 6f) {
+        root.Column(Size.mixed(Axis.Exact(300f), Axis.WrapContent), sectionAt(40f, 40f), spacing = 6f) {
             full = SectionHeading(title.value)
             wrapped = SectionHeading("Left", Size.wrapContent(), textAlign = TextAlign.Left)
         }
@@ -48,7 +44,7 @@ fun registerSectionTests() {
         lateinit var section: CustomPanelAPI
         lateinit var heading: LabelAPI
         lateinit var content: CustomPanelAPI
-        root.Column(Size.mixed(Axis.Exact(320f), Axis.Wrap), sectionAt(40f, 40f)) {
+        root.Column(Size.mixed(Axis.Exact(320f), Axis.WrapContent), sectionAt(40f, 40f)) {
             section = Section("Cargo", contentPadding = PaddingValues.symmetric(horizontal = 10f, vertical = 8f)) {
                 content = Spacer(Size.exact(100f, 40f), Modifier.background(VanillaColors.base))
             }

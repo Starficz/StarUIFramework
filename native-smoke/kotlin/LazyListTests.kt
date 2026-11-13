@@ -4,18 +4,18 @@
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.LazyColumn
-import org.starficz.starui.compose.components.LazyRow
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.children
-import org.starficz.starui.core.scrollPanel
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.LazyColumn
+import org.starficz.starui.components.LazyRow
+import org.starficz.starui.components.Text
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.Size
+import org.starficz.starui.UIState
+import org.starficz.starui.vanilla.children
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 
 private fun lazyAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))

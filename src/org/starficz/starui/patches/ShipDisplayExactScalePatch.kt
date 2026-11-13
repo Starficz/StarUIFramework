@@ -1,12 +1,12 @@
 package org.starficz.starui.patches
 
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.combat.ShipAPI
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.lwjgl.opengl.GL11
 import org.lwjgl.util.vector.Vector2f
-import org.starficz.starui.core.ShipDisplayScale
+import org.starficz.starui.vanilla.ShipDisplayScale
 import patchlib.api.context.MethodCallContext
 import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch

@@ -1,44 +1,20 @@
 package org.starficz.staruisamples
 
-import org.starficz.starui.compose.components.Theme
-import org.starficz.starui.compose.runtime.StarUITheme
-import org.starficz.starui.compose.Overflow
-import com.fs.starfarer.api.Global
-import org.starficz.starui.compose.Alignment
 import com.fs.starfarer.api.campaign.PersonImportance
 import com.fs.starfarer.api.combat.MutableStat
-import com.fs.starfarer.api.impl.codex.CodexDataV2
-import com.fs.starfarer.api.ui.IconRenderMode
 import com.fs.starfarer.api.fleet.FleetMemberType
-import com.fs.starfarer.api.ui.ButtonAPI
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.CutStyle
-import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
+import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.impl.codex.CodexDataV2
+import com.fs.starfarer.api.ui.*
 import org.lazywizard.lazylib.opengl.ColorUtils.glColor
 import org.lwjgl.input.Keyboard
 import org.lwjgl.opengl.GL11
-import org.starficz.starui.compose.*
-import org.starficz.starui.compose.components.*
-import org.starficz.starui.compose.VGrow
-import org.starficz.starui.compose.modifier.*
-import org.starficz.starui.compose.runtime.*
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedUIShipPreview
-import org.starficz.starui.core.BoxedUISlider
-import org.starficz.starui.core.BoxedUIHolo
-import org.starficz.starui.core.HoloBackground
-import org.starficz.starui.core.ButtonFont
-import org.starficz.starui.core.Font
-import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.core.VanillaColors.withAlpha
-import org.starficz.starui.core.bottom
-import org.starficz.starui.core.left
-import org.starficz.starui.core.measureTextSize
-import org.starficz.starui.core.right
-import org.starficz.starui.core.top
-import org.starficz.starui.core.width
-import org.starficz.starui.core.height
+import org.starficz.starui.*
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.runtime.*
+import org.starficz.starui.vanilla.*
+import org.starficz.starui.vanilla.VanillaColors.withAlpha
 import java.awt.Color
 
 /**
@@ -203,8 +179,8 @@ object ShowcaseUIPlugin {
                 verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
                 Spacer(Size.exact(40f, 20f), Modifier.background(BASE).tooltip("Size.exact(40, 20)"))
                 Spacer(Size.fillMaxHeight(width = 20f), Modifier.background(BRIGHT).tooltip("Size.fillMaxHeight(width = 20)"))
-                Spacer(Size.mixed(Axis.Fill(1f), Axis.Exact(10f)), Modifier.background(DARK.brighter()).tooltip("Size.mixed(Axis.Fill(1), Axis.Exact(10))"))
-                Spacer(Size.mixed(Axis.Fill(2f), Axis.Exact(26f)), Modifier.background(BASE.withAlpha(150)).tooltip("Size.mixed(Axis.Fill(2), Axis.Exact(26)): twice the share"))
+                Spacer(Size.mixed(Axis.FillMax(1f), Axis.Exact(10f)), Modifier.background(DARK.brighter()).tooltip("Size.mixed(Axis.FillMax(1), Axis.Exact(10))"))
+                Spacer(Size.mixed(Axis.FillMax(2f), Axis.Exact(26f)), Modifier.background(BASE.withAlpha(150)).tooltip("Size.mixed(Axis.FillMax(2), Axis.Exact(26)): twice the share"))
             }
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("A")
@@ -491,7 +467,7 @@ object ShowcaseUIPlugin {
         Section("Text: wrapping, alignment, measuring") {
             Text("A Text with a fill width wraps onto as many lines as it needs, and its height follows. " +
                 "Resize the window and it wraps again.", Size.fillMaxWidth())
-            Text("An exact width of 220 wraps here, whatever the column does.", Size.mixed(Axis.Exact(220f), Axis.Wrap),
+            Text("An exact width of 220 wraps here, whatever the column does.", Size.mixed(Axis.Exact(220f), Axis.WrapContent),
                 Modifier.background(INSET_BG), color = GRAY)
             Text("TextAlign.Right", Size.fillMaxWidth(), textAlign = TextAlign.Right)
             SectionHeading("SectionHeading, Center (the default)")
@@ -770,7 +746,7 @@ object ShowcaseUIPlugin {
             Text("Full width (two columns):", color = GRAY)
             CargoList(cargo, Size.fillMaxWidth())
             Text("Narrow (one column), max = 3, sort = false:", color = GRAY)
-            CargoList(cargo, Size.mixed(Axis.Exact(250f), Axis.Wrap), Modifier.background(INSET_BG), max = 3, sort = false)
+            CargoList(cargo, Size.mixed(Axis.Exact(250f), Axis.WrapContent), Modifier.background(INSET_BG), max = 3, sort = false)
         }
 
         Section("PlanetInfo: vanilla's planet display") {

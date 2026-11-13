@@ -4,8 +4,8 @@ import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.core.BoxedUIElement
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.BoxedUIElement
 import patchlib.api.context.AfterContext
 import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch

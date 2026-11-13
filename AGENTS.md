@@ -16,10 +16,12 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
 - `mod_info.json` dependencies: `staruiframework`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
 - Compile against `jars/StarUIFramework.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
   **2.1.x**, so compile with `-api-version 2.1`.
-- Imports live in `org.starficz.starui.compose` (`Size`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`, `ContentScale`),
-  `.compose.components` (Column, Text, ...), `.compose.modifier` (Modifier and its extensions, `PaddingValues`),
-  `.compose.runtime` (UIState, `mutableStateOf`, StarUIManager, StarUITheme, ...) and `org.starficz.starui.core`
-  (Anchor, Font, ButtonFont, VanillaColors, vanilla helpers).
+- Imports live in four packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`,
+  `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`, `StarUIPlugin`,
+  `DynamicInjection`, `requestLayout`, `dumpLayout`), `.components` (Column, Text, ..., `ButtonGroup`, `key`),
+  `.modifier` (Modifier and its extensions, `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, the
+  `Boxed*` types, vanilla helpers). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
+  everything else in it, and in `.layout`, is internal.
 - Names follow Jetpack Compose where Compose has one (with Left/Right instead of Start/End: Starsector has no
   right-to-left layouts), and vanilla's where the component is a vanilla object (`SectionHeading`,
   `AreaCheckbox`, `ShipDisplay`).
@@ -38,7 +40,7 @@ somePanel.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofPar
 To attach to vanilla screens, use one of these:
 
 - **`StarUIPlugin`**: implement it, override `addPanelToCampaignUI`, `addPanelToRefitTab`,
-  `addPanelToCombatScreen`, etc. (see `compose/runtime/StarUIPlugin.kt`), then call
+  `addPanelToCombatScreen`, etc. (see `StarUIPlugin.kt`), then call
   `StarUIManager.registerPlugin(it)` in `onApplicationLoad`. Each builder gets a full-size `CustomPanelAPI` over that
   screen and is re-injected whenever vanilla rebuilds the screen.
 - **`DynamicInjection`**: for a specific vanilla sub-panel. `findTarget()` returns the panel (or null) and
@@ -49,8 +51,8 @@ To attach to vanilla screens, use one of these:
 
 | Call | Places children | Default size |
 |---|---|---|
-| `Column(size, modifier, grow, horizontalAlignment, spacing, overflow) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | fill width, wrap height |
-| `Row(size, modifier, grow, verticalAlignment, spacing, overflow) { }` | left to right (`HGrow.Leftwards` reverses) | wrap width, fill height |
+| `Column(size, modifier, grow, horizontalAlignment, spacing, overflow) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | wrap |
+| `Row(size, modifier, grow, verticalAlignment, spacing, overflow) { }` | left to right (`HGrow.Leftwards` reverses) | wrap |
 | `Box(size, modifier, overflow) { }` | stacked on top of each other; position children with `Modifier.align(Alignment.X)` | wrap |
 | `CustomPanel(size, modifier, overflow) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
 | `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item, only those near the view exist; scrolls | fill; exact or fill only |
@@ -110,13 +112,13 @@ and last a click handler or builder where there is one.
   `RelationshipBar` need a campaign.
 - Vanilla's `bringComponentToTop` also raises the panel in its parent, and so on up: inside a Column or Row it
   reorders them. To move a child above its siblings, remove it and add it again.
-- For vanilla's colours use `VanillaColors` (from `core`): the player faction's `base`, `dark` and `bright`, `text`,
+- For vanilla's colours use `VanillaColors` (from `vanilla`): the player faction's `base`, `dark` and `bright`, `text`,
   `gray`, `highlight`, `positive`, `negative`, the story-point colours and `panel`, each read live. The showcase
   (`staruisamples/ShowcaseUIPlugin.kt`) is styled with them.
 - `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return a `BoxedUISlider` (its
   `SliderAPI` and the component it is); it holds one value (its `min` is a floor, `max` an overflow mark). `step` is
   a step size (Compose's `steps` is a count). `configure` is a named argument taking any `SliderAPI` setter; it runs
-  on every build. For a raw `SliderAPI` from elsewhere, `asComponent` (from `core`) gives the component view.
+  on every build. For a raw `SliderAPI` from elsewhere, `asComponent` (from `vanilla`) gives the component view.
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
 `ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
@@ -137,8 +139,8 @@ pass `exactScale = 1f` (one sprite pixel per UI unit; `1f / screenScaleMult` for
 
 A component's size is its `size` argument, the only way to size it (there are no sizing modifiers). Factories, in
 Compose's words: `Size.wrapContent()`, `fillMaxWidth()`, `fillMaxWidth(height = h)`, `fillMaxHeight()`,
-`fillMaxHeight(width = w)`, `fillMaxSize()`, `exact(w, h)`, and `mixed(Axis.Wrap, Axis.Fill(2f))` for any other pair
-(`Axis.Fill(weight)` shares leftover space by weight).
+`fillMaxHeight(width = w)`, `fillMaxSize()`, `exact(w, h)`, and `mixed(Axis.WrapContent, Axis.FillMax(2f))` for any other pair
+(`Axis.FillMax(weight)` shares leftover space by weight).
 
 Three types, each a superset of the one before, so the compiler rules out sizes that mean nothing:
 - `BoundedSize`: exact or fill on both axes. Components with no content to wrap take it: `Spacer`, `ShipDisplay`,
@@ -174,7 +176,7 @@ Box(Size.exact(200f, 60f), overflow = Overflow.Clip) { ... }
   part reach nothing. Clip on both axes is vanilla's own clipping (it nests); one axis is a StarUI scissor.
 - **Only an exact or fill axis overflows**: a wrapping axis grows with its children.
 - A scrolling container is a vanilla scroll panel holding the StarUI container; the call still returns the container
-  (its size is the content's). `container.scrollPanel` (from `core`) gives the `ScrollPanelAPI` (`scrollToY`,
+  (its size is the content's). `container.scrollPanel` (from `vanilla`) gives the `ScrollPanelAPI` (`scrollToY`,
   `ensureVisible`, offsets); null on other panels. The scroll position survives rebuilds; a list that gets shorter is
   scrolled back into range. Scroll panel looks (left scrollbar, shadows, colours, wheel on or off) come from
   `StarUITheme.scroll`.
@@ -210,12 +212,12 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 `.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel),
 `.background(color)`, `.border(color, width)` / `.border(VanillaFrame)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`,
 `.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`,
-`.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }`,
+`.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }` (on the plugin, like `onLayout`),
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
 `.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
 `a then b` joins two modifiers (a component of your own that adds its look to the caller's `modifier`).
 The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so `width`, `height`, `left`, `top`,
-`right`, `bottom` (from `core`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
+`right`, `bottom` (from `vanilla`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
 
 Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
 `.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` draws `ui_border1`, the sprite frame of
@@ -229,7 +231,7 @@ Compose's `.border().padding()` trick is not available.)
 
 Modifiers work on every component, vanilla ones included, because they attach to the native object. The input
 handlers receive the event (`{ event -> }`); a handler that does not need it just ignores it (`{ clicks++ }`).
-On a vanilla `ButtonAPI`, use `Button(onClick = ...)` or `button.onClick { }` from `core`; both take `() -> Unit`. A
+On a vanilla `ButtonAPI`, use `Button(onClick = ...)` or `button.onClick { }` from `vanilla`; both take `() -> Unit`. A
 button's previous listener is kept.
 
 ## Anchors (inside a `CustomPanel`)
@@ -280,11 +282,13 @@ Column {
    label's font or colour, a text field's font or placeholder) make a new object when they change. `ShipDisplay` is always
    recreated.
 7. `state.peek()` reads without subscribing. Reads outside builders (handlers, `onAdvance`, render callbacks) never
-   subscribe.
+   subscribe. A state is also a delegate: `var count by mutableStateOf(0)` reads and writes `value`.
 8. Existing bindings still work: `TextField(bind = ...)`, `Checkbox(bind = ...)`, `Slider(bind = ...)`, `ButtonGroup`
    (radio groups) and `state.onChange { }` inside a builder (cleaned up automatically when the builder re-runs or its
-   UI is removed). A bound control writes its state the moment its native value changes, whoever changed it: the
-   player, or any code calling `setText` / `setChecked` / `setProgress` on the vanilla object.
+   UI is removed; outside a builder it throws). For a listener outside any UI, `state.observeForever { }` and
+   `removeObserver`: the state holds it strongly. A bound control writes its state the moment its native value
+   changes, whoever changed it: the player, or any code calling `setText` / `setChecked` / `setProgress` on the
+   vanilla object.
 9. UI that is removed or hidden never rebuilds. It catches up once when it is shown again.
 10. Layout updates by itself: adding or removing children, changing a `Text`'s string, or a rebuild all re-lay out
     the tree on the next frame. Call `component.requestLayout()` only after changing something StarUI cannot see,
@@ -334,17 +338,21 @@ Column {
 
 ```
 src/org/starficz/starui/
-  compose/components/   Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
-                        LazyLists.kt (LazyColumn, LazyRow),
-                        Content.kt (Text, Image, ShipDisplay), Controls.kt (Button, TextField, checkboxes), Spacers.kt
-  compose/layout/       LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, ViewportLayoutEngine.kt
-                        (scrolling containers), VanillaElementEngine.kt (tooltip-built vanilla ports)
-  compose/modifier/     Modifier.kt, LayoutModifiers.kt, EventModifiers.kt, VisualModifiers.kt
-  compose/runtime/      StarUIPanelPlugin.kt (handlers, layout, scopes), UINode.kt (each component's record: size
+  (root)                the everyday types: Sizing.kt (Size, Axis), Alignment.kt, Overflow.kt, Anchor.kt, UIState.kt,
+                        StarUITheme.kt, StarUIManager.kt (injection), StarUIPlugin.kt, DynamicInjection.kt,
+                        RequestLayout.kt, LayoutDump.kt, Dsl.kt
+  components/           Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
+                        LazyLists.kt (LazyColumn, LazyRow), Content.kt (Text, Image, ShipDisplay), Controls.kt
+                        (Button, TextField, checkboxes, sliders), ButtonGroup.kt, Spacers.kt, Sections.kt, Tables.kt,
+                        Holo.kt, VanillaElements.kt (the TooltipMakerAPI ports)
+  layout/               LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, ViewportLayoutEngine.kt
+                        (scrolling containers), VanillaElementEngine.kt (tooltip-built vanilla ports), NodeSize.kt
+  modifier/             Modifier.kt, LayoutModifiers.kt, EventModifiers.kt, VisualModifiers.kt
+  runtime/              StarUIPanelPlugin.kt (handlers, layout, scopes), UINode.kt (each component's record: size
                         rule, padding, margin, alignment, anchor, measure, layout, reuse record, plugin; NodeStore:
-                        where nodes live), Scope.kt (reactive scopes, rebuild timing, reuse cursor), UIState.kt, StarUIContext.kt
-                        (build-time stacks: plugin, theme, scope, key), StarUIManager.kt (injection), LayoutDump.kt
-  core/                 vanilla helpers, Boxed* (image, ship preview, slider, sector map, holo), Anchor, Font,
+                        where nodes live), Scope.kt (reactive scopes, rebuild timing, reuse cursor), StarUIContext.kt
+                        (build-time stacks: plugin, theme, scope, key), ClipStack.kt
+  vanilla/              vanilla helpers, Boxed* (image, ship preview, slider, sector map, holo), Font, VanillaColors,
                         ReflectionUtils (internal), VanillaClasses.kt (the engine classes StarUI constructs, found at
                         load), VanillaFactory.kt (how components make vanilla elements: SettingsAPI factories where
                         they exist, else one kept scratch tooltip; text measuring; the vanilla ports' temporary
@@ -425,4 +433,7 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   Tweaks, Scy Nation and Refit Filters are compiled against StarUI; rebuild them (or note what they need) after a
   change that affects them. After the first release: add and deprecate, don't remove or change.
 - Keep each file's existing line endings (most source files are LF, some CRLF).
+- Imports: five or more names from one package become a wildcard (`org.starficz.starui.components.*`); never for
+  `java.*` (`java.util.*` and `java.awt.*` would shadow Kotlin's `List`) or object members. Sorted in IntelliJ's
+  order: others, then `java`, `javax`, `kotlin`.
 - `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it.

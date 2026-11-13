@@ -1,24 +1,12 @@
 // StackLayoutEngine geometry: exact child rectangles relative to the container's top-left.
 // Children are exact-size Spacers (plain CustomPanels), so the numbers depend only on the engine.
 
-import org.starficz.starui.compose.modifier.padding
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.FlexSpacer
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.HGrow
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.VGrow
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.core.Anchor
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
 import java.awt.Color
 
 private val ORIGIN = Anchor.inside.topLeft.ofParent(40f, 40f)
@@ -102,9 +90,9 @@ fun registerStackTests() {
         lateinit var a: CustomPanelAPI; lateinit var b: CustomPanelAPI; lateinit var c: CustomPanelAPI
         val col = root.Column(Size.exact(300f, 400f), Modifier.anchor(ORIGIN).background(Color(30, 30, 40)).padding(10f, 20f),
             spacing = 5f) {
-            a = Spacer(Size.mixed(Axis.Exact(100f), Axis.Fill(1f)), Modifier.background(Color(200, 60, 60)))
-            b = Spacer(Size.mixed(Axis.Fill(1f), Axis.Fill(2f)), Modifier.background(Color(60, 200, 60)))
-            c = Spacer(Size.mixed(Axis.Exact(100f), Axis.Fill(1f)), Modifier.background(Color(60, 60, 200)))
+            a = Spacer(Size.mixed(Axis.Exact(100f), Axis.FillMax(1f)), Modifier.background(Color(200, 60, 60)))
+            b = Spacer(Size.mixed(Axis.FillMax(1f), Axis.FillMax(2f)), Modifier.background(Color(60, 200, 60)))
+            c = Spacer(Size.mixed(Axis.Exact(100f), Axis.FillMax(1f)), Modifier.background(Color(60, 60, 200)))
         }
         frame()
         expectRect(a, col, 10f, 20f, 100f, 87.5f, "weight1 a", 1.01f)
@@ -179,6 +167,26 @@ fun registerStackTests() {
         frame()
         val centre = inner.cx
         for ((i, k) in kids.withIndex()) near(k.cx, centre, "child $i centre stays on the parent centre line", 1.01f)
+        screenshot("final")
+    }
+
+    StarUITestSuite.group("stack-default-sizes-nest") {
+        // Column and Row wrap by default (as in Compose), so either nests in the other with no size given: a fill
+        // default on the outer container's wrapping main axis would throw
+        val t = Three()
+        val t2 = Three()
+        lateinit var row: CustomPanelAPI
+        lateinit var column: CustomPanelAPI
+        val outerColumn = root.Column(modifier = Modifier.anchor(ORIGIN)) {
+            row = Row { addThree(t) }
+        }
+        val outerRow = root.Row(modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 300f))) {
+            column = Column { addThree(t2) }
+        }
+        frame()
+        expectRect(row, outerColumn, 0f, 0f, 350f, 40f, "a default Row in a default Column wraps its children")
+        expectRect(column, outerRow, 0f, 0f, 200f, 80f, "a default Column in a default Row wraps its children")
+        expect(outerColumn.position.width == 350f && outerColumn.position.height == 40f, "the outer Column wraps the Row (${outerColumn.position.width} x ${outerColumn.position.height})")
         screenshot("final")
     }
 }

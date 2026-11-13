@@ -7,7 +7,7 @@ import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.input.InputEventType
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.runtime.dumpLayout
+import org.starficz.starui.dumpLayout
 import java.lang.reflect.InvocationTargetException
 import kotlin.math.abs
 

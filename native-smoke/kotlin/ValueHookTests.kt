@@ -7,22 +7,15 @@ import com.fs.starfarer.api.ui.SliderAPI
 import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Keyboard
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.AreaCheckbox
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.ProgressBar
-import org.starficz.starui.compose.components.Slider
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.components.TextField
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.onLayout
-import org.starficz.starui.compose.runtime.ButtonGroup
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.asComponent
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.onLayout
+import org.starficz.starui.Size
+import org.starficz.starui.UIState
+import org.starficz.starui.vanilla.asComponent
 import java.awt.Color
 
 private val HOOK_BG = Color(30, 40, 50)
@@ -108,7 +101,7 @@ fun registerValueHookTests() {
         val value = UIState(50f)
         val stepped = UIState(0f)
         var layouts = 0
-        lateinit var slider: org.starficz.starui.core.BoxedUISlider
+        lateinit var slider: org.starficz.starui.vanilla.BoxedUISlider
         lateinit var snapping: SliderAPI
         root.Column(Size.wrapContent(), hookAt(40f, 40f).background(HOOK_BG).onLayout { layouts++ }, spacing = 10f) {
             Text("value")

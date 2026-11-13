@@ -2,30 +2,14 @@
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.ButtonAPI
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.TextFieldAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.AreaCheckbox
-import org.starficz.starui.compose.components.Box
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.TextField
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.runtime.ButtonGroup
-import org.starficz.starui.compose.runtime.DynamicInjection
-import org.starficz.starui.compose.runtime.StarUIManager
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.children
+import com.fs.starfarer.api.ui.*
+import org.starficz.starui.*
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.children
 import java.awt.Color
 
 /** Real click (move, down, up) at a component's centre, through the root like the engine does. */
@@ -147,7 +131,7 @@ fun registerGuardTests() {
     StarUITestSuite.group("guards-layout-exceptions") {
         // FillMax on the primary axis of a WrapContent stack has no size to divide.
         var r = scratchRoot()
-        r.Column(Size.mixed(Axis.Exact(200f), Axis.Wrap)) { Spacer(Size.fillMaxHeight(width = 10f)) }
+        r.Column(Size.mixed(Axis.Exact(200f), Axis.WrapContent)) { Spacer(Size.fillMaxHeight(width = 10f)) }
         var err = thrown { NativeSmokeSupport.render(r) }
         expect(err is IllegalStateException && err.message?.contains("WrapContent") == true,
             "FillMax child in a WrapContent Column throws IllegalStateException (got $err)")

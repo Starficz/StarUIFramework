@@ -1,34 +1,21 @@
 // Interop with UI StarUI does not own (vanilla buttons, foreign CustomPanel plugins), API consolidation checks,
 // and measured costs of the per-frame paths (lifecycle hooks, text measuring, injection polling).
 
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.margin
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.runtime.DynamicInjection
-import org.starficz.starui.compose.runtime.StarUIManager
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.getChildrenNonCopy
-import org.starficz.starui.core.measureTextSize
-import org.starficz.starui.core.onClick
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.getChildrenNonCopy
+import org.starficz.starui.vanilla.measureTextSize
+import org.starficz.starui.vanilla.onClick
 import java.awt.Color
 
 private class CountingPlugin : BaseCustomUIPanelPlugin() {

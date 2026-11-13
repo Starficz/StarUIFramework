@@ -5,14 +5,14 @@
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.ShipDisplay
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedUIShipPreview
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.ShipDisplay
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.patches.ShipDisplayExactScalePatch
+import org.starficz.starui.Size
+import org.starficz.starui.vanilla.BoxedUIShipPreview
 import patchlib.api.PatchLib
 
 /** The lit pixels of a component's on-screen rectangle (1 UI unit = 1 pixel in the suite's window). */

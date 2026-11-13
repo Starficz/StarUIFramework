@@ -2,35 +2,22 @@
 // them, and key(...) keeps list items attached to their own native objects.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.Overflow
-import org.starficz.starui.core.ButtonFont
 import com.fs.starfarer.api.Global
-import com.fs.starfarer.api.ui.ButtonAPI
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.TextFieldAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.components.TextField
-import org.starficz.starui.compose.components.key
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import com.fs.starfarer.api.ui.ScrollPanelAPI
-import org.starficz.starui.core.Font
-import org.starficz.starui.core.children
+import com.fs.starfarer.api.ui.*
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.background
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.onClick
+import org.starficz.starui.Overflow
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.Size
+import org.starficz.starui.UIState
+import org.starficz.starui.vanilla.ButtonFont
+import org.starficz.starui.vanilla.children
+import org.starficz.starui.vanilla.Font
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 
 private val REUSE_BG = Color(30, 30, 40)

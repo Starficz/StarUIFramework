@@ -5,23 +5,13 @@
 import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.LabelAPI
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Checkbox
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Section
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Theme
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.PaddingValues
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.compose.runtime.ButtonGroup
-import org.starficz.starui.compose.runtime.StarUITheme
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.ButtonFont
-import org.starficz.starui.core.measureTextSize
+import org.starficz.starui.Anchor
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.Size
+import org.starficz.starui.StarUITheme
+import org.starficz.starui.vanilla.ButtonFont
+import org.starficz.starui.vanilla.measureTextSize
 import java.awt.Color
 
 private fun shapeAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))

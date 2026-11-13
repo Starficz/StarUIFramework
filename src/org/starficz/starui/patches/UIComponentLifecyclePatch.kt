@@ -3,8 +3,8 @@ package org.starficz.starui.patches
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.runtime.ClipStack
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.runtime.ClipStack
+import org.starficz.starui.runtime.StarUIPanelPlugin
 import patchlib.api.context.AfterContext
 import patchlib.api.context.BeforeContext
 import patchlib.api.match.ClassMatch

@@ -3,29 +3,13 @@
 
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.AxisOverflow
-import org.starficz.starui.compose.Overflow
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Box
-import org.starficz.starui.compose.components.Button
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.CustomPanel
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.components.Spacer
-import org.starficz.starui.compose.components.Text
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.align
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.background
-import org.starficz.starui.compose.modifier.onClick
-import org.starficz.starui.compose.modifier.onRender
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.children
-import org.starficz.starui.core.scrollPanel
-import org.starficz.starui.compose.runtime.dumpLayout
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.*
+import org.starficz.starui.modifier.*
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.children
+import org.starficz.starui.vanilla.scrollPanel
 import java.awt.Color
 
 private fun overflowAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
@@ -357,13 +341,13 @@ fun registerOverflowTests() {
         frame(1)
         log("showcase first build + layout: ${(System.nanoTime() - t0) / 1_000_000} ms")
         frame(10)
-        val before = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests
-        org.starficz.starui.compose.runtime.StarUIPanelPlugin.traceLayoutRequests = 5
+        val before = org.starficz.starui.runtime.StarUIPanelPlugin.layoutRequests
+        org.starficz.starui.runtime.StarUIPanelPlugin.traceLayoutRequests = 5
         val t1 = System.nanoTime()
         for (i in 0 until 20) frame(1)
         log("20 idle showcase frames: ${(System.nanoTime() - t1) / 1_000_000} ms")
-        org.starficz.starui.compose.runtime.StarUIPanelPlugin.traceLayoutRequests = 0
-        val idleRequests = org.starficz.starui.compose.runtime.StarUIPanelPlugin.layoutRequests - before
+        org.starficz.starui.runtime.StarUIPanelPlugin.traceLayoutRequests = 0
+        val idleRequests = org.starficz.starui.runtime.StarUIPanelPlugin.layoutRequests - before
         // the wrapped paragraph in the Text card must not run into the label below it
         fun findLabel(c: com.fs.starfarer.api.ui.UIComponentAPI, prefix: String): com.fs.starfarer.api.ui.LabelAPI? {
             if (c is com.fs.starfarer.api.ui.LabelAPI && c.text.startsWith(prefix)) return c

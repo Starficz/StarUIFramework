@@ -2,20 +2,17 @@
 // ImageSize.native() stays the sprite's own size. Uses the wolf hull sprite, 52 x 96.
 
 import com.fs.starfarer.api.Global
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.ImageSize
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.components.Box
-import org.starficz.starui.compose.components.Column
-import org.starficz.starui.compose.components.Image
-import org.starficz.starui.compose.components.Row
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.align
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.modifier.padding
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.BoxedUIImage
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.Box
+import org.starficz.starui.components.Column
+import org.starficz.starui.components.Image
+import org.starficz.starui.components.Row
+import org.starficz.starui.modifier.align
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.padding
+import org.starficz.starui.vanilla.BoxedUIImage
 
 private const val WOLF = "graphics/ships/wolf/wolf_base.png"
 private fun imageAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
@@ -37,10 +34,10 @@ fun registerImageSizeTests() {
         root.Box(Size.exact(90f, 60f), imageAt(160f, 40f).padding(10f)) {
             inPaddedBox = Image(WOLF, ImageSize.aspectWrap())
         }
-        root.Column(Size.mixed(Axis.Exact(200f), Axis.Wrap), imageAt(280f, 40f)) {
+        root.Column(Size.mixed(Axis.Exact(200f), Axis.WrapContent), imageAt(280f, 40f)) {
             inColumn = Image(WOLF, ImageSize.aspectWrap())
         }
-        root.Row(Size.mixed(Axis.Wrap, Axis.Exact(48f)), imageAt(500f, 40f)) {
+        root.Row(Size.mixed(Axis.WrapContent, Axis.Exact(48f)), imageAt(500f, 40f)) {
             inRow = Image(WOLF, ImageSize.aspectWrap())
         }
         root.Box(Size.exact(200f, 200f), imageAt(560f, 40f)) {

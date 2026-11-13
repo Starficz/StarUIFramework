@@ -1,31 +1,23 @@
 // Table and the vanilla TooltipMakerAPI content (stat grids, bars, icons, ship lists, codex links) as StarUI components.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
-import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.PersonImportance
 import com.fs.starfarer.api.combat.MutableStat
 import com.fs.starfarer.api.fleet.FleetMemberType
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.impl.codex.CodexDataV2
-import com.fs.starfarer.api.ui.ButtonAPI
-import com.fs.starfarer.api.ui.CustomPanelAPI
-import com.fs.starfarer.api.ui.IconRenderMode
-import com.fs.starfarer.api.ui.LabelAPI
-import com.fs.starfarer.api.ui.UIComponentAPI
-import org.starficz.starui.compose.Alignment
-import org.starficz.starui.compose.Axis
-import org.starficz.starui.compose.Size
-import org.starficz.starui.compose.TextAlign
-import org.starficz.starui.compose.components.*
-import org.starficz.starui.compose.layout.VanillaElementEngine
-import org.starficz.starui.compose.modifier.Modifier
-import org.starficz.starui.compose.modifier.align
-import org.starficz.starui.compose.modifier.anchor
-import org.starficz.starui.compose.runtime.StarUIPanelPlugin
-import org.starficz.starui.compose.runtime.UIState
-import org.starficz.starui.core.Anchor
-import org.starficz.starui.core.ReflectionUtils.invoke
-import org.starficz.starui.core.VanillaColors
-import org.starficz.starui.core.sectorMap
+import com.fs.starfarer.api.ui.*
+import org.starficz.starui.*
+import org.starficz.starui.Alignment
+import org.starficz.starui.components.*
+import org.starficz.starui.layout.VanillaElementEngine
+import org.starficz.starui.modifier.align
+import org.starficz.starui.modifier.anchor
+import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.ReflectionUtils.invoke
+import org.starficz.starui.vanilla.sectorMap
+import org.starficz.starui.vanilla.VanillaColors
 
 private data class TestShip(val id: Int, val name: String, val cost: Int)
 private val testShips = listOf(TestShip(1, "Onslaught", 300), TestShip(2, "Eagle", 150), TestShip(3, "Wolf", 40))
@@ -111,7 +103,7 @@ fun registerVanillaElementTests() {
         val width = UIState(300f)
         lateinit var table: CustomPanelAPI
         root.Column(Size.exact(600f, 400f), elementAt(40f, 40f)) {
-            Column(Size.mixed(Axis.Exact(width.value), Axis.Wrap)) {
+            Column(Size.mixed(Axis.Exact(width.value), Axis.WrapContent)) {
                 table = Table(ships.value, Size.fillMaxWidth()) {
                     column("Ship") { it.name }
                     column("Cost", width = 60f) { "${it.cost}" }
@@ -150,7 +142,7 @@ fun registerVanillaElementTests() {
         lateinit var a: CustomPanelAPI; lateinit var b: CustomPanelAPI; lateinit var c: CustomPanelAPI
         lateinit var row: CustomPanelAPI
         val fleet = UIState(testShips)
-        row = root.Row(Size.mixed(Axis.Exact(900f), Axis.Wrap), elementAt(40f, 40f), spacing = 10f) {
+        row = root.Row(Size.mixed(Axis.Exact(900f), Axis.WrapContent), elementAt(40f, 40f), spacing = 10f) {
             a = Column(Size.fillMaxWidth()) { Text("first") }
             b = Column(Size.fillMaxWidth()) {
                 Text("second")
@@ -174,7 +166,7 @@ fun registerVanillaElementTests() {
     StarUITestSuite.group("table-order-variants") {
         fun check(name: String, middle: CustomPanelAPI.() -> Unit) {
             lateinit var a: CustomPanelAPI; lateinit var b: CustomPanelAPI; lateinit var c: CustomPanelAPI
-            val host = root.Row(Size.mixed(Axis.Exact(900f), Axis.Wrap), elementAt(40f, 40f), spacing = 10f) {
+            val host = root.Row(Size.mixed(Axis.Exact(900f), Axis.WrapContent), elementAt(40f, 40f), spacing = 10f) {
                 a = Column(Size.fillMaxWidth()) { Text("first") }
                 b = Column(Size.fillMaxWidth()) { middle() }
                 c = Column(Size.fillMaxWidth()) { Text("third") }
