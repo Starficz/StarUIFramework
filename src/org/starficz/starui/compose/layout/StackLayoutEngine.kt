@@ -4,6 +4,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.apache.log4j.Logger
+import org.starficz.starui.compose.AxisOverflow
 import org.starficz.starui.compose.runtime.StarUIContext
 import org.starficz.starui.compose.runtime.StarUIPanelPlugin
 import org.starficz.starui.compose.modifier.Margin
@@ -112,6 +113,12 @@ internal class StackLayoutEngine(
         val availablePrimary = if (effectiveMaxPrimary == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, effectiveMaxPrimary - primaryPaddingSum)
         val availableCross = if (effectiveMaxCross == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, effectiveMaxCross - crossPaddingSum)
 
+        // Along a scrolling main axis the content is as long as it needs: children that do not fill are measured with
+        // unbounded room there (as Compose does), not with what the viewport has left, which is 0 once the content
+        // overflows. Fill children still share the viewport's leftover (availablePrimary).
+        val scrollsPrimary = (if (isVertical) plugin.overflow.vertical else plugin.overflow.horizontal) == AxisOverflow.Scroll
+        val wrapRoom = if (scrollsPrimary) Float.MAX_VALUE else availablePrimary
+
         val isMyPrimaryWrap = myPrimaryDim is Dimension.WrapContent
         // When this container's cross size is its content (wrap), a child that fills the cross axis takes its
         // siblings' cross size and never widens the container, so it is measured once that size is known.
@@ -203,7 +210,7 @@ internal class StackLayoutEngine(
         var independentPrimary = 0f
         for (child in children) {
             if (child in fillChildren || (hasCrossContent && child in waitsForCross)) continue
-            measure(child, minus(availablePrimary, independentPrimary), availableCross)
+            measure(child, minus(wrapRoom, independentPrimary), availableCross)
             independentPrimary += primaryContribution(child)
         }
         val independentCross = children
@@ -221,7 +228,7 @@ internal class StackLayoutEngine(
             fixedPrimarySpace = independentPrimary
             for (child in children) {
                 if (child in fillChildren || child !in waitsForCross || !hasCrossContent) continue
-                measure(child, minus(availablePrimary, fixedPrimarySpace), crossSize)
+                measure(child, minus(wrapRoom, fixedPrimarySpace), crossSize)
                 fixedPrimarySpace += primaryContribution(child)
             }
             for (child in fillChildren) fixedPrimarySpace += primaryMarginOf(child)
@@ -428,3 +435,4 @@ internal class StackLayoutEngine(
         child.position.relativeToBase(null, targetAnchorX, targetAnchorY, myAnchorX, myAnchorY, offsetX, offsetY)
     }
 }
+
