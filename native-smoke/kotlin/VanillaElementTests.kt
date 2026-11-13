@@ -228,3 +228,48 @@ fun registerVanillaElementTests() {
         screenshot("final")
     }
 }
+
+fun registerVanillaPortTests() {
+    // the ports that need campaign objects, with what the startup sector gives: a cargo, a planet in a new system, a
+    // map. Survey requirements and the playthrough panel need a player fleet: campaign checks.
+    StarUITestSuite.group("vanilla-ports-startup") {
+        if (Global.getSector() == null) Global.setSector(com.fs.starfarer.campaign.CampaignEngine.getInstance())
+        val cargo = Global.getFactory().createCargo(true).apply {
+            addSupplies(120f); addFuel(300f); addCrew(50); addCommodity("metals", 40f)
+        }
+        lateinit var cargoList: CustomPanelAPI
+        root.Column(Size.exact(420f, 300f), elementAt(40f, 20f)) {
+            cargoList = CargoList(cargo)
+        }
+        frame(); frame()
+        expect(cargoList.w > 0f && cargoList.h > 20f, "CargoList has a size (${cargoList.w} x ${cargoList.h})")
+
+        var planetPanel: CustomPanelAPI? = null
+        val planetError = thrown {
+            val system = Global.getSector().createStarSystem("StarUI Test")
+            val star = system.initStar("staruitest_star", "star_yellow", 500f, 0f)
+            val planet = system.addPlanet("staruitest_planet", star, "Testworld", "terran", 0f, 150f, 2000f, 100f)
+            root.Column(Size.exact(260f, 300f), elementAt(500f, 20f)) {
+                planetPanel = PlanetInfo(planet, Size.exact(240f, 240f), withClass = true)
+            }
+            frame(); frame()
+        }
+        expect(planetError == null, "PlanetInfo builds with a planet made at startup (got $planetError)")
+        planetPanel?.let { p ->
+            near(p.w, 240f, "PlanetInfo takes its exact width")
+            expect(p.getChildrenCopy().isNotEmpty(), "PlanetInfo holds vanilla's planet display")
+        }
+
+        var map: org.starficz.starui.core.BoxedSectorMap? = null
+        val mapError = thrown {
+            val params = com.fs.starfarer.api.ui.MapParams()
+            root.Column(Size.exact(400f, 300f), elementAt(800f, 20f)) {
+                map = SectorMap(params, Size.exact(380f, 280f), title = "Map")
+            }
+            frame(); frame()
+        }
+        log("SectorMap at startup: ${mapError ?: "built"}; map=${map?.map}")
+        map?.let { m -> if (m.map != null) near(m.holder.position.width, 380f, "SectorMap takes its exact width") }
+        screenshot("final")
+    }
+}

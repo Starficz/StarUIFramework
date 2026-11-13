@@ -27,14 +27,10 @@ Need to do:
 - Stat grids and stat modifier grids
 - Labelled values, relationship bars, importance indicators
 - Commodity icons, cost displays (campaign only)
-- Ship lists, fleet summaries, codex entry links
-  
+- Ship lists, fleet summaries, codex entry links, cargo lists
+- Planet displays
+- Campaign content: skill panels, event progress bars, survey requirements, sector maps, the playthrough record
+
 Need to do:
 - Large Skill Icons
-
-The following needs to be ported from TooltipMakerAPI (all need a running campaign)
-- Skill panels (small skill icons)
-- Planet UI
-- Cargo
-- Sector Map
-- Event progress bars and markers, survey requirements, story point info
+- Table rows with a glow (`addRowWithGlow`)

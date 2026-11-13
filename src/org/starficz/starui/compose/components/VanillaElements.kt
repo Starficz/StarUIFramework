@@ -1,7 +1,9 @@
 package org.starficz.starui.compose.components
 
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.campaign.CargoAPI
 import com.fs.starfarer.api.campaign.FactionAPI
+import com.fs.starfarer.api.campaign.PlanetAPI
 import com.fs.starfarer.api.campaign.PersonImportance
 import com.fs.starfarer.api.campaign.econ.CommoditySpecAPI
 import com.fs.starfarer.api.characters.PersonAPI
@@ -10,16 +12,19 @@ import com.fs.starfarer.api.combat.StatBonus
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.IconRenderMode
+import com.fs.starfarer.api.ui.MapParams
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import com.fs.starfarer.api.impl.campaign.intel.events.BaseEventIntel
 import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
 import org.starficz.starui.core.buildTooltipBlock
+import org.starficz.starui.compose.BoundedSize
 import org.starficz.starui.compose.Size
 import org.starficz.starui.compose.StarUIDsl
 import org.starficz.starui.compose.layout.VanillaElementEngine
 import org.starficz.starui.compose.modifier.Modifier
+import org.starficz.starui.core.BoxedSectorMap
 import org.starficz.starui.core.VanillaColors
 import org.starficz.starui.core.buildFromTooltip
 import java.awt.Color
@@ -53,7 +58,37 @@ private fun UIPanelAPI.VanillaComponent(
     engine.fixedWidth = fixedWidth
     engine.afterBuild = null
     engine.afterLayout = null
+    engine.buildSized = null
+    engine.onSwap = null
     engine.build = make
+
+    registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
+    slot.remember(panel, panel)
+    modifier.operations.forEach { it(panel) }
+    engine.invalidate()
+    return panel
+}
+
+/**
+ * Holds one vanilla component made at the whole size its container gets by [make] (content vanilla lays out once,
+ * at a fixed size), made again when that size changes. [onSwap] sees each new component before it goes in.
+ */
+private fun UIPanelAPI.VanillaSizedComponent(
+    kind: String,
+    size: BoundedSize,
+    modifier: Modifier,
+    onSwap: ((old: UIComponentAPI?, made: UIComponentAPI) -> Unit)? = null,
+    make: (width: Float, height: Float) -> UIComponentAPI
+): CustomPanelAPI {
+    checkDslTarget()
+    val slot = childSlot(kind)
+    val (panel, plugin) = containerPanel(slot, size)
+    val engine = (plugin.layoutEngine as? VanillaElementEngine) ?: VanillaElementEngine(plugin).also { plugin.layoutEngine = it }
+    engine.fixedWidth = null
+    engine.afterBuild = null
+    engine.afterLayout = null
+    engine.onSwap = onSwap
+    engine.buildSized = make
 
     registerComponentSizing(panel, size, isContainer = true, containerPlugin = plugin)
     slot.remember(panel, panel)
@@ -355,3 +390,96 @@ fun UIPanelAPI.EventProgressBar(
         addSpacer(intel.barProgressIndicatorHeight * 0.5f)
     }
 }
+
+/**
+ * Vanilla's planet display (as in planet tooltips and the survey dialog): the planet, lit by its star, at the size it
+ * gets; [showName] adds its name, [withClass] its type under it, [showConditions] the row of condition icons and
+ * [showHazardRating] the hazard rating. Shows nothing for a planet that is not in the campaign (`PlanetAPI` objects
+ * from the sector are). Needs a campaign.
+ */
+fun UIPanelAPI.PlanetInfo(
+    planet: PlanetAPI,
+    size: BoundedSize = Size.exact(400f, 400f),
+    modifier: Modifier = Modifier,
+    showName: Boolean = true,
+    withClass: Boolean = false,
+    showConditions: Boolean = false,
+    showHazardRating: Boolean = false
+): CustomPanelAPI = VanillaSizedComponent("PlanetInfo", size, modifier) { width, height ->
+    val params = TooltipMakerAPI.PlanetInfoParams().apply {
+        this.showName = showName
+        this.withClass = withClass
+        this.showConditions = showConditions
+        this.showHazardRating = showHazardRating
+    }
+    buildFromTooltip(width) { showPlanetInfo(planet, width, height, params, 0f) }
+}
+
+/**
+ * What the player's fleet needs to survey [planet] fully (as in the survey dialog): each resource, the amount, and
+ * whether the fleet has it. [withText] adds vanilla's line above the grid. Needs a campaign: vanilla reads the player
+ * fleet's cargo.
+ */
+fun UIPanelAPI.SurveyRequirements(
+    planet: PlanetAPI,
+    size: Size = Size.wrapContent(),
+    modifier: Modifier = Modifier,
+    withText: Boolean = true
+): CustomPanelAPI = VanillaComponent("SurveyRequirements", size, modifier) { width ->
+    buildTooltipBlock(width) { showFullSurveyReqs(planet, withText, 0f) }
+}
+
+/**
+ * Vanilla's cargo list (as in a fleet's or a market's tooltip): an icon, the name and the quantity of each stack, in
+ * two columns when there is room (330 wide or more), up to [max] stacks. [sort] orders them largest first.
+ */
+fun UIPanelAPI.CargoList(
+    cargo: CargoAPI,
+    size: Size = Size.wrapContent(),
+    modifier: Modifier = Modifier,
+    max: Int = 100,
+    sort: Boolean = true,
+    itemHeight: Float = 20f,
+    itemPad: Float = 3f
+): CustomPanelAPI = VanillaComponent("CargoList", size, modifier) { width ->
+    buildTooltipBlock(width) { showCargo(cargo, max, sort, 0f, itemHeight, itemPad) }
+}
+
+/**
+ * Vanilla's playthrough record (the intel screen's "Playthrough" tab: the timeline of the player's achievements, with
+ * its own scrolling table) at the size it gets. Needs a campaign.
+ */
+fun UIPanelAPI.PlaythroughData(
+    size: BoundedSize = Size.fillMaxSize(),
+    modifier: Modifier = Modifier
+): CustomPanelAPI = VanillaSizedComponent("PlaythroughData", size, modifier) { width, height ->
+    buildTooltipBlock(width) { addPlaythroughDataPanel(width, height) }
+}
+
+/**
+ * Vanilla's sector map (as in intel and mission screens) at the size it gets, showing what [params] asks for
+ * (`MapParams.showSystem`, `positionToShowAllMarkersAndSystems`, filters, ...). With a [title] it sits in vanilla's
+ * titled box, in [color] and [dark]. Returns a [BoxedSectorMap]: SectorMapAPI (pings) and the map's centring and zoom.
+ * Vanilla lays a map out once, so a size change makes it again (keeping its centre), and so does the builder calling
+ * this running again. Needs a campaign.
+ */
+fun UIPanelAPI.SectorMap(
+    params: MapParams,
+    size: BoundedSize = Size.fillMaxSize(),
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    color: Color = Global.getSector()?.playerFaction?.baseUIColor ?: VanillaColors.base,
+    dark: Color = Global.getSector()?.playerFaction?.darkUIColor ?: VanillaColors.dark
+): BoxedSectorMap {
+    lateinit var boxed: BoxedSectorMap
+    val panel = VanillaSizedComponent("SectorMap", size, modifier, onSwap = { old, made -> boxed.swapped(old, made) }) { width, height ->
+        val tempPanel = Global.getSettings().createCustom(width, height, null)
+        val tooltip = tempPanel.createUIElement(width, height, false)
+        tooltip.createSectorMap(width, height, params, title, color, dark)
+    }
+    boxed = boxedMaps.getOrPut(panel) { BoxedSectorMap(panel) }
+    return boxed
+}
+
+/** One box per map panel, so a reused panel keeps its pending calls. */
+private val boxedMaps = java.util.WeakHashMap<CustomPanelAPI, BoxedSectorMap>()

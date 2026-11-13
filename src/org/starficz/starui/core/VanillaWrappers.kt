@@ -8,10 +8,15 @@ import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.fleet.FleetMemberStatusAPI
 import com.fs.starfarer.api.loading.FighterWingSpecAPI
 import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.impl.campaign.procgen.Constellation
+import com.fs.starfarer.api.campaign.SectorEntityToken
+import com.fs.starfarer.api.campaign.comm.IntelInfoPlugin
 import com.fs.starfarer.api.ui.ScrollPanelAPI
+import com.fs.starfarer.api.ui.SectorMapAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.core.ReflectionUtils.invoke
+import org.lwjgl.util.vector.Vector2f
 import java.awt.Color
 
 // Abstract base class for Boxed vanilla elements that still have no API (images, ship previews).
@@ -215,4 +220,59 @@ class BoxedUIShipPreview(val uiShipPreview: UIPanelAPI):
 
     override fun setLabelColor(color: Color) { uiShipPreview.invoke("setLabelColor", color) }
     override fun hideLabels(){ uiShipPreview.invoke("hideLabels") }
+}
+
+/**
+ * A sector map made by `SectorMap`: the StarUI panel holding vanilla's map, with SectorMapAPI and the map's own
+ * readable methods that API leaves out (centring, zoom). Vanilla lays a map out once, at the size it is made, so
+ * StarUI makes it again when its size changes; this always talks to the current one, and a new one keeps the old
+ * one's centre. Calls made before the map exists (it is made when the panel is first laid out) wait for it.
+ */
+class BoxedSectorMap internal constructor(val holder: UIPanelAPI) :
+    BoxedUIElement(holder),
+    UIPanelAPI by holder,
+    SectorMapAPI
+{
+    private val pending = ArrayList<(UIPanelAPI) -> Unit>()
+
+    /** Vanilla's map panel, or null before the first layout (inside its title box when it has a title). */
+    val map: UIPanelAPI?
+        get() = holder.getChildrenNonCopy().firstNotNullOfOrNull { findMap(it) }
+
+    private fun findMap(component: UIComponentAPI): UIPanelAPI? {
+        if (component is SectorMapAPI) return component as UIPanelAPI
+        if (component !is UIPanelAPI) return null
+        return component.getChildrenNonCopy().firstNotNullOfOrNull { findMap(it) }
+    }
+
+    private fun onMap(action: (UIPanelAPI) -> Unit) {
+        val current = map
+        if (current != null) action(current) else pending += action
+    }
+
+    /** Called by StarUI before [made] replaces [old] (null the first time). */
+    internal fun swapped(old: UIComponentAPI?, made: UIComponentAPI) {
+        val newMap = findMap(made) ?: return
+        val oldMap = old?.let { findMap(it) }
+        if (oldMap != null) newMap.invoke("centerOn", Vector2f(oldMap.invoke("getWorldCenter") as Vector2f))
+        pending.forEach { it(newMap) }
+        pending.clear()
+    }
+
+    /** Centres the map on a point of the location it shows, in world coordinates. */
+    fun centerOn(location: Vector2f) = onMap { it.invoke("centerOn", Vector2f(location)) }
+    /** Shows [entity]'s location (switching between hyperspace and a system as needed) and centres on it. */
+    fun centerOnEntity(entity: SectorEntityToken) = onMap { it.invoke("centerOnEntity", entity) }
+    /** Zooms all the way out and centres the map. */
+    fun zoomOutAndCenter() = onMap { it.invoke("zoomOutAndCenter") }
+    /** The world point at the centre of the view; null before the map exists. */
+    val worldCenter: Vector2f? get() = map?.invoke("getWorldCenter") as Vector2f?
+
+    private val api: SectorMapAPI? get() = map as SectorMapAPI?
+    override fun getConstellationLabelEntity(c: Constellation?): SectorEntityToken? = api?.getConstellationLabelEntity(c)
+    override fun getIntelIconEntity(plugin: IntelInfoPlugin?): SectorEntityToken? = api?.getIntelIconEntity(plugin)
+    override fun addPing(entity: SectorEntityToken?, color: Color?, maxRange: Float, num: Int) =
+        onMap { (it as SectorMapAPI).addPing(entity, color, maxRange, num) }
+    override fun addPing(entity: SectorEntityToken?, color: Color?, maxRange: Float, num: Int, interval: Float) =
+        onMap { (it as SectorMapAPI).addPing(entity, color, maxRange, num, interval) }
 }
