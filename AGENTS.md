@@ -55,6 +55,7 @@ To attach to vanilla screens, use one of these:
 | `CustomPanel(size, modifier, overflow) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
 | `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item, only those near the view exist; scrolls | fill; exact or fill only |
 | `Section(title, size, modifier, contentPadding, spacing, backgroundColor, borderColor) { }` | vanilla-style panel: a `SectionHeading` on top (none for `title = null`), the content in a padded column below, black inside a thin dark border | fill width, wrap height |
+| `Holo(size, modifier, open, foldDuration, animateFirstOpen, contentInset) { }` | vanilla's own holo panel (the framed window of its dialogs and title menu) around a Box of content, `contentInset` (7) in; `open` folds it open and shut as vanilla does | exact or fill only |
 | `Theme(theme) { }` | not a panel: overrides `StarUITheme` defaults for the calls inside | |
 
 Column and Row default to the start (left / top) like Compose. Space inside a container's edges is
@@ -113,8 +114,8 @@ and last a click handler or builder where there is one.
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
 `ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
-`Image`, `ShipDisplay`, `Slider` / `ProgressBar` and `.sectorMap` give `BoxedUIImage`, `BoxedUIShipPreview`,
-`BoxedUISlider` and `BoxedSectorMap`: small wrappers making one type of a vanilla object whose API interface is not
+`Image`, `ShipDisplay`, `Slider` / `ProgressBar`, `.sectorMap` and `Holo` give `BoxedUIImage`, `BoxedUIShipPreview`,
+`BoxedUISlider`, `BoxedSectorMap` and `BoxedUIHolo`: small wrappers making one type of a vanilla object whose API interface is not
 a component type (`SliderAPI`, `SectorMapAPI` extend nothing) or that has none (images, ship previews), the way
 `BoxedUILabel` did before 0.98.5a made `LabelAPI` a component. Pass them to vanilla panel methods freely (StarUI
 unwraps them). Where the API interface already is a component (`LabelAPI`, `ScrollPanelAPI`), it is returned as is,
@@ -208,9 +209,10 @@ The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so `wi
 `right`, `bottom` (from `core`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
 
 Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
-`.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` / `Codex` / `Combat` draws one of the sprite
-frames vanilla uses (the title screen's menu box, codex panels and title dialogs, combat text boxes), inside the
-component and under its content, untinted as vanilla draws them. Like a CSS border, either one takes its space: its
+`.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` draws `ui_border1`, the sprite frame of
+vanilla's dialogs and title menu, bare, inside the component and under its content, untinted as vanilla draws it
+(the game's other frame sets are only loaded by dead or tutorial code). Vanilla never shows it bare: for its look
+(a dark scanline background over the frame's inner edge, a tint, noise, the fold animation) use `Holo`. Like a CSS border, either one takes its space: its
 depth (the line's width, or `VanillaFrame.depth`: 8 for TitleMenu, 4 otherwise) is added to the padding on every
 side, so `padding` is the gap inside the border. A wrapping axis grows by it; an exact or fill one keeps its size
 and the content gets less room. (Compose's border takes no space; StarUI's modifiers are not order-sensitive, so
@@ -354,6 +356,10 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   mark it dirty. A dirty scope is rebuilt from an ancestor's `renderBelow` or `advance` (`Scope.flush`), never
   during input or from scripts. A rebuild hands the old children to a `ReuseCursor`, and each component function
   asks `childSlot(kind, props)` for its match.
+- **Holo.** `Holo` makes vanilla's own holo panel (found at load by its readable methods, `StarUIManager`) and
+  hands it a StarUI Box with `setNext`: the holo draws, advances and feeds input to that content itself, so the
+  content is not a child in the UI tree. It is a layout root of its own (its exact size is set from the holo's) and
+  its scope flushes itself; the holo's plugin owns it (`ownedOutsideTree`) and disposes it with itself.
 - **Registrations made during a build on a plugin that outlives it** (the container's own plugin, an older plugin)
   are undone before the next build (`Scope.addCleanup`). Handlers on reused children are cleared by
   `resetForReuse()`.

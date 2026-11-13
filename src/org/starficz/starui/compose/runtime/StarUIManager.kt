@@ -20,6 +20,8 @@ import org.starficz.starui.compose.modifier.anchor
 import org.starficz.starui.compose.modifier.plugin
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
+import org.starficz.starui.core.BoxedUIHolo
+import com.fs.starfarer.api.Global
 import org.starficz.starui.core.ReflectionUtils.getConstructorsMatching
 import org.starficz.starui.core.ReflectionUtils.getFieldsWithMethodsMatching
 import org.starficz.starui.core.ReflectionUtils.invoke
@@ -32,6 +34,7 @@ import org.starficz.starui.core.width
 import java.lang.ref.WeakReference
 
 object StarUIManager {
+    private val log = Global.getLogger(StarUIManager::class.java)
     private val registeredPlugins = mutableListOf<StarUIPlugin>()
     private val dynamicInjections = mutableListOf<DynamicInjection>()
     private val dynamicInjectionElements = mutableMapOf<String, MutableList<WeakReference<UIComponentAPI>>>()
@@ -160,6 +163,7 @@ object StarUIManager {
     }
 
     internal fun initAtApplicationLoad() {
+        findHoloClass()
         if (BoxedUIShipPreview.SHIP_PREVIEW_CLASS != null) return
 
         // 0.98a-RC8 Windows: matches com.fs.starfarer.title.Object.do (Holo / ShipPreview)
@@ -171,6 +175,33 @@ object StarUIManager {
 
         val foundClass = PatchLib.scan(shipPreviewQuery).firstOrNull()?.type ?: return
         populateShipPreviewReflection(foundClass)
+    }
+
+    /**
+     * Vanilla's holo panel (Holo): found by its readable methods, then its (width, height, sprite set, inset)
+     * constructor by shape. Readable engine names, not API: re-check after a game update.
+     */
+    // 0.98.5a-RC4 Windows: matches com.fs.starfarer.E.I
+    private fun findHoloClass() {
+        if (BoxedUIHolo.HOLO_CLASS != null) return
+        val query = ClassQuery.create()
+            .subtype(UIComponentAPI::class.java)
+            .hasMethod(MethodQuery.create().methodName("foldOut").parameterCount(1))
+            .hasMethod(MethodQuery.create().methodName("foldIn").parameterCount(1))
+            .hasMethod(MethodQuery.create().methodName("setNoiseAlpha").parameterCount(1))
+            .hasMethod(MethodQuery.create().methodName("getBorderThickness").parameterCount(0))
+            .hasMethod(MethodQuery.create().methodName("getFanOut").parameterCount(0))
+            .build()
+        val found = PatchLib.scan(query).map { it.type }
+        if (found.size != 1) {
+            log.warn("StarUI: Holo needs vanilla's holo panel class; found ${found.size} candidates (${found.joinToString { it.name }}). Holo() will fail.")
+            return
+        }
+        val clazz = found.single()
+        val float = Float::class.javaPrimitiveType
+        BoxedUIHolo.CONSTRUCTOR = clazz.getConstructorsMatching(4, arrayOf(float, float, String::class.java, float)).firstOrNull()
+        BoxedUIHolo.HOLO_CLASS = clazz
+        if (BoxedUIHolo.CONSTRUCTOR == null) log.warn("StarUI: vanilla's holo panel has no (float, float, String, float) constructor. Holo() will fail.")
     }
 
     private fun populateShipPreviewReflection(clazz: Class<*>) {

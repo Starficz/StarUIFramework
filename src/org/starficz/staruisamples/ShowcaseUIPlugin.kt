@@ -531,7 +531,6 @@ object ShowcaseUIPlugin {
                 Box(Size.exact(90f, 36f), Modifier.border(BASE)) { Text("border()", modifier = Modifier.align(Alignment.Center)) }
                 Box(Size.exact(90f, 36f), Modifier.border(HIGHLIGHT, 3f)) { Text("width = 3", modifier = Modifier.align(Alignment.Center)) }
                 Box(Size.exact(90f, 36f), Modifier.border(VanillaFrame.TitleMenu)) { Text("TitleMenu", modifier = Modifier.align(Alignment.Center)) }
-                Box(Size.exact(90f, 36f), Modifier.border(VanillaFrame.Codex)) { Text("Codex", modifier = Modifier.align(Alignment.Center)) }
                 Box(Size.fillMaxWidth(height = 36f), Modifier.background(INSET_BG).tooltip(width = 320f) {
                     addSectionHeading("Built with TooltipMakerAPI", com.fs.starfarer.api.ui.Alignment.MID, 0f)
                     addPara("Any vanilla tooltip content: %s, %s and more.", 6f, HIGHLIGHT, "highlights", "headings")
@@ -603,20 +602,18 @@ object ShowcaseUIPlugin {
             }
         }
 
-        Section("Borders: vanilla's sprite frames") {
-            Text("Modifier.border(VanillaFrame.X): the nine-slice frames vanilla draws, from its own sprites, untinted. " +
-                "Corners at their size, each edge repeated between them.", Size.fillMaxWidth(), color = GRAY)
-            val uses = mapOf(
-                VanillaFrame.TitleMenu to "the title screen's menu box",
-                VanillaFrame.Codex to "codex panels, title-screen dialogs",
-                VanillaFrame.Combat to "combat text boxes")
+        Section("Borders: vanilla's sprite frame") {
+            Text("Modifier.border(VanillaFrame.TitleMenu): ui_border1, the frame of vanilla's dialogs and title menu, " +
+                "from its own sprites, untinted: corners at their size, each edge repeated between them. The game " +
+                "ships older sets too, but only dead or tutorial code loads them.", Size.fillMaxWidth(), color = GRAY)
             Row(Size.fillMaxWidth(), spacing = 8f) {
-                for ((frame, use) in uses) {
-                    Column(Size.fillMaxWidth(), Modifier.border(frame).padding(6f), spacing = 2f) {
-                        Text(frame.name, font = Font.ORBITRON_12, color = BASE)
-                        Text(use, Size.fillMaxWidth(), color = GRAY)
-                        Text("depth ${frame.depth.toInt()}", color = HIGHLIGHT)
-                    }
+                Column(Size.fillMaxWidth(), Modifier.border(VanillaFrame.TitleMenu).padding(6f), spacing = 2f) {
+                    Text("TitleMenu, bare", font = Font.ORBITRON_12, color = BASE)
+                    Text("depth ${VanillaFrame.TitleMenu.depth.toInt()}", color = HIGHLIGHT)
+                }
+                Column(Size.fillMaxWidth(), Modifier.background(INSET_BG).padding(6f), spacing = 2f) {
+                    Text("Vanilla never shows it bare: its holo panel draws a dark background over the frame's inner " +
+                        "edge, a tint and noise. For that look use Holo (below).", Size.fillMaxWidth(), color = GRAY)
                 }
             }
         }
@@ -650,24 +647,49 @@ object ShowcaseUIPlugin {
             }
         }
 
-        Section("Vanilla's title menu box, rebuilt") {
-            Text("The menu box on the title screen is ui_border1 with its first button 15 px in: here the frame's " +
-                "8 plus padding(7f), in a wrapping Column.", Size.fillMaxWidth(), color = GRAY)
+        Section("Holo: vanilla's framed window") {
+            Text("Holo(size, open = ...) { content }: vanilla's own holo panel (getHolo() in its dialogs), drawn by " +
+                "vanilla: the ui_border1 frame, a dark scanline background over its inner edge, a teal tint and " +
+                "noise. open folds it open and shut over 0.25 s, as vanilla's dialogs do: the frame grows from a " +
+                "line through its middle and the content shows in the last quarter.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button(if (holoOpen.value) "Close" else "Open") { holoOpen.value = !holoOpen.value }
+                Button("Content + 1") { holoCount.value++ }
+                Text("open = ${holoOpen.value}", color = GRAY)
+            }
             Row(Size.fillMaxWidth(), spacing = 12f) {
-                Column(Size.wrapContent(), Modifier.border(VanillaFrame.TitleMenu).padding(7f), spacing = 4f) {
+                Holo(Size.exact(260f, 150f), open = holoOpen.value) {
+                    Column(Size.fillMaxSize(), Modifier.padding(8f), spacing = 4f) {
+                        Text("A holo's content", font = Font.ORBITRON_12, color = BASE)
+                        Text("A StarUI Box 7 px inside the frame (contentInset). Its builder is its own scope: " +
+                            "count = ${holoCount.value}", Size.fillMaxWidth(), highlightedText = listOf("${holoCount.value}" to HIGHLIGHT))
+                        Button("Takes input when open") { holoCount.value++ }
+                    }
+                }
+                Column(Size.fillMaxWidth(), spacing = 3f) {
+                    Text("Returns a BoxedUIHolo: open(), close(), forceOpen(), forceClose(), the fold (a Fader), " +
+                        "noiseAlpha, setBackgroundAlpha, setRenderBackground.", Size.fillMaxWidth(), color = GRAY)
+                    Text("Keep calling Holo(open = false) to close it with the animation; leaving the call out " +
+                        "removes it at once.", Size.fillMaxWidth(), color = GRAY)
+                }
+            }
+        }
+
+        Section("Vanilla's title menu box, rebuilt") {
+            Text("The title screen's menu is a holo with contentInset 3, its first button 15 px into the content: here " +
+                "Holo(contentInset = 3f) with padding(top = 15f).", Size.fillMaxWidth(), color = GRAY)
+            Holo(Size.exact(250f, 186f), contentInset = 3f) {
+                Column(Size.fillMaxSize(), Modifier.padding(top = 15f), horizontalAlignment = Alignment.CenterHorizontally, spacing = 4f) {
                     for (label in listOf("Continue", "New Game", "Load Game", "Settings")) {
                         Button(label, Size.exact(200f, 30f), font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Right,
                             cutStyle = CutStyle.TL_BR, modifier = Modifier.tooltip("Does nothing: a showcase copy")) { }
                     }
                 }
-                Column(Size.fillMaxWidth(), Modifier.border(VanillaFrame.Combat).padding(8f), spacing = 4f) {
-                    Text("A combat text box", font = Font.ORBITRON_12, color = BASE)
-                    Text("VanillaFrame.Combat with padding(8f) around wrapping text: the frame follows the text's " +
-                        "height as it wraps.", Size.fillMaxWidth())
-                }
             }
         }
     }
+    private val holoOpen = UIState(true)
+    private val holoCount = UIState(0)
 
     // =================================================================================================================
     // Third band, column 2: vanilla content that needs no campaign

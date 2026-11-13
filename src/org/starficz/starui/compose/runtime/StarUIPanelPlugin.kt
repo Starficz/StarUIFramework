@@ -367,9 +367,13 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         layoutEngine?.let { engine ->
             layoutPassCount++
             layoutPass++
+            // A top-level root's room is its own size where that is exact; otherwise its parent's (a Holo's content
+            // is drawn by the holo and has no real parent to measure)
             val p = component.parent
-            val rootMaxWidth = if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
-            val rootMaxHeight = if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
+            val rootMaxWidth = (myNodeSize.width as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
+                ?: if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
+            val rootMaxHeight = (myNodeSize.height as? Dimension.Exact)?.pixels?.takeIf { isTopLevelNode }
+                ?: if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
 
             // 1. Measure the children's intrinsic footprint
             val (contentW, contentH) = engine.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)
@@ -618,10 +622,18 @@ class StarUIPanelPlugin() : BaseCustomUIPanelPlugin() {
         childRecords.clear()
     }
 
+    /**
+     * Components this one draws itself but that are not its children in the UI tree (a Holo's content): disposed with
+     * it, since walking the tree never reaches them.
+     */
+    internal val ownedOutsideTree = ArrayList<UIComponentAPI>()
+
     /** Disposes this plugin only; [dispose] also handles everything below it. */
     internal fun disposeSelf() {
         if (isDisposed) return
         isDisposed = true
+        for (owned in ownedOutsideTree) Scope.disposeTree(owned)
+        ownedOutsideTree.clear()
         scope?.dispose()
         scope = null
         dirtyScopeBelow = false

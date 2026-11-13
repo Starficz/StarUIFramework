@@ -1,5 +1,6 @@
 package org.starficz.starui.core
 
+import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.campaign.SectorEntityToken
 import com.fs.starfarer.api.ui.SectorMapAPI
 import com.fs.starfarer.api.ui.SliderAPI
@@ -251,4 +252,69 @@ class BoxedSectorMap(val map: SectorMapAPI) :
     fun zoomOutAndCenter() { map.invoke("zoomOutAndCenter") }
     /** The world point at the centre of the view. */
     val worldCenter: Vector2f get() = map.invoke("getWorldCenter") as Vector2f
+}
+
+/**
+ * Vanilla's holo panel, what `Holo` returns: the framed window vanilla's dialogs and title screen menu sit in (its
+ * own name for it: `getHolo()`). It draws the `ui_border1` frame, a dark scanline background over the frame's inner
+ * edge, its content, a teal scanline tint and a flickering noise layer, and folds open and shut: the frame grows
+ * from or shrinks to a line through its middle, the content shows only in the last quarter of the fold.
+ *
+ * The holo has no API interface: this box gives the component and the holo's own readable methods. [content] is the
+ * StarUI container the holo frames (drawn, advanced and given input by the holo itself, not a child in the tree).
+ */
+class BoxedUIHolo internal constructor(val holo: UIComponentAPI, val content: CustomPanelAPI) :
+    BoxedUIElement(holo),
+    UIComponentAPI by holo
+{
+    internal companion object {
+        /** The holo class, found by its readable methods at application load (StarUIManager). */
+        var HOLO_CLASS: Class<*>? = null
+        /** (width, height, frame sprite set, content inset). */
+        var CONSTRUCTOR: ReflectionUtils.ReflectedConstructor? = null
+    }
+
+    /** Folds the holo open over [duration] seconds (vanilla: `foldOut`, 0.25 s everywhere). */
+    fun open(duration: Float = 0.25f) { holo.invoke("foldOut", duration) }
+    /** Folds the holo shut over [duration] seconds (vanilla: `foldIn`). */
+    fun close(duration: Float = 0.25f) { holo.invoke("foldIn", duration) }
+    /** Fully open at once, no animation. */
+    fun forceOpen() { holo.invoke("forceFoldOut") }
+    /** Fully shut at once, no animation. */
+    fun forceClose() { holo.invoke("forceFoldIn") }
+
+    /** The fold: brightness 1 is open, 0 shut; `isFadingIn` / `isFadingOut` while it moves. */
+    val fold: Fader get() = holo.invoke("getFanOut") as Fader
+    /** Fully open. */
+    val isOpen: Boolean get() = fold.isFadedIn
+    /** Fully shut (it draws nothing and takes no input then). */
+    val isClosed: Boolean get() = fold.isFadedOut
+
+    /** How strongly the noise layer shows over the content (vanilla's dialogs fade it as they settle). */
+    var noiseAlpha: Float
+        get() = holo.invoke("getNoiseAlpha") as Float
+        set(value) { holo.invoke("setNoiseAlpha", value) }
+
+    /** Briefly flickers the noise layer, as vanilla does when a dialog's content changes. */
+    fun flickerNoise(min: Float, max: Float) { holo.invoke("flickerNoise", min, max) }
+
+    /** The content's inset from the holo's edge on every side. */
+    val contentInset: Float get() = holo.invoke("getBorderThickness") as Float
+
+    /** Off: no frame, background, tint or noise; only the content (and the fold) remain. */
+    fun setRenderBackground(render: Boolean) { holo.invoke("setRenderBackground", render) }
+
+    /** The dark background's alpha (0..255) at its left and right edges and across its middle (vanilla: 125, 175). */
+    fun setBackgroundAlpha(edges: Int, middle: Int) { holo.invoke("setBackgroundAlpha", edges, middle) }
+
+    /** Clip the content to the frame even when fully open (it is always clipped while folding). */
+    fun setAlwaysScissor(scissor: Boolean) { holo.invoke("setAlwaysScissor", scissor) }
+
+    /** The `open` argument of the last `Holo` call: a change folds the holo open or shut. */
+    internal var lastOpenArgument: Boolean? = null
+
+    /** Off: new content shows at once, without the noise transition. */
+    var transitionsEnabled: Boolean
+        get() = holo.invoke("isTransitionsEnabled") as Boolean
+        set(value) { holo.invoke("setTransitionsEnabled", value) }
 }

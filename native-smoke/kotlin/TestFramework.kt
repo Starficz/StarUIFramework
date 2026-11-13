@@ -241,6 +241,7 @@ object StarUITestSuite {
         registerShipDisplayOptionTests()
         registerVanillaElementTests()
         registerVanillaPortTests()
+        registerHoloTests()
         registerLongListPerfTests()
         registerPerfTests()   // last: it registers 20 permanent dynamic injections
     }

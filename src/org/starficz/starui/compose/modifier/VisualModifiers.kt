@@ -67,18 +67,18 @@ fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = rese
 
 /**
  * The sprite frames vanilla draws around its screens, each a set of nine-slice sprites in `settings.json`'s `ui`
- * graphics (corners, and edges that repeat along each side). Vanilla draws them untinted.
+ * graphics (corners, and edges that repeat along each side). Vanilla draws them untinted. Only the ones vanilla still
+ * uses: the game ships older sets (`panel00`, `ui_border2` to `ui_border4`) that only dead or tutorial code loads.
  */
 enum class VanillaFrame(internal val spriteSet: String) {
-    /** The title screen's main menu box: a light frame with a cyan inner line and rounded corners (`ui_border1`). */
+    /**
+     * The holo frame of vanilla's dialogs and the title screen's menu: a light frame with a cyan inner line and
+     * rounded corners (`ui_border1`). Bare here; `Holo` draws it with the holo's background, tint, noise and fold.
+     */
     TitleMenu("ui_border1"),
-    /** Codex panels and the title screen's dialogs: a thin grey frame (`ui_border4`). */
-    Codex("ui_border4"),
-    /** Combat's text boxes: a thin frame with rounded corners (`ui_border3`). */
-    Combat("ui_border3"),
     ;
 
-    /** How deep the frame is: its corner sprite's size, the unit vanilla draws every piece in (8 for TitleMenu, 4 otherwise). */
+    /** How deep the frame is: its corner sprite's size, the unit vanilla draws every piece in (8 for TitleMenu). */
     val depth: Float get() = Global.getSettings().getSprite("ui", "${spriteSet}_bot_left").width
 }
 
