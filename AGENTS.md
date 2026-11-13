@@ -203,7 +203,9 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 `.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`,
 `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }`,
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
-`.onFirstLayout { }` (once), `.onPositionChanged { }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
+`.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
+The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so `width`, `height`, `left`, `top`,
+`right`, `bottom` (from `core`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
 
 Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
 `.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` / `Codex` / `Combat` draws one of the sprite

@@ -26,6 +26,7 @@ import org.starficz.starui.compose.modifier.*
 import org.starficz.starui.compose.runtime.*
 import org.starficz.starui.core.Anchor
 import org.starficz.starui.core.BoxedUIShipPreview
+import org.starficz.starui.core.BoxedUISlider
 import org.starficz.starui.core.ButtonFont
 import org.starficz.starui.core.Font
 import org.starficz.starui.core.VanillaColors
@@ -35,6 +36,8 @@ import org.starficz.starui.core.left
 import org.starficz.starui.core.measureTextSize
 import org.starficz.starui.core.right
 import org.starficz.starui.core.top
+import org.starficz.starui.core.width
+import org.starficz.starui.core.height
 import java.awt.Color
 
 /**
@@ -156,6 +159,12 @@ object ShowcaseUIPlugin {
                         Column(Size.fillMaxWidth(), spacing = 10f) { moreLayoutColumn() }
                         Column(Size.fillMaxWidth(), spacing = 10f) { moreControlsColumn() }
                         Column(Size.fillMaxWidth(), spacing = 10f) { moreContentColumn() }
+                    }
+                    // the third band: borders, vanilla content that needs no campaign, boxed vanilla objects
+                    Row(Size.fillMaxWidth(), spacing = 14f) {
+                        Column(Size.fillMaxWidth(), spacing = 10f) { bordersColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { vanillaPortsColumn() }
+                        Column(Size.fillMaxWidth(), spacing = 10f) { boxedColumn() }
                     }
                     fullSizeShips()
                 }
@@ -573,6 +582,177 @@ object ShowcaseUIPlugin {
             ShipList(members, columns = 4, iconSize = 40f)
             FleetSummary(members, Size.fillMaxWidth())
             CodexEntries("Related codex entries", setOf(CodexDataV2.getShipEntryId("onslaught"), CodexDataV2.getShipEntryId("eagle")))
+        }
+    }
+
+    // =================================================================================================================
+    // Third band, column 1: borders
+    // =================================================================================================================
+    private fun UIPanelAPI.bordersColumn() {
+        Section("Borders: the line") {
+            Text("Modifier.border(color = VanillaColors.dark, width = 1f): what vanilla's campaign panels draw. " +
+                "Four rectangles inside the edge, so the corners are square and a translucent colour is even.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+                Box(Size.wrapContent(), Modifier.border().padding(6f)) { Text("border()") }
+                Box(Size.wrapContent(), Modifier.border(BASE).padding(6f)) { Text("border(BASE)") }
+                Box(Size.wrapContent(), Modifier.border(HIGHLIGHT, 2f).padding(6f)) { Text("HIGHLIGHT, 2") }
+                Box(Size.wrapContent(), Modifier.border(POSITIVE, 4f).padding(6f)) { Text("POSITIVE, 4") }
+                Box(Size.wrapContent(), Modifier.background(INSET_BG).border(BRIGHT.withAlpha(110), 8f).padding(6f)) {
+                    Text("translucent, 8")
+                }
+            }
+        }
+
+        Section("Borders: vanilla's sprite frames") {
+            Text("Modifier.border(VanillaFrame.X): the nine-slice frames vanilla draws, from its own sprites, untinted. " +
+                "Corners at their size, each edge repeated between them.", Size.fillMaxWidth(), color = GRAY)
+            val uses = mapOf(
+                VanillaFrame.TitleMenu to "the title screen's menu box",
+                VanillaFrame.Codex to "codex panels, title-screen dialogs",
+                VanillaFrame.Combat to "combat text boxes")
+            Row(Size.fillMaxWidth(), spacing = 8f) {
+                for ((frame, use) in uses) {
+                    Column(Size.fillMaxWidth(), Modifier.border(frame).padding(6f), spacing = 2f) {
+                        Text(frame.name, font = Font.ORBITRON_12, color = BASE)
+                        Text(use, Size.fillMaxWidth(), color = GRAY)
+                        Text("depth ${frame.depth.toInt()}", color = HIGHLIGHT)
+                    }
+                }
+            }
+        }
+
+        Section("Borders take their space (CSS box model)") {
+            Text("A border's depth is added to the padding on every side: padding is the gap inside the border, and " +
+                "content never sits on it. A wrapping size grows by it; an exact size keeps its size and the content " +
+                "gets less room.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.Top, spacing = 10f) {
+                for ((label, framed) in listOf("no border" to false, "TitleMenu" to true)) {
+                    lateinit var sizeLabel: LabelAPI
+                    Column(Size.wrapContent(), horizontalAlignment = Alignment.CenterHorizontally, spacing = 3f) {
+                        val mod = if (framed) Modifier.border(VanillaFrame.TitleMenu) else Modifier
+                        // onLayout runs on the component's plugin: width and height are its laid-out size
+                        Box(Size.wrapContent(), mod.onLayout { sizeLabel.text = "wrap: ${width.toInt()} x ${height.toInt()}" }) {
+                            Spacer(Size.exact(80f, 30f), Modifier.background(BASE.withAlpha(140)))
+                        }
+                        Text(label, color = GRAY)
+                        sizeLabel = Text("wrap: ...", color = HIGHLIGHT)
+                    }
+                }
+                lateinit var exactLabel: LabelAPI
+                Column(Size.wrapContent(), horizontalAlignment = Alignment.CenterHorizontally, spacing = 3f) {
+                    Box(Size.exact(96f, 46f), Modifier.border(VanillaFrame.TitleMenu)) {
+                        Spacer(Size.fillMaxSize(), Modifier.background(BASE.withAlpha(140))
+                            .onLayout { exactLabel.text = "content ${width.toInt()} x ${height.toInt()}" })
+                    }
+                    Text("exact 96 x 46", color = GRAY)
+                    exactLabel = Text("content ...", color = HIGHLIGHT)
+                }
+            }
+        }
+
+        Section("Vanilla's title menu box, rebuilt") {
+            Text("The menu box on the title screen is ui_border1 with its first button 15 px in: here the frame's " +
+                "8 plus padding(7f), in a wrapping Column.", Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), spacing = 12f) {
+                Column(Size.wrapContent(), Modifier.border(VanillaFrame.TitleMenu).padding(7f), spacing = 4f) {
+                    for (label in listOf("Continue", "New Game", "Load Game", "Settings")) {
+                        Button(label, Size.exact(200f, 30f), font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Right,
+                            cutStyle = CutStyle.TL_BR, modifier = Modifier.tooltip("Does nothing: a showcase copy")) { }
+                    }
+                }
+                Column(Size.fillMaxWidth(), Modifier.border(VanillaFrame.Combat).padding(8f), spacing = 4f) {
+                    Text("A combat text box", font = Font.ORBITRON_12, color = BASE)
+                    Text("VanillaFrame.Combat with padding(8f) around wrapping text: the frame follows the text's " +
+                        "height as it wraps.", Size.fillMaxWidth())
+                }
+            }
+        }
+    }
+
+    // =================================================================================================================
+    // Third band, column 2: vanilla content that needs no campaign
+    // =================================================================================================================
+    private val cargo = Global.getFactory().createCargo(true).apply {
+        addSupplies(120f); addFuel(300f); addCrew(50); addCommodity("metals", 40f); addCommodity("heavy_machinery", 15f)
+    }
+    private val cargoVersion = UIState(0)
+
+    private fun UIPanelAPI.vanillaPortsColumn() {
+        Section("CargoList: vanilla's cargo list") {
+            Text("CargoList(cargo): each stack's icon, name and quantity, as in fleet and market tooltips; two " +
+                "columns from 330 wide. The cargo is a plain CargoAPI: change it and bump a UIState to show it.",
+                Size.fillMaxWidth(), color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                Button("+50 supplies") { cargo.addSupplies(50f); cargoVersion.value++ }
+                Button("+5 marines") { cargo.addMarines(5); cargoVersion.value++ }
+                Button("+1 hand weapon") { cargo.addCommodity("hand_weapons", 1f); cargoVersion.value++ }
+                Button("Empty") { cargo.clear(); cargoVersion.value++ }
+            }
+            cargoVersion.value   // the cards below follow the cargo
+            Text("Full width (two columns):", color = GRAY)
+            CargoList(cargo, Size.fillMaxWidth())
+            Text("Narrow (one column), max = 3, sort = false:", color = GRAY)
+            CargoList(cargo, Size.mixed(Axis.Exact(250f), Axis.Wrap), Modifier.background(INSET_BG), max = 3, sort = false)
+        }
+
+        Section("PlanetInfo: vanilla's planet display") {
+            // needs a planet of a loaded campaign: one exists on the title screen once a game was loaded this session
+            val planet = runCatching {
+                Global.getSector()?.starSystems?.asSequence()?.flatMap { it.planets.asSequence() }
+                    ?.firstOrNull { !it.isStar && it.market != null }
+            }.getOrNull()
+            if (planet == null) {
+                Text("PlanetInfo(planet) shows a campaign planet, lit by its star. None exists yet: load a game, " +
+                    "quit to this menu and it shows here.", Size.fillMaxWidth(), color = GRAY)
+            } else {
+                Row(Size.fillMaxWidth(), spacing = 8f) {
+                    PlanetInfo(planet, Size.exact(160f, 180f), Modifier.background(INSET_BG))
+                    PlanetInfo(planet, Size.exact(160f, 180f), Modifier.background(INSET_BG), withClass = true, showConditions = true)
+                    PlanetInfo(planet, Size.exact(120f, 120f), Modifier.background(INSET_BG), showName = false)
+                }
+                Text("showName (default) / withClass, showConditions / showName = false", color = GRAY)
+            }
+        }
+
+        Section("Campaign-only ports") {
+            Text("These need a running campaign (a player fleet, intel), so they are not on this page; " +
+                "native-smoke/live's 'ports' check builds them in a real game.", Size.fillMaxWidth(), color = GRAY)
+            for ((name, what) in listOf(
+                "SkillPanel(person)" to "a person's skills by aptitude, as on the character screen",
+                "EventProgressBar(intel)" to "an event's bar, stage icons and progress marker (750 wide, as vanilla's)",
+                "SurveyRequirements(planet)" to "what the fleet needs to survey a planet",
+                "SectorMap(params)" to "vanilla's map; .sectorMap gives a BoxedSectorMap (centerOn, zoom, pings)",
+                "PlaythroughData()" to "the intel screen's playthrough record")) {
+                Text("$name: $what", Size.fillMaxWidth(), highlightedText = listOf(name to HIGHLIGHT))
+            }
+        }
+    }
+
+    // =================================================================================================================
+    // Third band, column 3: boxed vanilla objects
+    // =================================================================================================================
+    private val boxedSliderValue = UIState(30f)
+
+    private fun UIPanelAPI.boxedColumn() {
+        Section("Boxed vanilla objects") {
+            Text("Some vanilla objects are components at run time, but their API interface does not say so " +
+                "(SliderAPI, SectorMapAPI extend nothing), and images and ship displays have no API at all. StarUI " +
+                "returns a box: one value that is both, so there is nothing to cast.", Size.fillMaxWidth(), color = GRAY)
+            lateinit var sliderInfo: LabelAPI
+            lateinit var slider: BoxedUISlider
+            // both sides of one value: SliderAPI's progress and the component's position, no cast
+            fun describe() { sliderInfo.text = "slider.progress = ${slider.progress.toInt()}, slider.position = ${slider.position.width.toInt()} x ${slider.position.height.toInt()}" }
+            slider = Slider(boxedSliderValue, Size.fillMaxWidth(height = 24f), Modifier.onLayout { describe() }, text = "BoxedUISlider")
+            sliderInfo = Text("...", color = HIGHLIGHT)
+            boxedSliderValue.onChange { describe() }
+            Text("slider.progress is SliderAPI; slider.position and adding it to a panel are UIComponentAPI.", Size.fillMaxWidth(), color = GRAY)
+            Divider(color = DARK)
+            Text("The boxes: BoxedUIImage (Image), BoxedUIShipPreview (ShipDisplay), BoxedUISlider (Slider, ProgressBar), " +
+                "BoxedSectorMap (.sectorMap). Pass them to vanilla panel methods freely: StarUI unwraps them.",
+                Size.fillMaxWidth(), color = GRAY)
+            Text("Where the API interface already is a component (LabelAPI, ScrollPanelAPI), StarUI returns it as is and " +
+                "adds the missing methods as extensions (ScrollPanelAPI.addToOverlay, LabelAPI.autoSize).",
+                Size.fillMaxWidth(), color = GRAY)
         }
     }
 

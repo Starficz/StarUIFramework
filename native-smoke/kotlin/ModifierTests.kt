@@ -16,8 +16,11 @@ import org.starficz.starui.compose.modifier.border
 import org.starficz.starui.compose.modifier.VanillaFrame
 import org.starficz.starui.compose.modifier.onAdvance
 import org.starficz.starui.compose.modifier.onLayout
+import org.starficz.starui.compose.modifier.onFirstLayout
 import org.starficz.starui.compose.modifier.onPositionChanged
 import org.starficz.starui.core.Anchor
+import org.starficz.starui.core.width
+import org.starficz.starui.core.height
 import java.awt.Color
 
 private fun Rgb.isRed() = r > 170 && g < 100 && b < 100
@@ -170,5 +173,18 @@ fun registerModifierVisualTests() {
         val before = moves
         label.position.setXAlignOffset(5f)
         expect(moves > before, "onPositionChanged fires when the native component moves ($before -> $moves)")
+
+        // the lifecycle modifiers run on the component's plugin, as onRender does: its laid-out size is at hand
+        var seenSize = 0f to 0f; var firstSeen = 0f; var movedTo = 0f
+        val col = root.Column(Size.exact(220f, 80f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 140f))
+            .onLayout { seenSize = width to height }.onFirstLayout { firstSeen = width }
+            .onPositionChanged { position -> movedTo = position.width }) {
+            Spacer(Size.exact(20f, 20f))
+        }
+        frame()
+        expect(seenSize == 220f to 80f, "onLayout's receiver gives the laid-out size ($seenSize)")
+        near(firstSeen, 220f, "and onFirstLayout's")
+        col.position.setXAlignOffset(5f)
+        near(movedTo, 220f, "onPositionChanged gets the new position when it moves")
     }
 }

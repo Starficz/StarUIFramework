@@ -405,6 +405,12 @@ fun registerOverflowTests() {
                 if (overlap > 0.5f) log("step $step (y $y): paragraph ${para.position.width}x${para.position.height} overlaps the label below by $overlap")
                 expect(overlap <= 0.5f, "after scrolling to $y the Text card's label below still starts under the paragraph (${para.position.width}x${para.position.height}, overlap $overlap)")
             }
+            // the third band (borders, vanilla content, boxes): captured for a look
+            val bands = (page.contentContainer.getChildrenCopy2()[0] as com.fs.starfarer.api.ui.UIPanelAPI).getChildrenCopy2()[0] as com.fs.starfarer.api.ui.UIPanelAPI
+            val band3 = bands.getChildrenCopy2()[2]
+            val band3Top = (page.contentContainer.position.y + page.contentContainer.position.height) - (band3.position.y + band3.position.height)
+            page.yOffset = minOf(maxY, band3Top - 10f); frame(3); screenshot("band3-top")
+            page.yOffset = minOf(maxY, band3Top + 600f); frame(3); screenshot("band3-bottom")
             page.yOffset = 0f
             frame(2)
             near(range.position.height, rangeH, "after scrolling down and back the valueRange label has its first height")

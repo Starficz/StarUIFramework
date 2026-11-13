@@ -47,12 +47,16 @@ private class ModifierImpl(
 // --- Lifecycle & Escape Hatches ---
 /** Runs every frame with the seconds since the last one. */
 fun Modifier.onAdvance(action: (Float) -> Unit) = this.then { it.applyToPlugin { advance(action) } }
-/** Runs each time the component is laid out (sized and placed), the first time included. */
-fun Modifier.onLayout(action: () -> Unit) = this.then { it.applyToPlugin { onLayout(action) } }
-/** Runs once, the first time the component is laid out. */
-fun Modifier.onFirstLayout(action: () -> Unit) = this.then { it.applyToPlugin { onFirstLayout(action) } }
-/** Runs when the component moves or changes size. */
-fun Modifier.onPositionChanged(action: (PositionAPI) -> Unit) = this.then { it.applyToPlugin { onPositionChanged(action) } }
+/**
+ * Runs each time the component is laid out (sized and placed), the first time included. Like [onRender] it runs on
+ * the component's [StarUIPanelPlugin], so its laid-out size and place are at hand: `width`, `height`, `left`, `top`.
+ */
+fun Modifier.onLayout(action: StarUIPanelPlugin.() -> Unit) = this.then { it.applyToPlugin { onLayout { action() } } }
+/** Runs once, the first time the component is laid out, on its [StarUIPanelPlugin] (see [onLayout]). */
+fun Modifier.onFirstLayout(action: StarUIPanelPlugin.() -> Unit) = this.then { it.applyToPlugin { onFirstLayout { action() } } }
+/** Runs when the component moves or changes size, on its [StarUIPanelPlugin], with its new [PositionAPI]. */
+fun Modifier.onPositionChanged(action: StarUIPanelPlugin.(PositionAPI) -> Unit) =
+    this.then { it.applyToPlugin { onPositionChanged { position -> action(position) } } }
 
 /**
  * Draws with OpenGL over the component's own content, every frame. `left`, `right`, `top` and `bottom` give its
