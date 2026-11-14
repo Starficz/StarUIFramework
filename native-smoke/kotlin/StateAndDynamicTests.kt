@@ -1,4 +1,4 @@
-// UIState bindings, ButtonGroup, dynamic rebuild / injection, and the layout exception guards.
+// UIState bindings, FilterGroup and RadioGroup, dynamic rebuild / injection, and the layout exception guards.
 // Compiled in the same Kotlin module as the framework (run-test-suite.ps1), so `internal` members are reachable.
 
 import com.fs.starfarer.api.Global
@@ -60,8 +60,8 @@ fun registerStateTests() {
         screenshot("final")
     }
 
-    StarUITestSuite.group("state-buttongroup-radio") {
-        val group = ButtonGroup()
+    StarUITestSuite.group("state-filter-group") {
+        val group = FilterGroup()
         val a = UIState(true); val b = UIState(false); val c = UIState(false)
         val buttons = mutableListOf<ButtonAPI>()
         root.Column(Size.exact(220f, 140f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)), spacing = 5f) {
@@ -71,14 +71,40 @@ fun registerStateTests() {
         fun states() = "a=${a.value} b=${b.value} c=${c.value} checked=${buttons.map { it.isChecked }}"
         expect(buttons.map { it.isChecked } == listOf(true, false, false), "initial checked state follows the binds (${states()})")
         click(buttons[1])
-        expect(!a.value && b.value && !c.value, "radio: clicking B selects only B (${states()})")
-        expect(buttons.map { it.isChecked } == listOf(false, true, false), "radio: buttons reflect the selection (${states()})")
+        expect(!a.value && b.value && !c.value, "filter: clicking B selects only B (${states()})")
+        expect(buttons.map { it.isChecked } == listOf(false, true, false), "filter: buttons reflect the selection (${states()})")
         click(buttons[1])
         expect(a.value && b.value && c.value, "clicking the only selected button selects all (${states()})")
         click(buttons[2])
-        expect(!a.value && !b.value && c.value, "radio again: clicking C selects only C (${states()})")
+        expect(!a.value && !b.value && c.value, "filter again: clicking C selects only C (${states()})")
         log("multi-select needs a held Shift/Ctrl (Keyboard.isKeyDown); not driven here")
         frame()
+        screenshot("final")
+    }
+
+    StarUITestSuite.group("state-radio-group") {
+        val group = RadioGroup()
+        val states = List(3) { UIState(it == 0) }
+        val buttons = mutableListOf<ButtonAPI>()
+        root.Row(Size.exact(400f, 30f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)), spacing = 5f) {
+            buttons.clear()
+            listOf("Orbital", "Ground", "Deep core").forEachIndexed { i, name ->
+                buttons += AreaCheckbox(name, states[i], Size.fillMaxWidth(height = 22f), buttonGroup = group)
+            }
+        }
+        frame()
+        fun selection() = "states=${states.map { it.value }} checked=${buttons.map { it.isChecked }}"
+        fun only(i: Int) = states.indices.all { states[it].value == (it == i) && buttons[it].isChecked == (it == i) }
+        expect(only(0), "starts on the state that is true (${selection()})")
+        click(buttons[1])
+        expect(only(1), "a click selects that button only (${selection()})")
+        click(buttons[1])
+        expect(only(1), "a click on the selected one keeps it, and only it, selected (${selection()})")
+        states[2].value = true
+        frame()
+        expect(only(2), "a state set true from code turns the others off (${selection()})")
+        click(buttons[0])
+        expect(only(0), "and clicks still work after it (${selection()})")
         screenshot("final")
     }
 }

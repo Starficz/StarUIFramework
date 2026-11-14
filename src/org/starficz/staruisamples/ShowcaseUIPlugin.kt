@@ -19,7 +19,7 @@ import java.awt.Color
 
 /**
  * One full-screen page on the title screen that uses every part of StarUI: all containers and components, sizes,
- * every modifier, anchors, themes, and the reactive rules (if / for / key, ButtonGroup, onChange, peek).
+ * every modifier, anchors, themes, and the reactive rules (if / for / key, FilterGroup and RadioGroup, onChange, peek).
  *
  * Styled the way vanilla screens are: VanillaColors (the player faction's UI colours and vanilla's text colours),
  * Orbitron for titles, headings and buttons, Insignia for text, and every card a Section (a vanilla section heading
@@ -326,6 +326,7 @@ object ShowcaseUIPlugin {
     private val lazyCards = (0 until 2_000).toList()
     private val buttonsEnabled = UIState(false)
     private val hullSizes = listOf("Frigate", "Destroyer", "Cruiser", "Capital").map { it to UIState(it == "Frigate") }
+    private val scanMethods = listOf("Orbital", "Ground", "Deep core").map { it to UIState(it == "Orbital") }
     private val shipName = UIState("")
     private val crew = UIState(250f)
     private val percent = UIState(30f)
@@ -372,13 +373,18 @@ object ShowcaseUIPlugin {
                 AreaCheckbox("Own colours", baseColor = POSITIVE, darkColor = POSITIVE.darker().darker(), brightColor = POSITIVE.brighter())
                 AreaCheckbox("Victor 14", font = Font.VICTOR_14)
             }
-            val sizeGroup = ButtonGroup()
-            Text("One ButtonGroup: a click selects one, Shift-click adds, clicking the only one selects all", color = GRAY)
+            val sizeGroup = FilterGroup()
+            Text("One FilterGroup: a click selects one, Shift-click adds, clicking the only one selects all", color = GRAY)
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
                 for ((name, state) in hullSizes) AreaCheckbox(name, state, Size.exact(90f, 22f), buttonGroup = sizeGroup)
             }
             val selected = hullSizes.filter { it.second.value }.joinToString { it.first }
             Text("Selected: $selected", highlightedText = listOf(selected to HIGHLIGHT))
+            val methodGroup = RadioGroup()
+            Text("One RadioGroup: always exactly one, a second click keeps it", color = GRAY)
+            Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
+                for ((name, state) in scanMethods) AreaCheckbox(name, state, Size.exact(90f, 22f), buttonGroup = methodGroup)
+            }
         }
 
         Section("TextField options") {
@@ -917,7 +923,7 @@ object ShowcaseUIPlugin {
     // Column 2: reactive state
     // =================================================================================================================
     private fun UIPanelAPI.stateColumn() {
-        val filterGroup = ButtonGroup()
+        val filterGroup = FilterGroup()
         Section("Lists: UIState, for and key()") {
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 6f) {
                 TextField(newTask, Size.fillMaxWidth(height = 26f), placeholder = "New task, then Add")
@@ -931,7 +937,7 @@ object ShowcaseUIPlugin {
             }
             Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 4f) {
                 AreaCheckbox("Open", showOpen, Size.exact(70f, 22f), buttonGroup = filterGroup,
-                    modifier = Modifier.tooltip("ButtonGroup: click to show only this, click again for all, Shift-click to add"))
+                    modifier = Modifier.tooltip("FilterGroup: click to show only this, click again for all, Shift-click to add"))
                 AreaCheckbox("Done", showDone, Size.exact(70f, 22f), buttonGroup = filterGroup)
                 FlexSpacer()
                 val doneCount = tasks.value.count { it.done.value }

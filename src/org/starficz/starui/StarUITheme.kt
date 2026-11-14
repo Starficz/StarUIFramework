@@ -17,12 +17,14 @@ import java.awt.Color
  * @property font the default font. `null` is vanilla's paragraph font
  * @property color the default colour. `null` is vanilla's text colour
  * @property textAlign the default alignment of the text within its lines
+ * @property overflow what text wider than its room does by default: wrap onto more lines
  */
 data class TextTheme(
     val size: Size = Size.wrapContent(),
     val font: Font? = null,
     val color: Color? = null,
-    val textAlign: TextAlign = TextAlign.Left
+    val textAlign: TextAlign = TextAlign.Left,
+    val overflow: TextOverflow = TextOverflow.Wrap
 )
 
 /**
@@ -283,6 +285,17 @@ data class ImageTheme(
 )
 
 /**
+ * The defaults of [Layer][org.starficz.starui.window.Layer] and [showLayer][org.starficz.starui.window.showLayer]:
+ * each one the value of the argument of the same name when a call leaves it out.
+ *
+ * @property dim how dark a modal layer dims the screen: black at this alpha. A non-modal layer has none. A
+ *   [Dialog][org.starficz.starui.window.Dialog] dims to 0.85, as vanilla's custom dialog
+ */
+data class LayerTheme(
+    val dim: Float = 0.6f
+)
+
+/**
  * The defaults every component takes its optional arguments from, one class per component. Components such as
  * [Button][org.starficz.starui.components.Button] and [Checkbox][org.starficz.starui.components.Checkbox] use
  * values provided here when retrieving default values.
@@ -311,7 +324,8 @@ data class StarUITheme(
     val section: SectionTheme = SectionTheme(),
     val shipDisplay: ShipDisplayTheme = ShipDisplayTheme(),
     val image: ImageTheme = ImageTheme(),
-    val table: TableTheme = TableTheme()
+    val table: TableTheme = TableTheme(),
+    val layer: LayerTheme = LayerTheme()
 ) {
     companion object {
         /** The theme StarUI uses when no [Theme][org.starficz.starui.components.Theme] is provided. */

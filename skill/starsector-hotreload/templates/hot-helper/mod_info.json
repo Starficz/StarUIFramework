@@ -1,0 +1,9 @@
+{
+  "id": "hotreload_helper",
+  "name": "ZZ Hot Reload Helper",
+  "author": "Local testing",
+  "version": "1.0.0",
+  "description": "Test-only helper for a hot-reload game: keeps the main loop running while the window is behind others. Never ship or enable it in a real mod list.",
+  "gameVersion": "0.98a",
+  "utility": "true"
+}

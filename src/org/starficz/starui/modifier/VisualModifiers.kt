@@ -1,6 +1,7 @@
 package org.starficz.starui.modifier
 
 import com.fs.starfarer.api.Global
+import com.fs.starfarer.api.ui.ButtonAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
 import org.lazywizard.lazylib.opengl.ColorUtils
 import org.lwjgl.opengl.GL11
@@ -14,6 +15,8 @@ import java.awt.Color
  * Adds a plain tooltip to the component: one paragraph of [text], shown while the cursor is over it. Tooltips
  * provide a descriptive message for the component they are on.
  *
+ * On a button it also shows while the button is disabled, where vanilla says why an action is blocked.
+ *
  * @param text the text of the tooltip
  * @param width the width of the tooltip
  * @param location where the tooltip shows, relative to the component
@@ -21,12 +24,15 @@ import java.awt.Color
  */
 fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.addPara(text, 0f) }
+    (it.actual as? ButtonAPI)?.setShowTooltipWhileInactive(true)
     StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 
 /**
  * Adds a rich tooltip to the component, built with vanilla's [TooltipMakerAPI] and shown while the cursor is over
  * it. Tooltips provide a descriptive message for the component they are on.
+ *
+ * On a button it also shows while the button is disabled, where vanilla says why an action is blocked.
  *
  * ```kotlin
  * Modifier.tooltip { addPara("Costs %s supplies.", 0f, VanillaColors.highlight, "100") }
@@ -39,6 +45,7 @@ fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAP
  */
 fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null, builder: (@StarUIDsl TooltipMakerAPI).() -> Unit) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.builder() }
+    (it.actual as? ButtonAPI)?.setShowTooltipWhileInactive(true)
     StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 

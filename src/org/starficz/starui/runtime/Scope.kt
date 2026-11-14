@@ -5,6 +5,7 @@ import com.fs.starfarer.api.ui.TextFieldAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.apache.log4j.Logger
+import org.starficz.starui.window.LayerSlots
 import org.starficz.starui.requestLayout
 import org.starficz.starui.StarUITheme
 import org.starficz.starui.UIState
@@ -53,9 +54,13 @@ internal class Scope(
 
     init {
         liveCount++
+        HotReloadRefresh.track(this)
     }
     private val reads = LinkedHashSet<UIState<*>>()
     private val cleanups = ArrayList<() -> Unit>()
+
+    /** The [org.starficz.starui.Layer]s this builder asked for: kept while it calls them, closed when it stops. */
+    internal var layerSlots: LayerSlots? = null
     private var loopReported = false
 
     /** True once the builder has read at least one state, so the children may be replaced at any time. */
@@ -82,6 +87,7 @@ internal class Scope(
         unsubscribe()
         buildSerial = StarUIPanelPlugin.nextSerial()
         buildCount++
+        layerSlots?.beforeBuild()
         StarUIContext.withTheme(theme) {
             StarUIContext.withScope(this) {
                 StarUIContext.withKey(null) {   // a key(...) around this container does not apply to its children
@@ -89,6 +95,7 @@ internal class Scope(
                 }
             }
         }
+        layerSlots?.afterBuild()   // layers this run left out close
     }
 
     fun markDirty() {
@@ -126,6 +133,8 @@ internal class Scope(
         dirty = false
         unsubscribe()
         runCleanups()
+        layerSlots?.closeAll()
+        layerSlots = null
     }
 
     private fun unsubscribe() {

@@ -85,6 +85,12 @@ class Alignment private constructor(private val name: String, internal val x: Fl
 enum class TextAlign { Left, Center, Right }
 
 /**
+ * What a [Text][org.starficz.starui.components.Text] does with text wider than the room it gets: [Wrap] it onto more
+ * lines (the default), or cut it to one line ending in "..." ([Ellipsis]), with the whole text in a tooltip.
+ */
+enum class TextOverflow { Wrap, Ellipsis }
+
+/**
  * The direction a [Column][org.starficz.starui.components.Column] stacks its children in: [Downwards], top to bottom
  * (the default), or [Upwards], bottom to top.
  */

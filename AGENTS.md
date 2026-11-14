@@ -16,11 +16,13 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
 - `mod_info.json` dependencies: `staruiframework`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
 - Compile against `jars/StarUIFramework.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
   **2.1.x**, so compile with `-api-version 2.1`.
-- Imports live in four packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`,
-  `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`, `StarUIPlugin`,
-  `inject`, `InjectPlacement`, `requestLayout`, `dumpLayout`), `.components` (Column, Text, ..., `ButtonGroup`, `key`),
-  `.modifier` (Modifier and its extensions, `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, the
-  `Boxed*` types, and the vanilla toolkit: see below). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
+- Imports live in five packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `TextOverflow`,
+  `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`,
+  `StarUIPlugin`, `inject`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`), `.components`
+  (Column, Text, ..., `FilterGroup`, `RadioGroup`, `key`), `.window` (windows over a screen: `Layer`, `showLayer`,
+  `StarUILayer`, `Dialog`, `showDialog`, `StarUIDialog`, `DialogStatic`, `showToast`, `StarUIToast`), `.modifier` (Modifier and its extensions,
+  `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, HoloBackground, the `Boxed*` types, and the
+  vanilla toolkit: see below). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
   everything else in it, and in `.layout`, is internal.
 - Names follow Jetpack Compose where Compose has one (with Left/Right instead of Start/End: Starsector has no
   right-to-left layouts), and vanilla's where the component is a vanilla object (`SectionHeading`,
@@ -78,25 +80,38 @@ To attach to vanilla screens, use one of these:
   - `placement = InjectPlacement.Bottom` puts it under the panel's own children. Not for StarUI's own reactive
     containers (it throws): put the components in their builder.
   - Example: Combat AI Tweaks' `ui/RefitButton.kt`.
-
-## Containers
-
-| Call | Places children | Default size |
-|---|---|---|
-| `Column(size, modifier, grow, horizontalAlignment, spacing, overflow) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | wrap |
-| `Row(size, modifier, grow, verticalAlignment, spacing, overflow) { }` | left to right (`HGrow.Leftwards` reverses) | wrap |
-| `Box(size, modifier, overflow) { }` | stacked on top of each other; position children with `Modifier.align(Alignment.X)` | wrap |
-| `CustomPanel(size, modifier, overflow) { }` | nowhere: you position children with `Modifier.anchor(...)` | wrap |
-| `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item, only those near the view exist; scrolls | fill; exact or fill only |
-| `Section(title, size, modifier, contentPadding, spacing, backgroundColor, borderColor) { }` | vanilla-style panel: a `SectionHeading` on top (none for `title = null`), the content in a padded column below, black inside a thin dark border | fill width, wrap height |
-| `Holo(size, modifier, open, background, contentKey, foldDuration, animateFirstOpen, contentInset) { }` | vanilla's own holo panel (the framed window of its dialogs and title menu) around a Box of content, `contentInset` (7) in; `open` folds it open and shut with vanilla's static; `background` is `HoloBackground.Dialog` (opaque, default) or `.TitleScreen` (see-through); a `contentKey` change swaps in new content through vanilla's static transition | exact or fill only |
-| `Theme(theme) { }` | not a panel: overrides `StarUITheme` defaults for the calls inside | |
-
-Column and Row default to the start (left / top) like Compose. Space inside a container's edges is
-`Modifier.padding`; `spacing` is the gap between its children.
-
-## Alignment
-
+- **Layers** (`window/Layers.kt`): a full-screen StarUI panel on top of whatever is showing (title, campaign with its
+  dialogs and core tabs, combat), on `SettingsAPI.getScreenPanel()`; layers stack in open order and tooltips from
+  inside show above. `Layer(onDismissRequest, modal, dim, pause, dismissOnEscape) { }` in a builder is shown while
+  the builder calls it (Compose's `Dialog`): a rebuild that leaves it out or the caller's disposal closes it, Escape
+  calls `onDismissRequest`, a `Layer` in a layer closes with it. `showLayer(modal, dim, pause, closeOnEscape,
+  onClose) { layer -> }` from handlers and scripts stays until `layer.close()` or Escape. Modal (default): dims
+  (`StarUITheme.layer.dim`, 0.6), takes every key and click, pauses the campaign or battle (the earlier pause state comes back
+  with the last pausing layer). Non-modal: keys pass, only clicks over its content are taken. The receiver is a
+  full-screen `Box` (`Modifier.align`). The campaign's core rebuild takes layers off the screen panel; they go back
+  on its next render (`Layers.afterCoreUICreated` from `CoreUIScreenPatch`, the render hook). Plan:
+  `docs/overlay-plan.md`.
+- **Dialogs** (`window/Dialogs.kt`): `Dialog(onDismissRequest, width, height, confirmText, cancelText, onConfirm,
+  onCancel, static, contentKey, codexEntryId, background, pause) { dialog -> }` in a builder (a `Layer` underneath,
+  same lifetime rules) and `showDialog(width, height, ...)` from handlers: vanilla's custom dialog window, measure for
+  measure (Holo of (w + 34) x (h + 69), content 10 px in, 150 x 25 Orbitron 20 TL_BR buttons bottom right, the
+  confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1). Enter, Space, G and the
+  confirm button call `onConfirm`; Escape and the cancel button `onCancel`; F2 `showCodex(codexEntryId)`; a click
+  outside flickers the window. `DialogStatic` picks the static bursts (open, confirm, cancel). The builder's
+  `StarUIDialog` has `confirm()`, `cancel()`, `isOpen`. `dialog.visualPanel.showStarUIPanel(w, h) { }` (`SidePanel.kt`) fills an
+  interaction dialog's side panel, on black by default (vanilla draws nothing behind it).
+- **Toasts** (`window/Toasts.kt`): `showToast(text, duration, alignment, color)` and `showToast(duration, alignment)
+  { }` from handlers and scripts (throws in a builder). One non-modal layer per screen (`ToastHost`, on
+  `Layers.Stack.toasts`) holds a full-screen stage whose toast panels `ToastHost.tick` places by hand every frame,
+  as Windows' notifications move: newest nearest the edge, the rest gliding to their slots (exponential, rate 12/s),
+  vanilla's slide (`setSlideData`, `slideIn` / `slideOut`, 0.25 s, which also fades) from the side the place is on,
+  at most 3 per place (`TOAST_MAX_SHOWN`), the rest waiting, counted by a "+N more" `MoreChip` nearest the edge
+  (placed by the same `StackSlot` code; a toast that starts to leave already frees its slot in the count, so the chip
+  goes as it starts sliding out); hover stops the time. A toast is parked off-screen until
+  placed (a component that is not drawn is never laid out). `layer.hitTest` makes the layer take the mouse over
+  toasts only. `Layers.show` raises the toasts' layer above any layer opened later. Default bottom right, in the
+  campaign 220 px up (above the minimap); top centre 40 px down (under "Game paused"). Looks beyond the plain panel
+  are recipes (recipes.md: `IntelToast`, `AccentToast`, `HeadingToast`).
 - Box children: `Modifier.align(Alignment.TopLeft)`, also `TopCenter`, `TopRight`, `CenterLeft`, `Center`,
   `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight` (`Alignment.entries` lists them).
 - Column: `horizontalAlignment = Alignment.Left`, `CenterHorizontally` or `Right`.
@@ -108,7 +123,7 @@ Column and Row default to the start (left / top) like Compose. Space inside a co
 Argument order: what the component shows or edits (`text`, `bind`), then `size`, `modifier`, the optional settings,
 and last a click handler or builder where there is one.
 
-`Text(text, size, modifier, font, color, textAlign, highlightedText)`, `Image(spritePath, size, ...)`,
+`Text(text, size, modifier, font, color, textAlign, highlightedText, overflow)`, `Image(spritePath, size, ...)`,
 `ShipDisplay(size, modifier, fleetMember, variant, ..., exactScale)`,
 `Button(text, size, modifier, contentPadding, color, backgroundColor, font: ButtonFont, textAlign, cutStyle, shortcut) { onClick }`,
 `TextField(bind: UIState<String>, size, modifier, contentPadding, font, placeholder)`,
@@ -124,8 +139,14 @@ and last a click handler or builder where there is one.
 - Controls have a `contentPadding` (space between their edge and their content, from the theme); `Modifier.padding`
   adds to it. `contentPadding = PaddingValues.Zero` makes a control as small as its content.
 - `Button` takes a `ButtonFont`: the seven fonts a vanilla button can be made with. Any other is a compile error.
-- A `buttonGroup` needs `bind`: a group works on its buttons' states (it throws otherwise). A click selects only
-  that button; Shift or Ctrl + click toggles just that one; clicking the only selected button selects them all.
+- `Text(..., overflow = TextOverflow.Ellipsis)` stays on one line: text wider than its room (exact or fill width,
+  or what its container has left) is cut and ends in "...", with the full text in a tooltip unless the Text has a
+  `Modifier.tooltip`. The label holds the shortened text; a `setText` from code becomes the new full text.
+- A `buttonGroup` needs `bind`: a group works on its buttons' states (it throws otherwise). A `RadioGroup` keeps
+  exactly one selected: a click selects only that button and a second click keeps it; a member's state set `true`
+  from code turns the others off. A `FilterGroup` is vanilla's filter bar: a click selects only that button; Shift
+  or Ctrl + click toggles just that one; clicking the only selected button selects them all.
+- A `Modifier.tooltip` on a button also shows while the button is disabled.
 - For vanilla calls that take a font file (`setParaFont`, `addTextField`), `Font.X.path` gives it.
 - `Spacer` draws nothing; give it `Modifier.background(color)` to show it.
 - `SectionHeading` is vanilla's own (`TooltipMakerAPI.addSectionHeading`) and returns its `LabelAPI`, which draws its
@@ -154,7 +175,8 @@ and last a click handler or builder where there is one.
 - `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return a `BoxedUISlider` (its
   `SliderAPI` and the component it is); it holds one value (its `min` is a floor, `max` an overflow mark). `step` is
   a step size (Compose's `steps` is a count). `configure` is a named argument taking any `SliderAPI` setter; it runs
-  on every build. For a raw `SliderAPI` from elsewhere, `asComponent` (from `vanilla`) gives the component view.
+  on every build. A `ProgressBar`'s `text` is its whole label (`setShowLabelOnly(true)`; vanilla's would add
+  "value / max" after it). For a raw `SliderAPI` from elsewhere, `asComponent` (from `vanilla`) gives the component view.
 - **The vanilla toolkit** (`vanilla/UIExtensions.kt`, `VanillaHelpers.kt`, `VanillaWrappers.kt`): Kotlin access to
   vanilla UI for code that works on vanilla components directly, public and kept working. Thin calls to the readable
   methods vanilla's base component and panel have and the API interfaces leave out, plus small conveniences:
@@ -337,8 +359,8 @@ Column {
    recreated.
 7. `state.peek()` reads without subscribing. Reads outside builders (handlers, `onAdvance`, render callbacks) never
    subscribe. A state is also a delegate: `var count by mutableStateOf(0)` reads and writes `value`.
-8. Existing bindings still work: `TextField(bind = ...)`, `Checkbox(bind = ...)`, `Slider(bind = ...)`, `ButtonGroup`
-   (radio groups) and `state.onChange { }` inside a builder (cleaned up automatically when the builder re-runs or its
+8. Existing bindings still work: `TextField(bind = ...)`, `Checkbox(bind = ...)`, `Slider(bind = ...)`, `FilterGroup`
+   and `RadioGroup`, and `state.onChange { }` inside a builder (cleaned up automatically when the builder re-runs or its
    UI is removed; outside a builder it throws). For a listener outside any UI, `state.observeForever { }` and
    `removeObserver`: the state holds it strongly. A bound control writes its state the moment its native value
    changes, whoever changed it: the player, or any code calling `setText` / `setChecked` / `setProgress` on the
@@ -370,6 +392,9 @@ Column {
 
 ## Seeing what you built (no screenshots needed)
 
+- **Hot reload**: in a game started by the starsector-hotreload skill (`skill/starsector-hotreload`), StarUI
+  rebuilds every live scope after each reload (`runtime/HotReloadRefresh.kt`), so UI on screen shows changed code
+  without reopening anything. Nothing runs without the agent's `starsector.hotreload.generation` property.
 - `component.dumpLayout()` returns the tree below a component as text: kind, text, size, position relative to it,
   sizing, padding/margin, attached handlers and scope state. Log it, or assert on it in tests.
 - **Preview** a piece of UI in the real game renderer, without playing. From `StarUIFramework/`:
@@ -394,10 +419,14 @@ Column {
 src/org/starficz/starui/
   (root)                the everyday types: Sizing.kt (Size, Axis), Alignment.kt, Overflow.kt, Anchor.kt, UIState.kt,
                         StarUITheme.kt, StarUIManager.kt (screen roots), StarUIPlugin.kt, Injection.kt
-                        (inject), RequestLayout.kt, LayoutDump.kt, Dsl.kt
+                        (inject), SidePanel.kt (showStarUIPanel),
+                        RequestLayout.kt, LayoutDump.kt,
+                        Dsl.kt
+  window/               windows over a screen: Layers.kt (Layer, showLayer, the layer stack), Dialogs.kt (Dialog,
+                        showDialog), Toasts.kt (showToast); later movable windows
   components/           Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
                         LazyLists.kt (LazyColumn, LazyRow), Content.kt (Text, Image, ShipDisplay), Controls.kt
-                        (Button, TextField, checkboxes, sliders), ButtonGroup.kt, Spacers.kt, Sections.kt, Tables.kt,
+                        (Button, TextField, checkboxes, sliders), ButtonGroup.kt (FilterGroup, RadioGroup), Spacers.kt, Sections.kt, Tables.kt,
                         Holo.kt, VanillaElements.kt (the TooltipMakerAPI ports)
   layout/               LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, ViewportLayoutEngine.kt
                         (scrolling containers), VanillaElementEngine.kt (tooltip-built vanilla ports), NodeSize.kt
@@ -419,6 +448,10 @@ src/org/starficz/starui/
                         MissionRefitPatch (the core tabs use the API's CoreUITabListener instead)
   internal/             ModPlugin (registers the tab listener on game load)
 native-smoke/           in-game test suite (test-only, never shipped)
+skill/                  the agent skills that ship with StarUI: starsector-starui (design guide, StarUI parts,
+                        recipes, traps, verify) and starsector-hotreload (standalone hot-reload game, input and
+                        captures); build_skill.py copies the public API sources and samples into starsector-starui and
+                        packs both into dist/; vanilla-crawl/ regenerates references/vanilla-styles.md's counts
 docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md (overflow, wheel, long-list numbers)
 ```
 
@@ -489,8 +522,9 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
 - **No obfuscated names** in code, PatchLib matchers, casts or imports. Find engine classes and members by API
   interface, readable name or shape. Prefer the API whenever it has the method (0.98.5a added many UI ones:
   `getParent`, `getChildrenCopy2`, `clearChildren`, `relativeTo2`, most of `ScrollPanelAPI`, `SliderAPI`).
-  Look engine code up in a decompile of the current game's `starfarer_obf.jar` (the patchlib skill bundles
-  Vineflower); a decompile from an older game version will mislead you.
+  Look engine code up in the `starsector-knowledge` skill (`api/`, then `obf/`, the decompiled engine of the
+  game version it names); do not assume a decompile of your own, and one from an older game version will mislead
+  you.
 - **Never use `java.lang.reflect` directly**: the game's script class loader refuses it at runtime
   (`SecurityException`). Go through `ReflectionUtils` (`invoke`, `getMethodsMatching`, `ReflectedMethod`).
 - A reflective `invoke("name")` throws "Ambiguous method call" when the API declares the same method with a narrower
@@ -499,6 +533,11 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   API wins over compatibility: rename, remove and change return types without shims or deprecated copies. Combat AI
   Tweaks, Scy Nation and Refit Filters are compiled against StarUI; rebuild them (or note what they need) after a
   change that affects them. After the first release: add and deprecate, don't remove or change.
+- **The agent skill ships with StarUI.** A change to public behaviour or names also updates `skill/starsector-starui/`
+  (`references/` name components, parameters and behaviour), and a new version updates its `SKILL.md` Version
+  section. `python skill/build_skill.py` refuses to build when SKILL.md names another version than `mod_info.json`.
+  The recipes in `references/recipes.md` are compiled and run by the `skill-recipes` suite group
+  (`native-smoke/kotlin/SkillRecipes.kt`): change both together.
 - Keep each file's existing line endings (most source files are LF, some CRLF).
 - Imports: five or more names from one package become a wildcard (`org.starficz.starui.components.*`); never for
   `java.*` (`java.util.*` and `java.awt.*` would shadow Kotlin's `List`) or object members. Sorted in IntelliJ's

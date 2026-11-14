@@ -363,8 +363,13 @@ class BoxedUIHolo internal constructor(holo: UIComponentAPI, content: CustomPane
  */
 data class HoloBackground(val lines: Int, val offsetLines: Int) {
     companion object {
-        /** The opaque background most of vanilla's dialogs use: 255 / 255. */
+        /** The opaque background most of vanilla's dialogs use (its market pickers): 255 / 255. */
         val Dialog = HoloBackground(255, 255)
+        /**
+         * The holo's own default, 125 / 175: dark but see-through. Vanilla's custom dialog (`showCustomDialog`) and the
+         * title menu keep it.
+         */
+        val Default = HoloBackground(125, 175)
         /** The see-through background of the title menu, the holo's own default: 125 / 175. */
         val TitleScreen = HoloBackground(125, 175)
     }

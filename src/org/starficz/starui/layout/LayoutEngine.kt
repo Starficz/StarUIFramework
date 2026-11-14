@@ -1,6 +1,7 @@
 package org.starficz.starui.layout
 
 import com.fs.starfarer.api.ui.UIComponentAPI
+import org.starficz.starui.Axis
 import org.starficz.starui.modifier.PaddingValues
 import org.starficz.starui.runtime.childNode
 import org.starficz.starui.runtime.StarUIPanelPlugin
@@ -35,8 +36,12 @@ internal fun measureChildPaddedIntrinsic(
     val childPlugin = StarUIPanelPlugin.getAttached(child)
     // a container's measure includes its own padding; a leaf's padding is around what it measures
     val padding = if (childPlugin?.layoutEngine != null) PaddingValues.Zero else node.padding
-    val contentAvailW = if (availableW == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availableW - padding.horizontal)
-    val contentAvailH = if (availableH == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, availableH - padding.vertical)
+    // an exact axis is the child's room on that axis, whatever its container offers: a Text of exact width in a
+    // wrapping container wraps at that width, and its height is the wrapped one
+    val roomW = (node.size.width as? Axis.Exact)?.pixels ?: availableW
+    val roomH = (node.size.height as? Axis.Exact)?.pixels ?: availableH
+    val contentAvailW = if (roomW == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, roomW - padding.horizontal)
+    val contentAvailH = if (roomH == Float.MAX_VALUE) Float.MAX_VALUE else maxOf(0f, roomH - padding.vertical)
 
     val measure = node.measure
     val rawIntrinsic = if (measure != null) {

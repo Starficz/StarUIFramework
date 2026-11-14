@@ -46,6 +46,9 @@ fun UIComponentAPI.addTooltip(
     }
 }
 
+/** Whether the component has a vanilla tooltip ([addTooltip], `Modifier.tooltip`, or vanilla's own). */
+internal fun UIComponentAPI.hasTooltip(): Boolean = invoke("getTooltipLogic") != null
+
 /**
  * Removes a tooltip set with [addTooltip] (vanilla keeps one per component). A tooltip that is showing is faded out
  * first: vanilla's StandardTooltipV2 removes itself from the screen once it has faded.

@@ -83,7 +83,7 @@ fun registerReviewFixTests() {
 
     StarUITestSuite.group("fix-buttongroup-forgets-removed-buttons") {
         // A group that outlives the builder, with toggles that come and go: the classic "solo / select all" group.
-        val group = ButtonGroup()
+        val group = FilterGroup()
         val a = UIState(true); val b = UIState(true); val c = UIState(true)
         val shown = UIState(listOf("a" to a, "b" to b, "c" to c))
         val buttons = linkedMapOf<String, ButtonAPI>()

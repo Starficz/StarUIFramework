@@ -270,8 +270,9 @@ fun <T> UIPanelAPI.Table(
 
     val exactWidth = specs.sumOf { (it.width ?: 0f).toDouble() }.toFloat()
     val weightSum = specs.filter { it.width == null }.sumOf { it.weight.toDouble() }.toFloat()
-    engine.fixedWidth = if (weightSum == 0f) exactWidth + TABLE_FRAME_WIDTH else null
-    engine.fallbackWidth = exactWidth + 100f * weightSum + TABLE_FRAME_WIDTH
+    val frame = tableFrameWidth(specs.size)
+    engine.fixedWidth = if (weightSum == 0f) exactWidth + frame else null
+    engine.fallbackWidth = exactWidth + 100f * weightSum + frame
 
     plugin.attachScope("Table", columns) {
         // The table's listeners read these, so a table kept through this call still calls the newest lambdas.
@@ -457,15 +458,18 @@ private fun <T> drawSortIcons(state: TableCallerState<T>, color: Color, alphaMul
     }
 }
 
-/** How much wider vanilla's table is than the sum of its columns (its frame). */
-private const val TABLE_FRAME_WIDTH = 3f
+/** The gap vanilla's table puts between two columns (0.98.5a-RC4: header buttons 3 px apart, none at the ends). */
+private const val TABLE_COLUMN_GAP = 3f
+
+/** How much wider vanilla's table is than the sum of its [columnCount] columns: one gap between each two. */
+private fun tableFrameWidth(columnCount: Int): Float = TABLE_COLUMN_GAP * maxOf(0, columnCount - 1)
 
 /**
  * Each column's width for a table [width] wide: exact ones as given, weighted ones sharing the rest (whole pixels), so
  * that the columns plus vanilla's frame make [width].
  */
 private fun <T> columnWidths(specs: List<TableColumnSpec<T>>, width: Float, exactWidth: Float, weightSum: Float): List<Float> {
-    val columnsWidth = width - TABLE_FRAME_WIDTH
+    val columnsWidth = width - tableFrameWidth(specs.size)
     val leftover = maxOf(0f, columnsWidth - exactWidth)
     val widths = specs.map { spec -> spec.width ?: if (weightSum > 0f) floor(leftover * spec.weight / weightSum) else 0f }.toMutableList()
     // the rounding remainder goes to the last weighted column, so the columns fill the width exactly

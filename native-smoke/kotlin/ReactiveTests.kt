@@ -403,7 +403,7 @@ fun registerReactiveTests() {
         expect(containerAdvances == before + 1, "the container's own modifiers survive rebuilds (${containerAdvances - before} advance calls)")
 
         // ButtonGroup across rebuilds: the same states are registered again for the new buttons.
-        val group = ButtonGroup()
+        val group = FilterGroup()
         val a = UIState(true); val b = UIState(false)
         val buttons = mutableListOf<ButtonAPI>()
         root.Column(Size.exact(220f, 80f), at(40f, 140f).background(PANEL), spacing = 5f) {

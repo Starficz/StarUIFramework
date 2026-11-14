@@ -26,6 +26,15 @@ import patchlib.api.patch.Patch
     )
 )
 internal object LabelTextPatch {
+    /** True while StarUI sets a label's text in a layout pass that already sized it (a cut [Text]'s shortened text). */
+    private var ownWriteInProgress = false
+
+    /** Runs [write], a text change the running layout pass already accounts for: it asks for no layout. */
+    internal fun ownWrite(write: () -> Unit) {
+        val outer = ownWriteInProgress
+        ownWriteInProgress = true
+        try { write() } finally { ownWriteInProgress = outer }
+    }
 
     @JvmStatic
     @Before(
@@ -38,7 +47,7 @@ internal object LabelTextPatch {
         )
     )
     fun onSetText(context: BeforeContext) {
-        if (!StarUIPanelPlugin.hasAnyPlugins || !context.isMostDerivedCall) return
+        if (!StarUIPanelPlugin.hasAnyPlugins || !context.isMostDerivedCall || ownWriteInProgress) return
         val self = context.self as? LabelAPI ?: return
         val parent = self.parent ?: return
         // A slider rewrites its own value label every frame while it moves; the slider's size never depends on it.

@@ -89,3 +89,9 @@ gradle-app.setting
 Knights\ of\ Ludd.iml
 /.run
 .aider*
+
+# Agent skill build output (skill/build_skill.py)
+skill/starsector-starui/api/
+skill/starsector-starui/examples/
+skill/dist/
+__pycache__/

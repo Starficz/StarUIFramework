@@ -3,6 +3,7 @@ package org.starficz.starui.patches
 import com.fs.starfarer.api.campaign.CoreUIAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.StarUIManager
+import org.starficz.starui.window.Layers
 import patchlib.api.context.AfterContext
 import patchlib.api.match.ClassMatch
 import patchlib.api.match.MethodMatch
@@ -27,5 +28,6 @@ internal object CoreUIScreenPatch {
     fun afterCreate(context: AfterContext) {
         val core = context.self as? UIPanelAPI ?: return
         StarUIManager.onCoreUICreated(core)
+        Layers.afterCoreUICreated()
     }
 }

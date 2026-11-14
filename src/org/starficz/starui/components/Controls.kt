@@ -164,8 +164,8 @@ fun UIPanelAPI.Button(
  * on, the look of vanilla's filter bars.
  *
  * The [AreaCheckbox] is on while [bind] is `true`; clicking it flips the state, and writing the state changes the
- * button. In a [buttonGroup] it is one of a group of filter or radio buttons (see [ButtonGroup]), which needs
- * [bind].
+ * button. In a [buttonGroup] (a [FilterGroup] or a [RadioGroup]) the group decides what a click selects, through
+ * [bind], which it then needs.
  *
  * Example usage:
  *
@@ -190,7 +190,8 @@ fun UIPanelAPI.Button(
  * @param leftAlign whether the text is aligned to the left instead of centred
  * @param buttonGroup the group this button belongs to, or `null` for none
  * @return the vanilla button
- * @see ButtonGroup
+ * @see FilterGroup
+ * @see RadioGroup
  */
 fun UIPanelAPI.AreaCheckbox(
     text: String,
@@ -237,7 +238,8 @@ fun UIPanelAPI.AreaCheckbox(
  * vanilla tick box, with an optional label.
  *
  * The [Checkbox] is ticked while [bind] is `true`; clicking it flips the state, and writing the state changes the
- * tick. In a [buttonGroup] it is one of a group of filter or radio buttons (see [ButtonGroup]), which needs [bind].
+ * tick. In a [buttonGroup] (a [FilterGroup] or a [RadioGroup]) the group decides what a click selects, through [bind],
+ * which it then needs.
  *
  * Example usage:
  *
@@ -259,7 +261,8 @@ fun UIPanelAPI.AreaCheckbox(
  * @param color the colour of the box and label. By default the player faction's UI colour
  * @param buttonGroup the group this checkbox belongs to, or `null` for none
  * @return the vanilla checkbox, a [ButtonAPI]
- * @see ButtonGroup
+ * @see FilterGroup
+ * @see RadioGroup
  */
 fun UIPanelAPI.Checkbox(
     text: String? = null,
@@ -302,7 +305,7 @@ fun UIPanelAPI.Checkbox(
 /** A group works on the states of its buttons, so a button in a group needs one. */
 private fun requireBindFor(buttonGroup: ButtonGroup?, bind: UIState<Boolean>?, component: String) {
     require(buttonGroup == null || bind != null) {
-        "StarUI: $component(buttonGroup = ...) needs bind = a UIState<Boolean>: a ButtonGroup selects and clears its " +
+        "StarUI: $component(buttonGroup = ...) needs bind = a UIState<Boolean>: a FilterGroup or RadioGroup selects and clears its " +
         "buttons through their states, so a button without one cannot take part."
     }
 }
@@ -413,7 +416,8 @@ fun UIPanelAPI.Slider(
  * @param size the size of the [ProgressBar]
  * @param modifier the [Modifier] to be applied to this bar
  * @param valueRange the values at the empty and the full end of the bar
- * @param text the label vanilla draws on the bar, or `null` for none
+ * @param text the label drawn on the bar, as it is, or `null` for none. (Vanilla's bar would add "value / max" after
+ *   it; `configure = { setShowLabelOnly(false) }` brings that back.)
  * @param barColor the colour of the filled part of the bar. `null` keeps vanilla's
  * @param configure called on the vanilla [SliderAPI] each time the builder runs, for the setters this function
  *   does not cover
@@ -434,7 +438,9 @@ fun UIPanelAPI.ProgressBar(
     val bar = nativeSlider("ProgressBar", text, valueRange, size, modifier)
     bar.setUserAdjustable(false)
     bar.isShowAdjustableIndicator = false
-    if (text == null) bar.isShowNoText = true
+    // set both ways: a reused bar may have had a text, or none, before
+    bar.isShowNoText = text == null
+    bar.setShowLabelOnly(text != null)
     barColor?.let { bar.barColor = it }
     configure?.invoke(bar)
     val shown = progress.coerceIn(valueRange.start, valueRange.endInclusive)

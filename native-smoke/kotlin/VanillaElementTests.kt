@@ -214,6 +214,24 @@ fun registerVanillaElementTests() {
             "and after the table rebuilds (x = ${a.position.x}, ${b.position.x}, ${c.position.x})")
     }
 
+    StarUITestSuite.group("table-width") {
+        // vanilla's table puts 3 px between each two columns: a Table of any column count is exactly its size wide
+        fun check(columns: Int, width: Float, x: Float, y: Float) {
+            val table = root.Table(testShips, Size.mixed(Axis.Exact(width), Axis.WrapContent), elementAt(x, y)) {
+                for (i in 0 until columns) {
+                    if (i == minOf(1, columns - 1)) column("Name") { it.name } else column("C$i", width = 50f) { "${it.cost}" }
+                }
+            }
+            frame(); frame()
+            val vanillaTable = table.getChildrenNonCopy().first()
+            near(table.position.width, width, "$columns columns: the Table")
+            near(vanillaTable.position.width, width, "$columns columns: vanilla's table inside it")
+        }
+        check(1, 200f, 40f, 40f)
+        check(2, 300f, 40f, 160f)
+        check(6, 620f, 40f, 280f)
+    }
+
     StarUITestSuite.group("table-order-variants") {
         fun check(name: String, middle: CustomPanelAPI.() -> Unit) {
             lateinit var a: CustomPanelAPI; lateinit var b: CustomPanelAPI; lateinit var c: CustomPanelAPI

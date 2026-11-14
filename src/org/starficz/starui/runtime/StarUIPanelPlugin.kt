@@ -400,16 +400,17 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
             // 1. Measure the children's intrinsic footprint
             val (contentW, contentH) = engine.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)
 
-            // 2. SELF SIZING: If this panel is a top-level root, size itself right now!
+            // 2. SELF SIZING: If this panel is a top-level root, size itself right now! The engine's measure already
+            // includes this container's own padding, as it does for every container (measureChildPaddedIntrinsic)
             if (isTopLevelNode) {
                 val finalW = when (val wDim = node.size.width) {
                     is Axis.Exact -> wDim.pixels
-                    is Axis.WrapContent -> contentW + node.padding.horizontal
+                    is Axis.WrapContent -> contentW
                     else -> if (component.width > 1f) component.width else rootMaxWidth
                 }
                 val finalH = when (val hDim = node.size.height) {
                     is Axis.Exact -> hDim.pixels
-                    is Axis.WrapContent -> contentH + node.padding.vertical
+                    is Axis.WrapContent -> contentH
                     else -> if (component.height > 1f) component.height else rootMaxHeight
                 }
                 component.setSize(finalW, finalH)
@@ -557,7 +558,8 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
 
     /** A tooltip from Modifier.tooltip is on this component; [tooltipAppliedThisBuild]: the current build applied it. */
     private var hasStarUITooltip = false
-    private var tooltipAppliedThisBuild = false
+    internal var tooltipAppliedThisBuild = false
+        private set
 
     internal fun noteTooltipApplied() {
         hasStarUITooltip = true
@@ -709,6 +711,7 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     override fun renderBelow(alphaMult: Float) {
         // Before this node's children render and before any layout below runs: the safe point to replace children.
         if (Scope.hasPendingDetached) Scope.disposeDetachedPending()
+        HotReloadRefresh.poll()
         if (dirtyScopeBelow) Scope.flush(this)
         runLayout()
 

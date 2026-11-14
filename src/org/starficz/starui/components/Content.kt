@@ -4,10 +4,14 @@ import com.fs.starfarer.api.combat.ShipVariantAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.LabelAPI
+import com.fs.starfarer.api.ui.TooltipMakerAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.starficz.starui.*
 import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.modifier.PaddingValues
+import org.starficz.starui.patches.LabelTextPatch
+import org.starficz.starui.runtime.ChildSlot
+import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.runtime.UINode
 import org.starficz.starui.vanilla.*
 import org.starficz.starui.vanilla.ReflectionUtils.invoke
@@ -30,12 +34,18 @@ internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (th
  * By default the [Text] wraps its text: it is as wide as its longest line. With an exact or fill width, the text is
  * wrapped to fit that width and the [Text] grows in height to show every line.
  *
- * The returned [LabelAPI] can be changed later: setting `label.text` lays out the components around it again.
+ * With `overflow = TextOverflow.Ellipsis` it stays on one line instead: text wider than the room it gets (its exact or
+ * fill width, or what its container has left) is cut and ends in "...". A cut [Text] shows the whole text in a
+ * tooltip, unless it has a tooltip of its own.
+ *
+ * The returned [LabelAPI] can be changed later: setting `label.text` lays out the components around it again (for a
+ * cut [Text], `label.text` reads the shortened text it shows).
  *
  * Example usage:
  *
  * ```kotlin
  * Text("Supplies: 1200", highlightedText = listOf("1200" to VanillaColors.highlight))
+ * Text(ship.name, Size.fillMaxWidth(), overflow = TextOverflow.Ellipsis)
  * ```
  *
  * @param text the text to be displayed
@@ -45,7 +55,9 @@ internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (th
  * @param color the colour of the text. `null` is vanilla's text colour
  * @param textAlign the alignment of the text within the lines of the paragraph
  * @param highlightedText parts of [text] drawn in another colour, each one a piece of the text and its colour, in
- *   the order they appear in [text]
+ *   the order they appear in [text]. A highlight that a cut leaves out is not drawn
+ * @param overflow what happens to text wider than its room: [TextOverflow.Wrap] onto more lines, or
+ *   [TextOverflow.Ellipsis], one line cut short with "..."
  * @return the vanilla label
  */
 fun UIPanelAPI.Text(
@@ -55,7 +67,8 @@ fun UIPanelAPI.Text(
     font: Font? = StarUITheme.current.text.font,
     color: Color? = StarUITheme.current.text.color,
     textAlign: TextAlign = StarUITheme.current.text.textAlign,
-    highlightedText: Collection<Pair<String, Color>>? = null
+    highlightedText: Collection<Pair<String, Color>>? = null,
+    overflow: TextOverflow = StarUITheme.current.text.overflow
 ): LabelAPI {
     checkDslTarget()
     // Font, colour and highlights are fixed when a native label is made, so a call that changes them gets a new
@@ -69,6 +82,11 @@ fun UIPanelAPI.Text(
     applyTextAlign()
 
     val initialMeasure = rawLabel.measure(text)
+
+    if (overflow == TextOverflow.Ellipsis) {
+        ellipsisText(slot, rawLabel, text, initialMeasure, size, modifier, ::applyTextAlign)
+        return rawLabel
+    }
 
     // Vanilla lays wrapped text out again on every autoSizeToWidth, the costliest part of a layout pass with much
     // text. The wrapped height per width is kept for the current text, and the label itself is only sized again when
@@ -119,6 +137,84 @@ fun UIPanelAPI.Text(
         }
     )
     return rawLabel
+}
+
+/**
+ * The one-line [Text] of `TextOverflow.Ellipsis`. The label holds what it shows, so the full text is kept here: a
+ * label text that is not the one this put there came from elsewhere (a `setText` call) and becomes the full text.
+ */
+private fun ellipsisText(
+    slot: ChildSlot, rawLabel: LabelAPI, text: String, initialMeasure: Pair<Float, Float>, size: Size,
+    modifier: Modifier, applyTextAlign: () -> Unit
+) {
+    var fullText = text
+    var shownText: String? = null
+    var measuredText = text
+    var fullMeasure = initialMeasure   // rawLabel.measure(measuredText)
+    fun currentFullText(): String {
+        val onLabel = rawLabel.text
+        if (onLabel != shownText) fullText = onLabel
+        return fullText
+    }
+    // The full text in a tooltip while the text is cut, unless a Modifier.tooltip of this build is on the label (known
+    // once finishLeaf applied the modifiers). A tooltip already on the label is taken as one a previous build of it
+    // added: the layout below replaces or removes it.
+    var ownTooltipAllowed = false
+    var tooltipShows: String? = null
+
+    var node: UINode? = null
+    node = finishLeaf(slot, rawLabel, size, modifier, intrinsic = initialMeasure,
+        measure = { maxW, _ ->
+            val full = currentFullText()
+            if (full != measuredText) {
+                measuredText = full
+                fullMeasure = rawLabel.measure(full)
+            }
+            if (full.isEmpty()) Pair(0f, 0f) else Pair(minOf(fullMeasure.first, maxW), fullMeasure.second)
+        },
+        layout = { assignedW, assignedH ->
+            val pad = node?.padding ?: PaddingValues.Zero
+            val room = maxOf(0f, assignedW - pad.horizontal)
+            val full = currentFullText()
+            val shown = ellipsize(full, room) { rawLabel.measure(it).first }
+            if (rawLabel.text != shown) LabelTextPatch.ownWrite { rawLabel.text = shown }
+            shownText = shown
+            rawLabel.autoSizeToWidth(maxOf(1f, room))
+            rawLabel.setSize(assignedW, assignedH)
+            applyTextAlign()
+
+            if (ownTooltipAllowed) {
+                val wanted = if (shown != full) full else null
+                if (wanted != tooltipShows) {
+                    if (wanted == null) rawLabel.removeTooltip()
+                    else rawLabel.addTooltip(TooltipMakerAPI.TooltipLocation.ABOVE, ELLIPSIS_TOOLTIP_WIDTH) { it.addPara(wanted, 0f) }
+                    tooltipShows = wanted
+                }
+            }
+        }
+    )
+    ownTooltipAllowed = StarUIPanelPlugin.getAttached(rawLabel)?.tooltipAppliedThisBuild != true
+    if (ownTooltipAllowed && rawLabel.hasTooltip()) tooltipShows = ""
+}
+
+private const val ELLIPSIS = "..."
+private const val ELLIPSIS_TOOLTIP_WIDTH = 400f
+
+/**
+ * [text] as it fits [room] wide: whole, or its longest start that fits with "..." after it (trailing spaces dropped),
+ * or "" when not even "..." fits. [width] measures a string in the label's font.
+ */
+internal fun ellipsize(text: String, room: Float, width: (String) -> Float): String {
+    if (text.isEmpty() || width(text) <= room) return text
+    if (width(ELLIPSIS) > room) return ""
+    // the longest start that fits: binary search on its length, each step one measure
+    var fits = 0
+    var tooLong = text.length
+    while (tooLong - fits > 1) {
+        val mid = (fits + tooLong) / 2
+        if (width(text.substring(0, mid).trimEnd() + ELLIPSIS) <= room) fits = mid else tooLong = mid
+    }
+    return text.substring(0, fits).trimEnd() + ELLIPSIS
 }
 
 /**

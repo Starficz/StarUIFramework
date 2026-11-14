@@ -37,9 +37,9 @@ fun registerApiShapeTests() {
     }
 
     StarUITestSuite.group("api-buttongroup-needs-bind") {
-        val error = thrown { root.Column(Size.wrapContent(), shapeAt(40f, 40f)) { Checkbox("grouped", buttonGroup = ButtonGroup()) } }
+        val error = thrown { root.Column(Size.wrapContent(), shapeAt(40f, 40f)) { Checkbox("grouped", buttonGroup = FilterGroup()) } }
         expect(error is IllegalArgumentException && error.message?.contains("bind") == true,
-            "a button in a ButtonGroup without bind fails with a message naming bind (got $error)")
+            "a button in a FilterGroup without bind fails with a message naming bind (got $error)")
     }
 
     StarUITestSuite.group("api-section-untitled-and-fill-sizes") {

@@ -69,7 +69,7 @@ fun registerValueHookTests() {
         val plain = UIState(false)
         val area = UIState(false)
         val groupA = UIState(true); val groupB = UIState(false)
-        val group = ButtonGroup()
+        val group = FilterGroup()
         lateinit var box: ButtonAPI
         lateinit var areaBox: ButtonAPI
         lateinit var memberB: ButtonAPI

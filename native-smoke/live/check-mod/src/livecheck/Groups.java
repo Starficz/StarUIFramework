@@ -22,6 +22,9 @@ public final class Groups {
                 case "screens":
                     all.addAll(ScreenChecks.steps());
                     break;
+                case "layers":
+                    all.addAll(LayerChecks.steps());
+                    break;
                 default:
                     throw new IllegalArgumentException("Unknown group " + one);
             }
