@@ -1,36 +1,32 @@
 # StarUIFramework
 
-A modern UI framework for Starsector built with a Kotlin DSL. Very WIP, has many missing features. Ping @Starficz on USC Discord for help if you want to use this for "real".
+A Compose-style Kotlin DSL for building Starsector UI out of the game's own UI elements.
 
-### Currently done for layout:
-- CustomPanels (absolute/relative anchoring)
-- Columns, Rows and Boxes (Compose-style alignment, weights, margin and padding)
-- Sections (vanilla-style panels with a section heading)
-- Clipping and scrolling on any container, per axis (`overflow`), with the mouse wheel for nested and horizontal scrolling
-- Lazy lists (LazyColumn, LazyRow) for thousands of rows
-  
-Need to do:
-- Grids 
+**Prerelease (0.1.0).** The API may still change before 1.0.
 
+Requires LazyLib and PatchLib. Built for Starsector 0.98.5a-RC4.
 
-### Currently done for content:
-- Text
-- Images
-- Tooltips
-- Buttons (with groups/multiselect)
-- Checkboxes
-- Text Fields
-- Ship Displays
-- Sliders and progress bars (one value; vanilla has no range slider)
-- Section headings (vanilla's own)
-- Tables (text, styled and custom cells, row tooltips, row clicks)
-- Stat grids and stat modifier grids
-- Labelled values, relationship bars, importance indicators
-- Commodity icons, cost displays (campaign only)
-- Ship lists, fleet summaries, codex entry links, cargo lists
-- Planet displays
-- Campaign content: skill panels, event progress bars, survey requirements, sector maps, the playthrough record
+## Example
 
-Need to do:
-- Large Skill Icons
-- Table rows with a glow (`addRowWithGlow`)
+```kotlin
+object MyScreens : StarUIPlugin {
+    override val addPanelToRefitTab: StarUIBuilder = {
+        val clicks = mutableStateOf(0)
+        Column(modifier = Modifier.anchor(Anchor.inside.topRight.ofParent(10f, 10f)), spacing = 5f) {
+            Text("Clicked ${clicks.value} times")
+            Button("Click me") { clicks.value++ }
+        }
+    }
+}
+
+// in your ModPlugin
+StarUIManager.registerPlugin(MyScreens)
+```
+
+To add UI to a vanilla panel that isn't one of the `StarUIPlugin` screens, call `inject` on it from a PatchLib hook.
+
+Every public class and function has KDoc. Ping @Starficz on the USC Discord for help.
+
+## License
+
+LGPL-3.0-only. See [LICENSE](LICENSE).
