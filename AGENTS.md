@@ -15,7 +15,8 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
 
 - `mod_info.json` dependencies: `staruiframework`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
 - Compile against `jars/StarUIFramework.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
-  **2.1.x**, so compile with `-api-version 2.1`.
+  **2.1.x**, so compile with `-api-version 2.1`. Attach `jars/StarUIFramework-sources.jar` to the library for the
+  KDoc in the IDE.
 - Imports live in five packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `TextOverflow`,
   `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`,
   `StarUIPlugin`, `inject`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`), `.components`
@@ -542,4 +543,6 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
 - Imports: five or more names from one package become a wildcard (`org.starficz.starui.components.*`); never for
   `java.*` (`java.util.*` and `java.awt.*` would shadow Kotlin's `List`) or object members. Sorted in IntelliJ's
   order: others, then `java`, `javax`, `kotlin`.
-- `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it.
+- `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it. After rebuilding
+  it, run `python build_sources_jar.py` so `jars/StarUIFramework-sources.jar` (the KDoc for users' IDEs, not in
+  `mod_info.json`) matches.

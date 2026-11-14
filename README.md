@@ -25,7 +25,11 @@ StarUIManager.registerPlugin(MyScreens)
 
 To add UI to a vanilla panel that isn't one of the `StarUIPlugin` screens, call `inject` on it from a PatchLib hook.
 
-Every public class and function has KDoc. Ping @Starficz on the USC Discord for help.
+Every public class and function has KDoc. To see it in IntelliJ, attach `jars/StarUIFramework-sources.jar` to the
+StarUIFramework library (Project Structure > Libraries > the library > `+` > the jar): hover and Quick
+Documentation then show it, and navigation opens the sources.
+
+Ping @Starficz on the USC Discord for help.
 
 ## License
 
