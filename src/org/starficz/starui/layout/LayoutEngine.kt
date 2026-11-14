@@ -4,9 +4,7 @@ import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.modifier.PaddingValues
 import org.starficz.starui.runtime.childNode
 import org.starficz.starui.runtime.StarUIPanelPlugin
-import org.starficz.starui.vanilla.height
 import org.starficz.starui.vanilla.setSize
-import org.starficz.starui.vanilla.width
 
 internal interface LayoutEngine {
     fun measure(maxWidth: Float, maxHeight: Float): Pair<Float, Float>

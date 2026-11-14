@@ -7,18 +7,36 @@ import java.lang.ref.WeakReference
 import kotlin.reflect.KProperty
 
 /**
- * A value the UI follows.
+ * A mutable value holder where reads to the [value] property during the execution of a builder (`Column { }`,
+ * `CustomPanel { }`, ...) subscribe that builder to changes of that value. When the [value] property is written to
+ * and changed, a rebuild of every subscribed builder will be scheduled for the next frame. If [value] is written to
+ * with the same value, no rebuilds will be scheduled.
  *
- * Reading [value] inside a container's builder block (`Column { ... }`, `CustomPanel { ... }`, ...) subscribes that
- * container: when the value changes, its children are rebuilt on the next frame, so plain `if` / `for` / `when` in a
- * builder stay in step with the state. Reads anywhere else (event handlers, render callbacks) just return the value.
- * Writing only marks the subscribed containers; nothing is rebuilt during the write.
+ * So plain `if`, `for` and `when` in a builder stay in step with the state:
  *
- * Use it directly (`state.value`) or as a delegate: `var count by mutableStateOf(0)` reads and writes [value].
+ * ```kotlin
+ * val ships = mutableStateOf(listOf<Ship>())
+ * Column {
+ *     for (ship in ships.value) key(ship.id) { Text(ship.name) }
+ *     if (ships.value.isEmpty()) Text("No ships")
+ * }
+ * ```
+ *
+ * Reads anywhere else (event handlers, render callbacks) just return the value, and nothing is rebuilt during a
+ * write: it only marks the subscribed builders.
+ *
+ * A [UIState] is also a property delegate: `var count by mutableStateOf(0)` reads and writes [value].
+ *
+ * @param initialValue the initial value
+ * @see mutableStateOf
  */
 class UIState<T>(initialValue: T) {
     private var current: T = initialValue
 
+    /**
+     * The current value. Reading it in a builder subscribes that builder; writing a different value schedules a
+     * rebuild of every subscribed builder and calls the [onChange] and [observeForever] listeners.
+     */
     var value: T
         get() {
             StarUIContext.currentScope?.recordRead(this)
@@ -47,13 +65,20 @@ class UIState<T>(initialValue: T) {
             }
         }
 
-    /** Reads the value without subscribing the builder that is running. */
+    /**
+     * Returns the current value without subscribing the builder that is running: the builder will not rebuild when
+     * this state changes.
+     */
     fun peek(): T = current
 
-    /** `var x by state`: reads [value]. */
+    /**
+     * Permits property delegation of `var`s using `by` for [UIState]: reads [value].
+     */
     operator fun getValue(thisRef: Any?, property: KProperty<*>): T = value
 
-    /** `var x by state`: writes [value]. */
+    /**
+     * Permits property delegation of `var`s using `by` for [UIState]: writes [value].
+     */
     operator fun setValue(thisRef: Any?, property: KProperty<*>, newValue: T) {
         value = newValue
     }
@@ -76,9 +101,13 @@ class UIState<T>(initialValue: T) {
     }
 
     /**
-     * Runs [action] with the new value after every change, for as long as the UI around this call lives: call it in a
-     * builder. It is dropped when the builder runs again (its next pass adds it again) or the UI is thrown away. For a
-     * listener outside any UI, use [observeForever].
+     * Calls [action] with the new value after every change, for as long as the UI around this call lives. Call it in a
+     * builder: it is dropped when the builder runs again (its next run adds it again), and when the UI is removed.
+     *
+     * For a listener outside any UI, use [observeForever].
+     *
+     * @param action called with the new value after each change
+     * @throws IllegalStateException if called outside a builder
      */
     fun onChange(action: (T) -> Unit) {
         val plugin = StarUIContext.currentPluginOrNull ?: throw IllegalStateException(
@@ -97,18 +126,36 @@ class UIState<T>(initialValue: T) {
     }
 
     /**
-     * Runs [action] with the new value after every change until [removeObserver]. The state holds [action] strongly:
-     * anything it refers to stays alive as long as the state does, so inside UI use [onChange] instead.
+     * Calls [action] with the new value after every change, until [removeObserver] is called with it.
+     *
+     * The state holds [action] strongly: anything it refers to stays alive as long as the state does. Inside UI, use
+     * [onChange] instead.
+     *
+     * @param action called with the new value after each change
      */
     fun observeForever(action: (T) -> Unit) {
         strongObservers.add(action)
     }
 
-    /** Stops an [observeForever] listener. */
+    /**
+     * Stops a listener added with [observeForever].
+     *
+     * @param action the listener to remove
+     */
     fun removeObserver(action: (T) -> Unit) {
         strongObservers.remove(action)
     }
 }
 
-/** Compose's name for a new [UIState]: `val count = mutableStateOf(0)`. */
+/**
+ * Return a new [UIState] initialized with the passed in [value], under Compose's name for it.
+ *
+ * ```kotlin
+ * val count = mutableStateOf(0)
+ * var name by mutableStateOf("")
+ * ```
+ *
+ * @param value the initial value for the [UIState]
+ * @see UIState
+ */
 fun <T> mutableStateOf(value: T): UIState<T> = UIState(value)

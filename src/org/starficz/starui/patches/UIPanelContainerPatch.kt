@@ -56,7 +56,7 @@ internal object UIPanelContainerPatch {
     fun unwrapAddComponent(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.obf)
+            context.setArg(0, arg.vanillaComponent)
         }
     }
 
@@ -73,7 +73,7 @@ internal object UIPanelContainerPatch {
     fun unwrapRemoveComponent(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.obf)
+            context.setArg(0, arg.vanillaComponent)
         }
     }
 
@@ -143,7 +143,7 @@ internal object UIPanelContainerPatch {
     fun unwrapBringToTop(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.obf)
+            context.setArg(0, arg.vanillaComponent)
         }
         requestLayoutOf(context.self)   // child order is flow order in a Column or Row
     }
@@ -161,7 +161,7 @@ internal object UIPanelContainerPatch {
     fun unwrapSendToBottom(context: BeforeContext) {
         val arg = context.getArg(0)
         if (arg is BoxedUIElement) {
-            context.setArg(0, arg.obf)
+            context.setArg(0, arg.vanillaComponent)
         }
         requestLayoutOf(context.self)
     }

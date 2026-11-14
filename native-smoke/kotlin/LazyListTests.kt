@@ -15,7 +15,7 @@ import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.Size
 import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.children
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private fun lazyAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))

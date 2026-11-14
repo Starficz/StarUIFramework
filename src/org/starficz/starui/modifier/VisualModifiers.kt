@@ -10,15 +10,32 @@ import org.starficz.starui.vanilla.*
 import java.awt.Color
 
 // --- Tooltips ---
-/** A tooltip with one paragraph of [text], shown while the cursor is over the component. */
+/**
+ * Adds a plain tooltip to the component: one paragraph of [text], shown while the cursor is over it. Tooltips
+ * provide a descriptive message for the component they are on.
+ *
+ * @param text the text of the tooltip
+ * @param width the width of the tooltip
+ * @param location where the tooltip shows, relative to the component
+ * @param margin the gap between the component and the tooltip, or `null` for vanilla's
+ */
 fun Modifier.tooltip(text: String, width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.addPara(text, 0f) }
     StarUIPanelPlugin.getOrCreate(it.actual).noteTooltipApplied()
 }
 
 /**
- * A tooltip built with vanilla's [TooltipMakerAPI], shown while the cursor is over the component:
- * `tooltip { addPara("Cost: %s", 0f, Misc.getHighlightColor(), "100") }`.
+ * Adds a rich tooltip to the component, built with vanilla's [TooltipMakerAPI] and shown while the cursor is over
+ * it. Tooltips provide a descriptive message for the component they are on.
+ *
+ * ```kotlin
+ * Modifier.tooltip { addPara("Costs %s supplies.", 0f, VanillaColors.highlight, "100") }
+ * ```
+ *
+ * @param width the width of the tooltip
+ * @param location where the tooltip shows, relative to the component
+ * @param margin the gap between the component and the tooltip, or `null` for vanilla's
+ * @param builder fills the tooltip
  */
 fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocation = TooltipMakerAPI.TooltipLocation.ABOVE, margin: Float? = null, builder: (@StarUIDsl TooltipMakerAPI).() -> Unit) = this.then {
     it.actual.addTooltip(location, width, margin) { tm -> tm.builder() }
@@ -26,7 +43,11 @@ fun Modifier.tooltip(width: Float = 300f, location: TooltipMakerAPI.TooltipLocat
 }
 
 // --- Convenience Rendering ---
-/** Fills the component's area with [color], under its content. */
+/**
+ * Draws a solid [color] behind the content, over the component's whole area.
+ *
+ * @param color color to paint background with
+ */
 fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
     GL11.glDisable(GL11.GL_TEXTURE_2D)
     GL11.glEnable(GL11.GL_BLEND)
@@ -37,14 +58,19 @@ fun Modifier.background(color: Color) = onRenderBelow { alphaMult ->
 }
 
 /**
- * A line [width] pixels thick along the inside of the component's edge, in [color], drawn over its content. The
- * default, a 1 px line in the player faction's dark colour, is what vanilla's campaign panels draw (intel, dialogs,
- * codex boxes). Drawn as four rectangles that meet without overlapping, so the corners are square and a translucent
+ * Modify the component to add a border with appearance specified with a [width] and a [color]: a line along the
+ * inside of its edge, drawn over its content. The default, a 1 pixel line in the player faction's dark colour, is
+ * what vanilla's campaign panels draw (intel, dialogs, codex boxes). Its corners are square, and a translucent
  * colour is even all the way round.
  *
- * Like a CSS border, it takes its space: [width] is added to the component's padding on every side, so `padding`
- * is the gap inside the border and content never sits on it. On a wrap axis the component grows by twice [width];
- * on an exact or fill axis it keeps its size and the content gets that much less room.
+ * Unlike Compose's border, and like a CSS border, it takes its space: [width] is added to the component's padding
+ * on every side, so `padding` is the gap inside the border and content never sits on it. On a wrapping axis the
+ * component grows by twice [width]; on an exact or fill axis it keeps its size and the content gets that much less
+ * room.
+ *
+ * @param color color to paint the border with
+ * @param width width of the border, in pixels
+ * @see VanillaFrame
  */
 fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = reserveBorder(width).onRender { alphaMult ->
     val t = minOf(width, (right - left) / 2f, (top - bottom) / 2f)
@@ -61,9 +87,13 @@ fun Modifier.border(color: Color = VanillaColors.dark, width: Float = 1f) = rese
 }
 
 /**
- * The sprite frames vanilla draws around its screens, each a set of nine-slice sprites in `settings.json`'s `ui`
- * graphics (corners, and edges that repeat along each side). Vanilla draws them untinted. Only the ones vanilla still
- * uses: the game ships older sets (`panel00`, `ui_border2` to `ui_border4`) that only dead or tutorial code loads.
+ * The sprite frames vanilla draws around its screens, for [Modifier.border]. Each is a set of nine-slice sprites in
+ * the `ui` graphics of `settings.json`: corners, and edges that repeat along each side. Vanilla draws them untinted.
+ *
+ * Only the frames vanilla still uses on their own are here. The game ships older sets that only dead or tutorial code
+ * loads: `panel00` and `ui_border2` (never used), `ui_border3` (the tutorial's billboards) and `ui_border4` (the old
+ * codex). `ui_border4` lives on only as the old border style of a ship display, which vanilla shows on the Missions
+ * screen's flagship; `ShipDisplay(showBorder = true, newBorderStyle = false)` draws it.
  */
 enum class VanillaFrame(internal val spriteSet: String) {
     /**
@@ -81,9 +111,13 @@ enum class VanillaFrame(internal val spriteSet: String) {
 private fun Modifier.reserveBorder(depth: Float) = then { component -> component.addPadding(PaddingValues.all(depth)) }
 
 /**
- * One of vanilla's sprite frames around the component, inside its edge and under its content, drawn as vanilla's
- * own frame class draws it: the corners at their size, each edge repeated between them. Like the line [border], it
- * takes its space: the frame's [VanillaFrame.depth] is added to the component's padding on every side.
+ * Modify the component to add one of vanilla's sprite frames, inside its edge and behind its content, drawn as
+ * vanilla's own frame class draws it: the corners at their size, and each edge repeated between them.
+ *
+ * Like the line [border], it takes its space: the frame's [VanillaFrame.depth] is added to the component's padding
+ * on every side.
+ *
+ * @param frame the frame to draw
  */
 fun Modifier.border(frame: VanillaFrame): Modifier {
     fun sprite(part: String) = Global.getSettings().getSprite("ui", "${frame.spriteSet}_$part")

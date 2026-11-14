@@ -2,8 +2,6 @@ package org.starficz.starui.layout
 
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.runtime.StarUIPanelPlugin
-import org.starficz.starui.vanilla.height
-import org.starficz.starui.vanilla.width
 
 /**
  * Lays out a container that holds one vanilla component made for a given width: most TooltipMakerAPI content (tables,

@@ -16,7 +16,7 @@ import org.starficz.starui.runtime.StarUIContext
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.Size
 import org.starficz.starui.vanilla.children
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private val BG = Color(30, 30, 40)

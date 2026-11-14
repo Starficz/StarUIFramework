@@ -17,7 +17,7 @@ import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.ButtonFont
 import org.starficz.starui.vanilla.children
 import org.starficz.starui.vanilla.Font
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private val REUSE_BG = Color(30, 30, 40)
@@ -136,7 +136,7 @@ fun registerReuseTests() {
         Input.sendList(root, Input.down(spacer.cx, spacer.cy))
         expect(spacerClicks == 1, "one click calls a reused component's onClick modifier once ($spacerClicks)")
         val handlers = (spacer.plugin as StarUIPanelPlugin).describeHandlers()
-        expect(handlers == "onClick, renderBelow", "the reused Spacer holds one handler of each kind ($handlers)")
+        expect(handlers == "onClick, onRenderBelow", "the reused Spacer holds one handler of each kind ($handlers)")
         frame()
         screenshot("final")
     }

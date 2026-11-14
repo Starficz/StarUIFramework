@@ -124,7 +124,7 @@ fun registerHoloTests() {
         expect(StarUIPanelPlugin.getAttached(first)?.isDisposed != false, "and disposes the old content's StarUI state")
         frame(40)
         expect(label.text == "page 1 count 0", "the new content is built for the new key (${label.text})")
-        expect(holo.obf.invoke("getCurr") === second, "and the holo shows it once the static has peaked")
+        expect(holo.vanillaComponent.invoke("getCurr") === second, "and the holo shows it once the static has peaked")
         count.value = 3
         frame()
         expect(label.text == "page 1 count 3", "the new content is reactive too (${label.text})")
@@ -151,8 +151,8 @@ fun registerHoloTests() {
         val before = scrolled.content
         page2.value = 1
         repeat(40) { frame(1) }   // as the game runs: one advance, one render
-        log("in a scroll panel: getCurr is new content = ${scrolled.obf.invoke("getCurr") === scrolled.content}, fold ${scrolled.fold.brightness}")
-        expect(scrolled.content !== before && scrolled.obf.invoke("getCurr") === scrolled.content,
+        log("in a scroll panel: getCurr is new content = ${scrolled.vanillaComponent.invoke("getCurr") === scrolled.content}, fold ${scrolled.fold.brightness}")
+        expect(scrolled.content !== before && scrolled.vanillaComponent.invoke("getCurr") === scrolled.content,
             "inside a scrolling Column the swap completes too")
         scrolled.forceClose(); scrolled.open(0.25f, flicker = false)
         val folds = ArrayList<Float>()

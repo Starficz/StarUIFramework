@@ -10,19 +10,19 @@ import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.getChildrenNonCopy
 
 /**
- * The UI tree below this component as indented text, one line per component: what it is, its text, its size, its
- * position relative to this component's top-left corner (x to the right, y downwards, the way layouts are
+ * Returns the UI tree below this component as indented text, one line per component: what it is, its text, its
+ * size, its position relative to this component's top left corner (x to the right, y downwards, the way layouts are
  * written), how StarUI sizes it, and which modifiers and reactive scope are attached.
  *
- * Meant for debugging layouts without a screenshot, for tests, and for AI agents that cannot see the screen:
+ * It is meant for debugging layouts without a screenshot, for tests, and for AI agents that cannot see the screen:
  *
  * ```
- * Column 150x80 at (40, 40) size=(wrap, wrap) [renderBelow] scope(builds=2, reads=1)
+ * Column 150x80 at (40, 40) size=(wrap, wrap) [onRenderBelow] scope(builds=2, reads=1)
  *   Text "state B" 52x15 at (0, 0) size=(wrap, wrap)
- *   Spacer 100x20 at (0, 20) size=(exact 100, exact 20) [renderBelow]
+ *   Spacer 100x20 at (0, 20) size=(exact 100, exact 20) [onRenderBelow]
  * ```
  *
- * Sizes and positions are the current ones: call it after a frame has rendered, or the layout has not run yet.
+ * The sizes and positions are the current ones: call it after a frame has rendered, or the layout has not run yet.
  */
 fun UIComponentAPI.dumpLayout(): String {
     val root = this.actual

@@ -20,7 +20,7 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
   `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`, `StarUIPlugin`,
   `inject`, `InjectPlacement`, `requestLayout`, `dumpLayout`), `.components` (Column, Text, ..., `ButtonGroup`, `key`),
   `.modifier` (Modifier and its extensions, `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, the
-  `Boxed*` types, vanilla helpers). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
+  `Boxed*` types, and the vanilla toolkit: see below). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
   everything else in it, and in `.layout`, is internal.
 - Names follow Jetpack Compose where Compose has one (with Left/Right instead of Start/End: Starsector has no
   right-to-left layouts), and vanilla's where the component is a vanilla object (`SectionHeading`,
@@ -135,6 +135,10 @@ and last a click handler or builder where there is one.
   (laid over the cell, reactive like any builder). Columns with `width` are exact; the rest share the leftover by
   `weight`. `rowTooltip`, `onRowClick` and a column's `tooltip` (on its header) work as in vanilla. Rows are all
   `itemHeight` tall, or as tall as the tallest custom cell's content needs (a button in a 20 px row would spill).
+  Sorting is optional: `column(...) { ... }.sortBy(descendingFirst = false) { it.cost }` makes a column sortable (a
+  header click sorts by it, a second click reverses), with vanilla's sort arrow in `sortIconColor`. StarUI sorts the
+  items itself: vanilla's own sort needs a delegate interface that is obfuscated, and `beginTable` makes every column
+  unsortable. The sort lives in the table, or in a `sort: UIState<TableSort?>` you pass (set, read or keep it).
 - The other TooltipMakerAPI ports (`StatGrid`, `RelationshipBar`, `ShipList`, ...) build vanilla's own component on a
   temporary tooltip at the width they get and hold it in a StarUI panel; they are made again when that width
   changes or a call gives them different arguments (a builder running again for something else keeps them). Those
@@ -151,14 +155,29 @@ and last a click handler or builder where there is one.
   `SliderAPI` and the component it is); it holds one value (its `min` is a floor, `max` an overflow mark). `step` is
   a step size (Compose's `steps` is a count). `configure` is a named argument taking any `SliderAPI` setter; it runs
   on every build. For a raw `SliderAPI` from elsewhere, `asComponent` (from `vanilla`) gives the component view.
+- **The vanilla toolkit** (`vanilla/UIExtensions.kt`, `VanillaHelpers.kt`, `VanillaWrappers.kt`): Kotlin access to
+  vanilla UI for code that works on vanilla components directly, public and kept working. Thin calls to the readable
+  methods vanilla's base component and panel have and the API interfaces leave out, plus small conveniences:
+  edges and centre (`left`, `right`, `top`, `bottom`, `centerX`, `centerY`), `setSize`, `setLocation`,
+  `xAlignOffset` / `yAlignOffset`, `setAbsoluteLocation`, `applyAnchor`, `fader`, `mouseoverHighlightFader`,
+  `topAncestor`, `isEnabled`, the slide animation (`setSlideData`, `slideIn` / `slideOut`, `forceSlide*`,
+  `isSliding`, `isSlidIn`, `isSlidOut`, `isSlidingIn`), tooltips (`addTooltip`, `setTooltipOffsetFromCenter`,
+  `setTooltipPositionRelativeToAnchor`), `setMouseOverPad`; on panels `children` (a copy), `getChildrenNonCopy()`
+  (vanilla's live list), `lastComponent`, `findChildWithMethod`, `allChildrenWithMethod`; `ButtonAPI.onClick`,
+  `LabelAPI.autoSize`, the `ScrollPanelAPI` extras (`renderShadows`, `shadowColor`, `addToOverlay`), `measureTextSize`,
+  `playSound`, `Color.withAlpha`. StarUI's components need none of them. Every one is called in the `toolkit-*`
+  suite groups, so a game update that renames a vanilla method fails there first. Add a check there with each new
+  helper. TooltipMakerAPI content is not part of it: StarUI wraps the pieces it supports as components
+  (`VanillaElements.kt`) and does not offer a general TooltipMakerAPI escape hatch.
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
-`ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel` gives its scroll panel).
+`ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel`, from `components`, gives
+its scroll panel).
 `Image`, `ShipDisplay`, `Slider` / `ProgressBar`, `.sectorMap` and `Holo` give `BoxedUIImage`, `BoxedUIShipPreview`,
 `BoxedUISlider`, `BoxedSectorMap` and `BoxedUIHolo`: small wrappers making one type of a vanilla object whose API interface is not
 a component type (`SliderAPI`, `SectorMapAPI` extend nothing) or that has none (images, ship previews), the way
 `BoxedUILabel` did before 0.98.5a made `LabelAPI` a component. Pass them to vanilla panel methods freely (StarUI
-unwraps them); every box's `obf` is the vanilla object itself (an obfuscated engine class), and reflective calls on
+unwraps them); every box's `vanillaComponent` is the vanilla object itself (an obfuscated engine class), and reflective calls on
 a box (`invoke`) reach it already. Where the API interface already is a component (`LabelAPI`, `ScrollPanelAPI`), it is returned as is,
 and the methods it leaves out are extensions on it (`ScrollPanelAPI.addToOverlay`, `LabelAPI.autoSize`).
 
@@ -208,7 +227,7 @@ Box(Size.exact(200f, 60f), overflow = Overflow.Clip) { ... }
   part reach nothing. Clip on both axes is vanilla's own clipping (it nests); one axis is a StarUI scissor.
 - **Only an exact or fill axis overflows**: a wrapping axis grows with its children.
 - A scrolling container is a vanilla scroll panel holding the StarUI container; the call still returns the container
-  (its size is the content's). `container.scrollPanel` (from `vanilla`) gives the `ScrollPanelAPI` (`scrollToY`,
+  (its size is the content's). `container.scrollPanel` (from `components`) gives the `ScrollPanelAPI` (`scrollToY`,
   `ensureVisible`, offsets); null on other panels. The scroll position survives rebuilds; a list that gets shorter is
   scrolled back into range. Scroll panel looks (left scrollbar, shadows, colours, wheel on or off) come from
   `StarUITheme.scroll`.
@@ -248,13 +267,16 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
 `.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
 `a then b` joins two modifiers (a component of your own that adds its look to the caller's `modifier`).
-The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so `width`, `height`, `left`, `top`,
-`right`, `bottom` (from `vanilla`) are its current size and edges: `.onLayout { label.text = "${width.toInt()} wide" }`.
+The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so its members `x`, `y`, `width`, `height`,
+`left`, `top`, `right`, `bottom`, `centerX`, `centerY` are its current size and edges (no import needed):
+`.onLayout { label.text = "${width.toInt()} wide" }`. Inside `.plugin { }` the same handlers are the plugin's
+`onRender { }`, `onRenderBelow { }`, `onAdvance { }`, `onLayout { }`, `onClick { }` and so on.
 
 Borders: `.border()` is a 1 px line in the player faction's dark colour, what vanilla's campaign panels draw;
 `.border(color, width)` changes it. `.border(VanillaFrame.TitleMenu)` draws `ui_border1`, the sprite frame of
 vanilla's dialogs and title menu, bare, inside the component and under its content, untinted as vanilla draws it
-(the game's other frame sets are only loaded by dead or tutorial code). Vanilla never shows it bare: for its look
+(the game's other frame sets are only loaded by dead or tutorial code; `ui_border4` lives on only as a ship
+display's old border style, `ShipDisplay(showBorder = true, newBorderStyle = false)`). Vanilla never shows it bare: for its look
 (a dark scanline background over the frame's inner edge, a tint, noise, the fold animation) use `Holo`. Like a CSS border, either one takes its space: its
 depth (the line's width, or `VanillaFrame.depth`: 8 for TitleMenu, 4 otherwise) is added to the padding on every
 side, so `padding` is the gap inside the border. A wrapping axis grows by it; an exact or fill one keeps its size
@@ -384,7 +406,7 @@ src/org/starficz/starui/
                         rule, padding, margin, alignment, anchor, measure, layout, reuse record, plugin; NodeStore:
                         where nodes live), Scope.kt (reactive scopes, rebuild timing, reuse cursor), StarUIContext.kt
                         (build-time stacks: plugin, theme, scope, key), ClipStack.kt
-  vanilla/              vanilla helpers, Boxed* (image, ship preview, slider, sector map, holo), Font, VanillaColors,
+  vanilla/              the vanilla toolkit (UIExtensions.kt, VanillaHelpers.kt), Boxed* (image, ship preview, slider, sector map, holo), Font, VanillaColors,
                         ReflectionUtils (internal), VanillaClasses.kt (the engine classes StarUI constructs, found at
                         load), VanillaFactory.kt (how components make vanilla elements: SettingsAPI factories where
                         they exist, else one kept scratch tooltip; text measuring; the vanilla ports' temporary

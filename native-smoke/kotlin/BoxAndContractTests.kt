@@ -67,7 +67,7 @@ fun registerContractTests() {
         frame()
         val direct = col.children
         for ((name, made1) in made) {
-            val actual = if (made1 is BoxedUIElement) made1.obf else made1
+            val actual = if (made1 is BoxedUIElement) made1.vanillaComponent else made1
             expect(direct.any { it === actual }, "$name's real component is a direct child of the Column")
             expect(actual.parent === col, "$name's parent is the Column itself (no wrapper)")
             expect(actual !is CustomPanelAPI, "$name is a native ${actual.javaClass.simpleName}, not a CustomPanel wrapper")
@@ -110,7 +110,7 @@ fun registerContractTests() {
             c = Spacer(Size.exact(10f, 10f))
         }
         frame()
-        val raw = boxed.obf
+        val raw = boxed.vanillaComponent
         fun order() = (host as UIPanelAPI).children
         expect(order().indexOf(raw) == 1, "boxed image's real component is the middle child")
 

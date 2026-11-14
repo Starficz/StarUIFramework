@@ -9,10 +9,8 @@ import org.starficz.starui.AxisOverflow
 import org.starficz.starui.modifier.PaddingValues
 import org.starficz.starui.runtime.childNode
 import org.starficz.starui.runtime.StarUIPanelPlugin
-import org.starficz.starui.vanilla.height
 import org.starficz.starui.vanilla.relativeToBase
 import org.starficz.starui.vanilla.setSize
-import org.starficz.starui.vanilla.width
 
 // ==========================================
 // STACK-SPECIFIC ENUMS

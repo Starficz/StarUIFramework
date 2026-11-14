@@ -7,13 +7,24 @@ import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.onClick
 
 /**
- * A group of toggle buttons (`Checkbox`, `AreaCheckbox` or `Button` with `bind` and `buttonGroup`), each bound to its
- * own `UIState<Boolean>`. A click:
- * - selects only the clicked button (a radio group);
+ * A group of toggle buttons that select together, as in vanilla's filter bars. Each member is a [Checkbox] or
+ * [AreaCheckbox] with `bind` and `buttonGroup` set, bound to its own `UIState<Boolean>`. A click:
+ * - selects only the clicked button, as a radio group does;
  * - with Shift or Ctrl held, toggles just the clicked button, so several can be on;
- * - on the only selected button, selects them all (click the one you have on to show everything again).
+ * - on the only selected button, selects them all, so a second click shows everything again.
  *
- * The usual filter bar: one click to see one category, Shift-click to add more, click it again for all.
+ * A button leaves the group when the builder that made it runs again without it, or when its UI is removed, so a
+ * group kept outside the builder never holds a removed button.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * val group = ButtonGroup()
+ * Row(spacing = 4f) {
+ *     AreaCheckbox("KINETIC", showKinetic, buttonGroup = group)
+ *     AreaCheckbox("ENERGY", showEnergy, buttonGroup = group)
+ * }
+ * ```
  */
 class ButtonGroup {
     // How many live buttons use each state, in the order the states joined. A button made inside a builder leaves the

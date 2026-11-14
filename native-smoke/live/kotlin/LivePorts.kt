@@ -15,7 +15,7 @@ import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.Size
 import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.BoxedSectorMap
-import org.starficz.starui.vanilla.sectorMap
+import org.starficz.starui.components.sectorMap
 
 object LivePorts {
     /** Height of the sector map; a change makes vanilla's map again (it is laid out once, at its size). */

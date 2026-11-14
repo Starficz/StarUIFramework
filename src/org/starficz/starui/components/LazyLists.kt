@@ -14,23 +14,42 @@ import kotlin.math.ceil
 import kotlin.math.floor
 
 /**
- * A scrolling list that only makes the rows near the visible part: a screen's worth above and below what shows. Use it
- * for lists of hundreds or thousands of items; a `Column(overflow = Overflow.ScrollVertical)` makes every row.
+ * The vertically scrolling list that only creates and lays out the items near the visible part: the visible rows,
+ * and a screen's worth above and below them. Use it for lists of hundreds or thousands of items; a
+ * `Column(overflow = Overflow.ScrollVertical)` makes every row.
  *
- * ```
+ * Every row is [itemHeight] tall and fills the list's width, so the scrollbar always covers the whole list. Each
+ * row's [itemContent] is its own reactive builder: a [UIState] it reads rebuilds that row only.
+ *
+ * A row that leaves the view and its buffer is removed, with its native state (a text field's focus, an inner
+ * scroll position): keep what must survive in a [UIState]. Rows in the buffer exist but do not advance; their
+ * `onAdvance` handlers and vanilla animations pause until they show.
+ *
+ * Example usage:
+ *
+ * ```kotlin
  * LazyColumn(ships.value, Size.fillMaxSize(), itemHeight = 40f, key = { it.id }) { ship ->
- *     Row(verticalAlignment = Alignment.CenterVertically, spacing = 8f) { Text(ship.name); Button("Sell") { ... } }
+ *     Row(verticalAlignment = Alignment.CenterVertically, spacing = 8f) {
+ *         Text(ship.name)
+ *         Button("Sell") { sell(ship) }
+ *     }
  * }
  * ```
  *
- * - Every row is [itemHeight] tall and fills the list's width; the scrollbar covers the whole list.
- * - Each row's builder is its own scope: a UIState it reads rebuilds that row only.
- * - With [key], a row keeps its components while it stays near the view, and removing or inserting items above the
- *   view keeps what you are looking at in place.
- * - A row that leaves the view (and its buffer) is thrown away, native state and all (a text field's focus, an inner
- *   scroll position), as in Compose: keep what must survive in a UIState. Rows just outside the view exist but do not
- *   advance (their onAdvance and vanilla animations pause until they show).
- * - The list's own size is exact or fill; [Modifier.padding] is space inside the scrolled content.
+ * @param items the data list
+ * @param size the size of the [LazyColumn]
+ * @param modifier the [Modifier] to be applied to this list. `Modifier.padding` is space inside the scrolled
+ *   content
+ * @param itemHeight the height of every row
+ * @param key a factory of stable and unique keys representing the item. Using the same key for multiple items in
+ *   the list is not allowed. If `null` is passed the position in the list will represent the key. When you specify
+ *   the key, a row keeps its components while it stays near the view, and adding or removing items above the view
+ *   keeps the visible rows in place
+ * @param spacing the gap between two neighbouring rows
+ * @param itemContent the content displayed by a single item
+ * @return the list's panel
+ * @see LazyRow
+ * @see Column
  */
 fun <T> UIPanelAPI.LazyColumn(
     items: List<T>,
@@ -43,8 +62,26 @@ fun <T> UIPanelAPI.LazyColumn(
 ): CustomPanelAPI = LazyList("LazyColumn", vertical = true, items, size, modifier, itemHeight, key, spacing, itemContent)
 
 /**
- * [LazyColumn] across: a horizontally scrolling list of [itemWidth]-wide items that fill its height, of which only
- * those near the visible part exist.
+ * The horizontally scrolling list that only creates and lays out the items near the visible part: the visible
+ * items, and a screen's worth to their left and right. Use it for strips of hundreds of items; a
+ * `Row(overflow = Overflow.ScrollHorizontal)` makes every item.
+ *
+ * Every item is [itemWidth] wide and fills the list's height. Everything else works as in [LazyColumn].
+ *
+ * @param items the data list
+ * @param size the size of the [LazyRow]
+ * @param modifier the [Modifier] to be applied to this list. `Modifier.padding` is space inside the scrolled
+ *   content
+ * @param itemWidth the width of every item
+ * @param key a factory of stable and unique keys representing the item. Using the same key for multiple items in
+ *   the list is not allowed. If `null` is passed the position in the list will represent the key. When you specify
+ *   the key, an item keeps its components while it stays near the view, and adding or removing items before the
+ *   view keeps the visible items in place
+ * @param spacing the gap between two neighbouring items
+ * @param itemContent the content displayed by a single item
+ * @return the list's panel
+ * @see LazyColumn
+ * @see Row
  */
 fun <T> UIPanelAPI.LazyRow(
     items: List<T>,
@@ -96,7 +133,7 @@ private fun <T> UIPanelAPI.LazyList(
             engine.indices[row] = i
         }
         // once per frame: has the visible range moved past what was built?
-        plugin.advance { engine.checkRange() }
+        plugin.onAdvance { engine.checkRange() }
     }
     return parts.panel
 }

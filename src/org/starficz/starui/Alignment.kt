@@ -3,73 +3,121 @@ package org.starficz.starui
 import org.starficz.starui.layout.StackDirection
 
 /**
- * Where a child sits in its container.
+ * The position of a component inside the space its container gives it. [Alignment] is used to define the alignment of a
+ * component inside a parent layout:
  *
- * - In a Box: `Modifier.align(Alignment.TopLeft)`, one of the nine positions.
- * - In a Column: `horizontalAlignment = Alignment.Left`, `CenterHorizontally` or `Right`.
- * - In a Row: `verticalAlignment = Alignment.Top`, `CenterVertically` or `Bottom`.
+ * - in a [Box][org.starficz.starui.components.Box], `Modifier.align(Alignment.TopLeft)`: one of the nine positions;
+ * - in a [Column][org.starficz.starui.components.Column], `horizontalAlignment = Alignment.Left`, `CenterHorizontally`
+ *   or `Right`;
+ * - in a [Row][org.starficz.starui.components.Row], `verticalAlignment = Alignment.Top`, `CenterVertically` or
+ *   `Bottom`.
+ *
+ * Starsector has no right-to-left layouts, so the alignments are absolute: left is always left.
  */
 class Alignment private constructor(private val name: String, internal val x: Float, internal val y: Float) {
-    /** Where children sit across a Column: [Left], [CenterHorizontally] or [Right]. */
+    /**
+     * The horizontal position of a component inside the width it is given. [Alignment.Horizontal] is used to define the
+     * alignment of the children across a [Column][org.starficz.starui.components.Column]: [Left], [CenterHorizontally]
+     * or [Right].
+     */
     class Horizontal internal constructor(private val name: String, internal val alignValue: Float) {
         override fun toString() = name
     }
 
-    /** Where children sit across a Row: [Top], [CenterVertically] or [Bottom]. */
+    /**
+     * The vertical position of a component inside the height it is given. [Alignment.Vertical] is used to define the
+     * alignment of the children across a [Row][org.starficz.starui.components.Row]: [Top], [CenterVertically] or
+     * [Bottom].
+     */
     class Vertical internal constructor(private val name: String, internal val alignValue: Float) {
         override fun toString() = name
     }
 
     override fun toString() = name
 
+    /** A collection of common [Alignment]s. */
     companion object {
         // x: 0 left .. 1 right; y: 0 bottom .. 1 top (Starsector's y points up)
+        /** At the top left corner. */
         val TopLeft = Alignment("TopLeft", 0f, 1f)
+        /** At the top, centred horizontally. */
         val TopCenter = Alignment("TopCenter", 0.5f, 1f)
+        /** At the top right corner. */
         val TopRight = Alignment("TopRight", 1f, 1f)
+        /** At the left, centred vertically. */
         val CenterLeft = Alignment("CenterLeft", 0f, 0.5f)
+        /** Centred on both axes. */
         val Center = Alignment("Center", 0.5f, 0.5f)
+        /** At the right, centred vertically. */
         val CenterRight = Alignment("CenterRight", 1f, 0.5f)
+        /** At the bottom left corner. */
         val BottomLeft = Alignment("BottomLeft", 0f, 0f)
+        /** At the bottom, centred horizontally. */
         val BottomCenter = Alignment("BottomCenter", 0.5f, 0f)
+        /** At the bottom right corner. */
         val BottomRight = Alignment("BottomRight", 1f, 0f)
 
-        /** The nine Box alignments, row by row from the top left. */
+        /** The nine [Alignment]s, row by row from the top left. */
         val entries: List<Alignment> = listOf(
             TopLeft, TopCenter, TopRight, CenterLeft, Center, CenterRight, BottomLeft, BottomCenter, BottomRight
         )
 
+        /** Aligns to the left edge. */
         val Left = Horizontal("Left", 0f)
+        /** Aligns to the centre, horizontally. */
         val CenterHorizontally = Horizontal("CenterHorizontally", 0.5f)
+        /** Aligns to the right edge. */
         val Right = Horizontal("Right", 1f)
 
+        /** Aligns to the top edge. */
         val Top = Vertical("Top", 1f)
+        /** Aligns to the centre, vertically. */
         val CenterVertically = Vertical("CenterVertically", 0.5f)
+        /** Aligns to the bottom edge. */
         val Bottom = Vertical("Bottom", 0f)
     }
 }
 
-/** Where text sits inside its component when the component is wider than the text. */
+/**
+ * Aligns text horizontally within its component, when the component is wider than the text: [Left], [Center] or
+ * [Right].
+ */
 enum class TextAlign { Left, Center, Right }
 
-/** Which way a Column stacks its children: [Downwards] (the default) or [Upwards]. */
+/**
+ * The direction a [Column][org.starficz.starui.components.Column] stacks its children in: [Downwards], top to bottom
+ * (the default), or [Upwards], bottom to top.
+ */
 enum class VGrow(internal val direction: StackDirection) {
+    /** Top to bottom: the first child at the top. */
     Downwards(StackDirection.DOWN),
+    /** Bottom to top: the first child at the bottom. */
     Upwards(StackDirection.UP)
 }
 
-/** Which way a Row stacks its children: [Rightwards] (the default) or [Leftwards]. */
+/**
+ * The direction a [Row][org.starficz.starui.components.Row] places its children in: [Rightwards], left to right (the
+ * default), or [Leftwards], right to left.
+ */
 enum class HGrow(internal val direction: StackDirection) {
+    /** Left to right: the first child at the left. */
     Rightwards(StackDirection.RIGHT),
+    /** Right to left: the first child at the right. */
     Leftwards(StackDirection.LEFT)
 }
 
-/** How an [org.starficz.starui.components.Image]'s sprite fills its box. */
+/**
+ * Represents a rule to apply to scale a sprite to be inscribed into the bounds of an
+ * [Image][org.starficz.starui.components.Image], when they have a different shape from the sprite.
+ */
 enum class ContentScale {
-    /** Scales the sprite to fit inside the box, keeping its shape. */
+    /**
+     * Scale the sprite uniformly (maintaining its aspect ratio) so that both dimensions of the sprite will be equal to
+     * or less than the corresponding dimension of the bounds, centred in them.
+     */
     Fit,
-    /** Stretches the sprite to the box's exact shape. */
+    /** Scale horizontally and vertically non-uniformly to fill the bounds. */
     FillBounds,
-    /** Draws the sprite at its own size, centred in the box. */
+    /** Do not apply any scaling to the sprite: draw it at its own size, centred in the bounds. */
     None
 }

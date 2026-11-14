@@ -117,18 +117,38 @@ internal fun UIPanelAPI.containerPanel(slot: ChildSlot, size: ImageSize): Pair<C
 }
 
 /**
- * Ties the components in [block] to [id], so they stay with their item when a list changes.
+ * The vanilla [ScrollPanelAPI] of a scrolling container: a [Column], [Row], [Box] or [CustomPanel] whose `overflow`
+ * scrolls on at least one axis. Use it to read or change the scroll position (`scrollToY`, `ensureVisible`, the
+ * offsets) and for the rest of [ScrollPanelAPI]. `null` for any other panel.
  *
- * Without keys, a rebuild reuses components by position: remove the first row and the second row gets the first
- * row's text field, focus included. Wrap each list item in a key:
+ * The container itself is the scroll panel's content, so its size is the size of the scrolled content, not of the
+ * visible area.
+ */
+val CustomPanelAPI.scrollPanel: ScrollPanelAPI?
+    get() = (plugin as? StarUIPanelPlugin)?.scrollHost
+
+/**
+ * [key] is a utility function that is used to "group" or "key" a block of components inside a builder. This is
+ * needed for correctness inside control flow that may cause a given component call to run more than once in a
+ * builder, such as a loop over a list.
  *
- * ```
+ * When a builder runs again, StarUI reuses the components it made the last time, matched by position. Without keys,
+ * removing the first item of a list makes the second item reuse the first item's components, with their native
+ * state (a text field's text and focus, a scroll position). With a key, each item keeps its own components:
+ *
+ * ```kotlin
  * for (ship in ships.value) key(ship.id) {
  *     Row { Text(ship.name); TextField(ship.note) }
  * }
  * ```
  *
- * Keys must be unique within one container. Use ids, strings or numbers.
+ * The value for a key does not need to be globally unique, and needs only be unique amongst the calls of [key] in
+ * the same container.
+ *
+ * @param id the value that identifies this group. It is compared to its previous value using [equals] and
+ *   [hashCode]
+ * @param block the components of this group
+ * @return the value [block] returns
  */
 fun <R> key(id: Any, block: () -> R): R = StarUIContext.withKey(id, block)
 
@@ -187,8 +207,25 @@ internal fun finishLeaf(
 }
 
 /**
- * Uses [theme] for the default arguments of every component called in [builder]. Adds no panel: the components go
- * straight into this one.
+ * Theming refers to the customization of StarUI's components to better fit the look of a mod's screens.
+ *
+ * Components such as [Button] and [Checkbox] use values provided here when retrieving default values. A theme only
+ * provides defaults: an argument passed to a component call always wins.
+ *
+ * [Theme] replaces the whole theme for the components in [builder]. To change only part of it, copy the current
+ * theme and override only the parts that need to change:
+ *
+ * ```kotlin
+ * Theme(StarUITheme.current.copy(button = StarUITheme.current.button.copy(font = ButtonFont.ORBITRON_20))) {
+ *     Button("Launch")
+ * }
+ * ```
+ *
+ * [Theme] adds no panel of its own: the components in [builder] go straight into this panel.
+ *
+ * @param theme the theme for the components in [builder]
+ * @param builder the content using this theme
+ * @see StarUITheme
  */
 fun UIPanelAPI.Theme(
     theme: StarUITheme,
@@ -291,9 +328,32 @@ internal fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modi
 }
 
 /**
- * A panel that does not place its children: position each one with `Modifier.anchor(...)`. Wraps its children by
- * default. [overflow] says what happens to children outside it (see [Overflow]); a scrolling CustomPanel's content
- * reaches as far right and down as its children do.
+ * A layout component that does not place its children: each child is positioned with `Modifier.anchor(...)`,
+ * against the [CustomPanel] or against a sibling. For layout components that place their children themselves, see
+ * [Column], [Row] and [Box].
+ *
+ * By default a [CustomPanel] wraps its children: it is as large as needed to reach the far edge of each anchored
+ * child. To change the size of the [CustomPanel], pass a different [size].
+ *
+ * Children that reach outside the [CustomPanel] are drawn and take input by default. [overflow] can clip them, or
+ * make the [CustomPanel] scroll; the content of a scrolling [CustomPanel] reaches as far right and down as its
+ * children do.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * CustomPanel(Size.exact(300f, 200f)) {
+ *     Text("Top left", modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(10f, 10f)))
+ *     Button("Close", modifier = Modifier.anchor(Anchor.inside.bottomRight.ofParent(10f, 10f)))
+ * }
+ * ```
+ *
+ * @param size the size of the [CustomPanel]. By default it wraps its children
+ * @param modifier the [Modifier] to be applied to this panel
+ * @param overflow what happens to children that reach outside the [CustomPanel], per axis. See [Overflow]
+ * @param builder the content of the [CustomPanel]. It runs again when a [UIState] it read changes
+ * @return the [CustomPanel]'s panel
+ * @see Anchor
  */
 fun UIPanelAPI.CustomPanel(
     size: Size = Size.wrapContent(),
@@ -310,9 +370,30 @@ fun UIPanelAPI.CustomPanel(
 }
 
 /**
- * Puts its children on top of each other, later ones drawn over earlier ones. Place each child with
- * `Modifier.align(...)` (top left by default). Wraps its largest child by default. [overflow] says what happens to
- * children bigger than it (see [Overflow]): `Overflow.Scroll` makes it a 2D viewport.
+ * A layout component with [builder] content. The [Box] will size itself to fit its largest child. Each child is
+ * positioned inside the [Box] with `Modifier.align(...)`, or at the top left without one. When the content has more
+ * than one child, the children will be stacked one on top of the other in the order they were added.
+ *
+ * A child that fills an axis takes the [Box]'s whole size on that axis. This needs the [Box] to have a known size on
+ * that axis (exact or fill): a filling child in a wrapping [Box] throws.
+ *
+ * [overflow] says what happens to children larger than the [Box]; `Overflow.Scroll` makes it a viewport that
+ * scrolls on both axes.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Box(Size.exact(200f, 100f), Modifier.background(VanillaColors.panel)) {
+ *     Text("Centered", modifier = Modifier.align(Alignment.Center))
+ *     Button("X", modifier = Modifier.align(Alignment.TopRight))
+ * }
+ * ```
+ *
+ * @param size the size of the [Box]. By default it wraps its largest child
+ * @param modifier the [Modifier] to be applied to this box
+ * @param overflow what happens to children larger than the [Box], per axis. See [Overflow]
+ * @param builder the content of the [Box]. It runs again when a [UIState] it read changes
+ * @return the [Box]'s panel
  */
 fun UIPanelAPI.Box(
     size: Size = Size.wrapContent(),
@@ -356,10 +437,43 @@ private fun UIPanelAPI.StackLayout(
 }
 
 /**
- * Places its children top to bottom, [spacing] apart, aligned by [horizontalAlignment] (left by default).
- * Wraps its children by default, as in Compose. `grow = VGrow.Upwards` stacks bottom to top instead.
- * [overflow] says what happens to children that do not fit (see [Overflow]): `Overflow.ScrollVertical` makes it a
- * scrolling list.
+ * A layout component that places its children in a vertical sequence. For a layout component that places its
+ * children in a horizontal sequence, see [Row]. Note that by default items do not scroll; pass
+ * `overflow = Overflow.ScrollVertical` to add this behavior. For a vertically scrollable list that only creates and
+ * lays out the currently visible items see [LazyColumn].
+ *
+ * The [Column] layout is able to assign children heights according to their weights, given as
+ * `Axis.FillMax(weight)` in a child's size (`Size.fillMaxHeight()` and `Size.fillMaxSize()` have a weight of 1).
+ * Children that do not fill are measured first; the height that remains is then divided between the filling
+ * children in proportion to their weights. This needs the [Column] to have a known height (exact or fill): a filling
+ * child in a wrapping [Column] throws. If the [Column] scrolls vertically, a filling child gets what is left of the
+ * visible height, which is 0 once the content overflows.
+ *
+ * When none of its children fill its height, a [Column] will be as small as possible to fit its children one on top
+ * of the other. To change the size of the [Column], pass a different [size]; StarUI has no sizing modifiers. The
+ * children are [spacing] apart, and [horizontalAlignment] positions the children that are narrower than the
+ * [Column].
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Column(Size.fillMaxHeight(width = 200f), spacing = 5f) {
+ *     Text("Fleet")
+ *     FlexSpacer()                // takes the height that is left
+ *     Button("Close") { close() }
+ * }
+ * ```
+ *
+ * @param size the size of the [Column]. By default it wraps its children
+ * @param modifier the [Modifier] to be applied to this column
+ * @param grow the direction the children are stacked in: [VGrow.Downwards] (top to bottom) or [VGrow.Upwards]
+ * @param horizontalAlignment the horizontal alignment of the [Column]'s children
+ * @param spacing the gap between two neighbouring children
+ * @param overflow what happens to children that do not fit in the [Column], per axis. See [Overflow]
+ * @param builder the content of the [Column]. It runs again when a [UIState] it read changes
+ * @return the [Column]'s panel
+ * @see Row
+ * @see LazyColumn
  */
 fun UIPanelAPI.Column(
     size: Size = Size.wrapContent(),
@@ -380,10 +494,42 @@ fun UIPanelAPI.Column(
 )
 
 /**
- * Places its children left to right, [spacing] apart, aligned by [verticalAlignment] (top by default).
- * Wraps its children by default, as in Compose. `grow = HGrow.Leftwards` stacks right to left instead.
- * [overflow] says what happens to children that do not fit (see [Overflow]): `Overflow.ScrollHorizontal` makes it a
- * scrolling strip.
+ * A layout component that places its children in a horizontal sequence. For a layout component that places its
+ * children in a vertical sequence, see [Column]. Note that by default items do not scroll; pass
+ * `overflow = Overflow.ScrollHorizontal` to add this behavior. For a horizontally scrollable list that only creates
+ * and lays out the currently visible items see [LazyRow].
+ *
+ * The [Row] layout is able to assign children widths according to their weights, given as `Axis.FillMax(weight)` in
+ * a child's size (`Size.fillMaxWidth()` and `Size.fillMaxSize()` have a weight of 1). Children that do not fill are
+ * measured first; the width that remains is then divided between the filling children in proportion to their
+ * weights. This needs the [Row] to have a known width (exact or fill): a filling child in a wrapping [Row] throws.
+ * If the [Row] scrolls horizontally, a filling child gets what is left of the visible width, which is 0 once the
+ * content overflows.
+ *
+ * When none of its children fill its width, a [Row] will be as small as possible to fit its children one next to
+ * the other. To change the size of the [Row], pass a different [size]; StarUI has no sizing modifiers. The children
+ * are [spacing] apart, and [verticalAlignment] positions the children that are shorter than the [Row].
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Row(Size.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, spacing = 10f) {
+ *     Text("Name")
+ *     FlexSpacer()                // takes the width that is left
+ *     Button("Rename") { rename() }
+ * }
+ * ```
+ *
+ * @param size the size of the [Row]. By default it wraps its children
+ * @param modifier the [Modifier] to be applied to this row
+ * @param grow the direction the children are placed in: [HGrow.Rightwards] (left to right) or [HGrow.Leftwards]
+ * @param verticalAlignment the vertical alignment of the [Row]'s children
+ * @param spacing the gap between two neighbouring children
+ * @param overflow what happens to children that do not fit in the [Row], per axis. See [Overflow]
+ * @param builder the content of the [Row]. It runs again when a [UIState] it read changes
+ * @return the [Row]'s panel
+ * @see Column
+ * @see LazyRow
  */
 fun UIPanelAPI.Row(
     size: Size = Size.wrapContent(),

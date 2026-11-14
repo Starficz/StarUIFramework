@@ -9,8 +9,6 @@ import org.starficz.starui.components.Spacer
 import org.starficz.starui.components.Text
 import org.starficz.starui.modifier.*
 import org.starficz.starui.Size
-import org.starficz.starui.vanilla.height
-import org.starficz.starui.vanilla.width
 import java.awt.Color
 
 private fun Rgb.isRed() = r > 170 && g < 100 && b < 100

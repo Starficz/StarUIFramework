@@ -2,11 +2,20 @@ package org.starficz.starui.modifier
 
 import com.fs.starfarer.api.input.InputEventAPI
 
-/** Extends the area that takes mouse input beyond the component, on every side. */
+/**
+ * Extends the area that takes mouse input by [all] pixels beyond the component, on every side, without changing its
+ * size or how it is drawn.
+ */
 fun Modifier.hitBoxPadding(all: Float) = hitBoxPadding(left = all, top = all, right = all, bottom = all)
-/** Extends the area that takes mouse input: [horizontal] on the left and right, [vertical] on the top and bottom. */
+/**
+ * Extends the area that takes mouse input by [horizontal] pixels on the left and right of the component, and by
+ * [vertical] pixels on the top and bottom.
+ */
 fun Modifier.hitBoxPadding(horizontal: Float, vertical: Float) = hitBoxPadding(left = horizontal, top = vertical, right = horizontal, bottom = vertical)
-/** Extends the area that takes mouse input, by side (the same shapes as margin and padding). */
+/**
+ * Extends the area that takes mouse input beyond the component, by side: [left], [top], [right] and [bottom], with
+ * [horizontal] and [vertical] setting two sides at once (the same shapes as [margin] and [padding]).
+ */
 fun Modifier.hitBoxPadding(
     vararg namedArgumentsOnly: NamedArgumentsOnly,
     horizontal: Float = 0f, vertical: Float = 0f,
@@ -18,27 +27,94 @@ fun Modifier.hitBoxPadding(
 // --- Events (Mouse) ---
 // Mouse handlers get the event; one that does not need it can ignore it: `onClick { clicks++ }`.
 
-/** Runs when a mouse button is pressed over the component. */
+/**
+ * Configure the component to receive clicks: [action] will be called when a mouse button is pressed over the
+ * component, with the event. A handler that does not need the event can ignore it: `onClick { clicks++ }`.
+ *
+ * For a vanilla [ButtonAPI][com.fs.starfarer.api.ui.ButtonAPI], use the `onClick` argument of
+ * [Button][org.starficz.starui.components.Button] instead: it runs when the button is pressed, keyboard shortcut
+ * included.
+ *
+ * The event is not consumed: what is behind the component sees it too. Call `event.consume()` in [action], or
+ * set `consumeEvents` with [plugin], to stop it.
+ *
+ * @param action will be called when a mouse button is pressed over the component
+ * @see onClickRelease
+ */
 fun Modifier.onClick(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onClick(action) } }
-/** Runs when the mouse button is released after an [onClick] on this component. */
+/**
+ * [action] will be called when the mouse button is released over the component, after a press that started on it.
+ *
+ * The event is not consumed: what is behind the component sees it too. Call `event.consume()` in [action], or
+ * set `consumeEvents` with [plugin], to stop it.
+ *
+ * @param action will be called when the press on the component ends over it
+ * @see onClick
+ */
 fun Modifier.onClickRelease(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onClickRelease(action) } }
-/** Runs when a mouse button is pressed anywhere outside the component. */
+/**
+ * [action] will be called when a mouse button is pressed anywhere outside the component: to close a popup or a
+ * menu, for example.
+ *
+ * @param action will be called when a mouse button is pressed outside the component
+ */
 fun Modifier.onClickOutside(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onClickOutside(action) } }
-/** Runs on every mouse event (moves included) while the cursor is over the component. */
+/**
+ * [action] will be called on every mouse event, moves included, while the cursor is over the component.
+ *
+ * @param action will be called with each mouse event over the component
+ * @see onHoverEnter
+ * @see onHoverExit
+ */
 fun Modifier.onHover(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onHover(action) } }
-/** Runs when the cursor moves onto the component. */
+/**
+ * [action] will be called when the cursor moves onto the component.
+ *
+ * @param action will be called with the event that brought the cursor onto the component
+ * @see onHoverExit
+ */
 fun Modifier.onHoverEnter(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onHoverEnter(action) } }
-/** Runs when the cursor leaves the component. */
+/**
+ * [action] will be called when the cursor leaves the component.
+ *
+ * @param action will be called with the event that took the cursor off the component
+ * @see onHoverEnter
+ */
 fun Modifier.onHoverExit(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onHoverExit(action) } }
-/** Runs on every mouse event over the component while the left button is held down. */
+/**
+ * [action] will be called on every mouse event over the component while the left mouse button is held down: for
+ * dragging.
+ *
+ * @param action will be called with each mouse event over the component while the button is down
+ */
 fun Modifier.onMouseHeld(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onMouseHeld(action) } }
 
 // --- Events (Keyboard) ---
 // Key handlers see every key event that reaches the component, whether or not the cursor is over it.
 
-/** Runs when a key is pressed. `event.eventValue` is the `Keyboard.KEY_*` code. */
+/**
+ * [action] will be called when a key is pressed. `event.eventValue` is the `Keyboard.KEY_*` code.
+ *
+ * Key handlers see every key event that reaches the component, whether or not the cursor is over it.
+ *
+ * @param action will be called with the key event
+ * @see onKeyUp
+ * @see onKeyHeld
+ */
 fun Modifier.onKeyDown(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onKeyDown(action) } }
-/** Runs when a key is released. */
+/**
+ * [action] will be called when a key is released. Key handlers see every key event that reaches the component,
+ * whether or not the cursor is over it.
+ *
+ * @param action will be called with the key event
+ * @see onKeyDown
+ */
 fun Modifier.onKeyUp(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onKeyUp(action) } }
-/** Runs on each key repeat while a key is held down. */
+/**
+ * [action] will be called on each key repeat while a key is held down. Key handlers see every key event that
+ * reaches the component, whether or not the cursor is over it.
+ *
+ * @param action will be called with each repeat event
+ * @see onKeyDown
+ */
 fun Modifier.onKeyHeld(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onKeyHeld(action) } }

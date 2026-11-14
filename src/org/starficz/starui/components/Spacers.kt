@@ -14,8 +14,15 @@ import org.starficz.starui.vanilla.VanillaColors
 import java.awt.Color
 
 /**
- * Empty space of [size] (exact or fill). Fills the space it is given by default. Draws nothing; add
- * `Modifier.background(color)` for a coloured block.
+ * Component that represents an empty space layout, whose size is its [size]. By default it fills the space it is
+ * given.
+ *
+ * A [Spacer] draws nothing; `Modifier.background(color)` makes it a block of colour.
+ *
+ * @param size the size of the [Spacer]
+ * @param modifier the [Modifier] to be applied to this spacer
+ * @return the spacer's panel
+ * @see FlexSpacer
  */
 fun UIPanelAPI.Spacer(
     size: BoundedSize = Size.fillMaxSize(),
@@ -37,7 +44,14 @@ fun UIPanelAPI.Spacer(
     return panel
 }
 
-/** A horizontal line [thickness] pixels tall across the full width. */
+/**
+ * A divider is a thin line that groups content in lists and layouts. It is a horizontal line across the full width.
+ *
+ * @param modifier the [Modifier] to be applied to this divider line
+ * @param thickness thickness of this divider line, in pixels
+ * @param color color of this divider line. By default the player faction's dark UI colour
+ * @return the divider's panel
+ */
 fun UIPanelAPI.Divider(
     modifier: Modifier = Modifier,
     thickness: Float = StarUITheme.current.divider.thickness,
@@ -48,8 +62,14 @@ fun UIPanelAPI.Divider(
 )
 
 /**
- * Takes all space left over in a Row or Column, pushing what comes after it to the far end. Several share the space
- * by [weight].
+ * An empty space that takes the space left over in a [Row] or [Column], pushing what comes after it to the far end.
+ *
+ * Its size is proportional to its [weight] relative to other filling siblings: the parent divides the space
+ * remaining after measuring the children that do not fill, and distributes it according to the weights.
+ *
+ * @param weight the proportional size to give to this spacer, as related to the total of all filling siblings
+ * @param modifier the [Modifier] to be applied to this spacer
+ * @return the spacer's panel
  */
 fun UIPanelAPI.FlexSpacer(
     weight: Float = 1f,

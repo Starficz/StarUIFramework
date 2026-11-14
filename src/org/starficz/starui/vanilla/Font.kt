@@ -53,8 +53,10 @@ enum class Font(file: String) {
 }
 
 /**
- * The fonts a vanilla button can be made with (TooltipMakerAPI has one setter for each and no other way). A separate
- * type, so a button cannot be given a font it does not support.
+ * The fonts a vanilla button can be made with: TooltipMakerAPI has one setter for each, and no other way. A type of
+ * its own, so a button cannot be given a font it does not support.
+ *
+ * @property font the same font as a [Font]
  */
 enum class ButtonFont(val font: Font) {
     ORBITRON_12_CONDENSED(Font.ORBITRON_12_CONDENSED),

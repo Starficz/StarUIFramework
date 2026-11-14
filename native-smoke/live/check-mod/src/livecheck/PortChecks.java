@@ -143,7 +143,7 @@ public final class PortChecks {
             CustomPanelAPI holder = made.get("SectorMap");
             c.near(holder.getPosition().getHeight(), 220f, 1f, "the SectorMap panel took its new height");
             BoxedSectorMap again = LivePorts.map(holder);
-            c.expect(again != null && again.getObf() != firstMap.getObf(), "a new size made vanilla's map again");
+            c.expect(again != null && again.getVanillaComponent() != firstMap.getVanillaComponent(), "a new size made vanilla's map again");
             if (again != null) {
                 Vector2f now = again.getWorldCenter();
                 // vanilla's getWorldCenter truncates to whole units and measures from the whole map panel, while

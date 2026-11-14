@@ -1,44 +1,44 @@
 package org.starficz.starui.vanilla
 
+import com.fs.graphics.util.Fader
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.ui.*
 import org.starficz.starui.Anchor.AnchorData
 import org.starficz.starui.Anchor.AnchorReference
-import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.ReflectionUtils.getMethodsMatching
 import org.starficz.starui.vanilla.ReflectionUtils.invoke
 import org.starficz.starui.vanilla.ReflectionUtils.set
 
-// UIComponentAPI extensions that expose UIComponent fields/methods
-/**
- * The vanilla scroll panel of a scrolling container (a Row, Column, Box or CustomPanel whose `overflow` scrolls on
- * an axis), for `scrollToY`, `ensureVisible`, offsets and the rest of [ScrollPanelAPI]; null for any other panel.
- * The container is the scroll panel's content: its size is the scrolled content's size.
- */
-val CustomPanelAPI.scrollPanel: ScrollPanelAPI?
-    get() = (plugin as? StarUIPanelPlugin)?.scrollHost
+// Kotlin access to vanilla UI: the readable methods of vanilla's base component and panel classes that the API
+// interfaces leave out, and small conveniences on top of the API. Each is a thin call through to vanilla, for working
+// on vanilla UI directly; StarUI's components do not need any of them.
+
+// ---------------------------------------------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------------------------------------------
 
 /**
- * The vanilla map of a `SectorMap` (inside its title box when it has one), boxed: pings, centring, zoom, and the panel
- * it is. Null for any other panel, and before the map is first laid out (it is made at the size it gets). Vanilla
- * lays a map out once, so StarUI makes it again when its size changes: read this when you use it, do not keep it.
+ * Extends the area where vanilla sees the mouse as over the component (its hover highlight and its tooltip) beyond
+ * the component's bounds.
+ *
+ * @param leftPad the extra space on the left, in pixels
+ * @param rightPad the extra space on the right, in pixels
+ * @param topPad the extra space on the top, in pixels
+ * @param bottomPad the extra space on the bottom, in pixels
  */
-val CustomPanelAPI.sectorMap: BoxedSectorMap?
-    get() = findSectorMap(this)?.let { BoxedSectorMap(it) }
-
-internal fun findSectorMap(component: UIComponentAPI): SectorMapAPI? {
-    if (component is SectorMapAPI) return component
-    if (component !is UIPanelAPI) return null
-    return component.getChildrenNonCopy().firstNotNullOfOrNull { findSectorMap(it) }
-}
-
 fun UIComponentAPI.setMouseOverPad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
     invoke("setMouseOverPad", leftPad, rightPad, topPad, bottomPad)
 }
 
 // width, height, x and y are UIComponentAPI members since 0.98.5a (read-only; set them on `position`).
 
-/** Sizes the component; does nothing when it already has that size (vanilla recomputes the position tree on each call). */
+/**
+ * Sizes the component, through its position. Does nothing when it already has that size, since vanilla works out
+ * the position of everything placed relative to it again on each call.
+ *
+ * @param width the new width
+ * @param height the new height
+ */
 fun UIComponentAPI.setSize(width: Float, height: Float){
     val p = position
     if (p.width == width && p.height == height) return
@@ -46,37 +46,127 @@ fun UIComponentAPI.setSize(width: Float, height: Float){
 }
 
 
+/** The x of the component's left edge, in screen coordinates. */
 val UIComponentAPI.left
     get() = x
 
+/** The y of the component's bottom edge, in screen coordinates (Starsector's y points up). */
 val UIComponentAPI.bottom
     get() = y
 
+/** The y of the component's top edge, in screen coordinates. */
 val UIComponentAPI.top
     get() = y + height
 
+/** The x of the component's right edge, in screen coordinates. */
 val UIComponentAPI.right
     get() = x + width
 
+/**
+ * Places the component's bottom left corner at ([x], [y]) in screen coordinates, through its position.
+ *
+ * @param x the x of the left edge
+ * @param y the y of the bottom edge
+ */
 fun UIComponentAPI.setLocation(x: Float, y: Float){
     position.setLocation(x, y)
 }
 
+/** The x of the component's centre, in screen coordinates. */
 val UIComponentAPI.centerX
     get() = position.centerX
 
+/** The y of the component's centre, in screen coordinates. */
 val UIComponentAPI.centerY
     get() = position.centerY
 
+/**
+ * The horizontal offset added to wherever the component is placed relative to its reference. Changing it moves the
+ * component without changing what it is placed against.
+ */
 var UIComponentAPI.xAlignOffset: Float
     get() = position.invoke("getXAlignOffset") as Float
     set(xOffset) { position.setXAlignOffset(xOffset) }
 
+/**
+ * The vertical offset added to wherever the component is placed relative to its reference, positive upwards.
+ * Changing it moves the component without changing what it is placed against.
+ */
 var UIComponentAPI.yAlignOffset: Float
     get() = position.invoke("getYAlignOffset") as Float
     set(yOffset) { position.setYAlignOffset(yOffset) }
 
 
+/** The component's fader: its opacity over time as vanilla fades it in and out. */
+var UIComponentAPI.fader: Fader?
+    get() = invoke("getFader") as Fader?
+    set(fader) { invoke("setFader", fader) }
+
+/** The fader vanilla drives while the mouse is over the component (its hover highlight). */
+val UIComponentAPI.mouseoverHighlightFader: Fader?
+    get() = invoke("getMouseoverHighlightFader") as Fader?
+
+/** The outermost panel above the component (the screen it is on). */
+val UIComponentAPI.topAncestor: UIPanelAPI?
+    get() = invoke("findTopAncestor") as UIPanelAPI?
+
+/** Whether the component takes input; a disabled one is drawn greyed out where it has a disabled look. */
+var UIComponentAPI.isEnabled: Boolean
+    get() = invoke("isEnabled") as Boolean
+    set(enabled) { invoke("setEnabled", enabled) }
+
+/** Moves the component's tooltip away from its centre by these margins. */
+fun UIComponentAPI.setTooltipOffsetFromCenter(xMargin: Float, yMargin: Float) {
+    invoke("setTooltipOffsetFromCenter", xMargin, yMargin)
+}
+
+/** Places the component's tooltip relative to [anchor] instead of the component, by these margins. */
+fun UIComponentAPI.setTooltipPositionRelativeToAnchor(xMargin: Float, yMargin: Float, anchor: UIComponentAPI) {
+    invoke("setTooltipPositionRelativeToAnchor", xMargin, yMargin, anchor)
+}
+
+/**
+ * Sets up vanilla's slide animation: [slideOut] moves the component by ([xOffset], [yOffset]) over [durationOut]
+ * seconds and [slideIn] brings it back over [durationIn].
+ */
+fun UIComponentAPI.setSlideData(xOffset: Float, yOffset: Float, durationIn: Float, durationOut: Float) {
+    invoke("setSlideData", xOffset, yOffset, durationIn, durationOut)
+}
+
+/** Slides the component back to its place (see [setSlideData]). */
+fun UIComponentAPI.slideIn() { invoke("slideIn") }
+/** Slides the component away by its slide offset (see [setSlideData]). */
+fun UIComponentAPI.slideOut() { invoke("slideOut") }
+/** In place at once, no animation. */
+fun UIComponentAPI.forceSlideIn() { invoke("forceSlideIn") }
+/** Slid away at once, no animation. */
+fun UIComponentAPI.forceSlideOut() { invoke("forceSlideOut") }
+
+/** Sliding in either direction. */
+val UIComponentAPI.isSliding: Boolean get() = invoke("isSliding") as Boolean
+/** Fully in place. */
+val UIComponentAPI.isSlidIn: Boolean get() = invoke("isSlidIn") as Boolean
+/** Fully slid away. */
+val UIComponentAPI.isSlidOut: Boolean get() = invoke("isSlidOut") as Boolean
+/** Sliding back into place. */
+val UIComponentAPI.isSlidingIn: Boolean get() = invoke("isSlidingIn") as Boolean
+
+/**
+ * Moves the component so its bottom left is at ([x], [y]) on the screen ((0, 0) is the screen's bottom left), through
+ * its align offsets: it keeps whatever it is placed relative to.
+ */
+fun UIComponentAPI.setAbsoluteLocation(x: Float, y: Float) {
+    xAlignOffset += (x - position.x)
+    yAlignOffset += (y - position.y)
+}
+
+/**
+ * Places the component with vanilla's `relativeTo`, as [anchor] describes, without StarUI's layout: for vanilla
+ * components that StarUI does not place. In StarUI, use `Modifier.anchor` instead, which also keeps margins.
+ *
+ * @param anchor where the component goes. See [Anchor][org.starficz.starui.Anchor]
+ * @throws IllegalStateException if [anchor] is against the previous component and there is none
+ */
 fun UIComponentAPI.applyAnchor(anchor: AnchorData){
     val base = when(anchor.reference){
         is AnchorReference.Parent -> null
@@ -120,16 +210,21 @@ internal fun PositionAPI.relativeToBase(
     method.invoke(this, null, xAlignBase, yAlignBase, xAlignThis, yAlignThis, xOffset, yOffset)
 }
 
-// UIPanelAPI extensions that expose UIPanel methods
+// ---------------------------------------------------------------------------------------------------------------
+// Panels
+// ---------------------------------------------------------------------------------------------------------------
+
 private val childrenNonCopyMethods = HashMap<Class<*>, ReflectionUtils.ReflectedMethod>()
 
 /**
- * The panel's live child list (vanilla's own, not a copy: do not change it, and copy it before changing the panel
- * while going through it). Runs often (layouts, input, injection checks), so the method is looked up once per class.
+ * Returns the panel's live child list: vanilla's own, not a copy. Do not change it, and copy it before changing the
+ * panel while going through it. For a snapshot, use [children].
+ *
+ * It runs often (layouts, input, injection checks), so the method is looked up once per class.
  */
 @Suppress("UNCHECKED_CAST")
 fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
-    val target: Any = if (this is BoxedUIElement) obf else this
+    val target: Any = if (this is BoxedUIElement) vanillaComponent else this
     val method = childrenNonCopyMethods.getOrPut(target.javaClass) {
         target.getMethodsMatching("getChildrenNonCopy", numOfParams = 0).single()
     }
@@ -139,6 +234,16 @@ fun UIPanelAPI.getChildrenNonCopy(): List<UIComponentAPI> {
 /** A snapshot of the children (the API's `getChildrenCopy2`: a new list that later changes do not touch). */
 val UIPanelAPI.children: List<UIComponentAPI> get() = getChildrenCopy2()
 
+/**
+ * Returns the first child that has a method matching the given name, return type and parameters, or `null`. Each
+ * argument left `null` matches anything. Vanilla's obfuscated panels are told apart by their readable methods.
+ *
+ * @param name the method's name
+ * @param returnType the method's return type
+ * @param numOfParams the method's number of parameters
+ * @param parameterTypes the method's parameter types, `null` entries matching any type
+ * @see allChildrenWithMethod
+ */
 fun UIPanelAPI.findChildWithMethod(
     name: String? = null,
     returnType: Class<*>? = null,
@@ -148,49 +253,27 @@ fun UIPanelAPI.findChildWithMethod(
     return children.find { it.getMethodsMatching(name, returnType, numOfParams, parameterTypes).isNotEmpty() }
 }
 
+/** The children that have a method named [methodName] (vanilla's obfuscated panels are told apart by their methods). */
+fun UIPanelAPI.allChildrenWithMethod(methodName: String): List<UIComponentAPI> =
+    children.filter { it.getMethodsMatching(methodName).isNotEmpty() }
+
+/** The child added last (drawn on top), or null. */
+val UIPanelAPI.lastComponent: UIComponentAPI?
+    get() = getChildrenNonCopy().lastOrNull()
+
+
+// ---------------------------------------------------------------------------------------------------------------
+// Text
+// ---------------------------------------------------------------------------------------------------------------
 
 /**
- * The size of [text] in [font] (vanilla's paragraph font for null) as (width, height): on one line, or more where it
- * has line breaks. Cheap: it measures with one kept label per font.
+ * Returns the size of [text] in [font] as (width, height): on one line, or more where it has line breaks. Cheap: it
+ * measures with one kept label per font.
+ *
+ * @param text the text to measure
+ * @param font the font, or `null` for vanilla's paragraph font
  */
 fun measureTextSize(text: String, font: Font? = null): Pair<Float, Float> = VanillaFactory.measure(text, font)
-
-// Custom CustomUIPanelPlugin extensions that map the plugin position to the panel or component
-val StarUIPanelPlugin.width: Float
-    get() = slotBounds?.width ?: component.width
-
-val StarUIPanelPlugin.height: Float
-    get() = slotBounds?.height ?: component.height
-
-val StarUIPanelPlugin.x: Float
-    get() = component.x + (slotBounds?.offsetX ?: 0f)
-
-val StarUIPanelPlugin.y: Float
-    get() = component.y + (slotBounds?.offsetY ?: 0f)
-
-val StarUIPanelPlugin.left: Float
-    get() = x
-
-val StarUIPanelPlugin.bottom: Float
-    get() = y
-
-val StarUIPanelPlugin.top: Float
-    get() = y + height
-
-val StarUIPanelPlugin.right: Float
-    get() = x + width
-
-val StarUIPanelPlugin.centerX: Float
-    get() = x + width / 2f
-
-val StarUIPanelPlugin.centerY: Float
-    get() = y + height / 2f
-
-val StarUIPanelPlugin.xAlignOffset: Float
-    get() = component.xAlignOffset
-
-val StarUIPanelPlugin.yAlignOffset: Float
-    get() = component.yAlignOffset
 
 internal fun CustomPanelAPI.setPlugin(plugin: CustomUIPanelPlugin) {
     set(value=plugin)

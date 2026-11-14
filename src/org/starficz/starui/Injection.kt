@@ -22,37 +22,46 @@ enum class InjectPlacement {
 }
 
 /**
- * Adds StarUI to a vanilla panel: one [CustomPanel] of [size] with [modifier] (usually an anchor to a vanilla
- * sibling), holding what [builder] makes. It has its own reactive scope, like any StarUI container.
+ * Adds StarUI to a vanilla panel: one [CustomPanel][org.starficz.starui.components.CustomPanel] of [size] with
+ * [modifier] (usually an anchor to a vanilla sibling), holding the content [builder] makes. It is reactive like any
+ * StarUI container.
  *
- * Call it from the moment vanilla builds the panel, typically a PatchLib `@After` on the method or constructor that
- * builds it, with the hook's `self` (or a panel reached from it) as the receiver:
+ * Call it at the moment vanilla builds the panel, typically from a PatchLib `@After` hook on the method or
+ * constructor that builds it, with the hook's `self` (or a panel reached from it) as the receiver:
  *
- * ```
+ * ```kotlin
  * @Patch(target = ClassMatch(typeName = "com.fs.starfarer.coreui.refit.ModWidget"))
  * object RefitButtonPatch {
  *     @JvmStatic @After(target = MethodMatch(methodType = MethodType.CONSTRUCTOR))
  *     fun afterCreate(context: AfterContext) {
- *         (context.self as? UIPanelAPI)?.inject("mymod:ai-config") { Button("AI Config") { ... } }
+ *         (context.self as? UIPanelAPI)?.inject("mymod:ai-config") { Button("AI Config") { openConfig() } }
  *     }
  * }
  * ```
  *
- * - **Idempotent per [key]**: while the panel holds a live injection under [key], another call returns it and does
- *   nothing else. So a hook that fires twice, a build method that runs again, or a mod's own every-frame script (the
- *   fallback where no hook point exists) can all just call it. To rebuild it, [removeInjection] first.
- * - **Survives `clearChildren()`**: when the panel clears its children (how vanilla rebuilds a panel in place), the
- *   injection is added again at the panel's next render, before its children draw, with [builder] run again. So a
- *   hook on the panel's first build is enough. [removeInjection], disposing the container, or removing it yourself
- *   ends it for good; only a clear brings it back.
- * - **Nothing global**: the record sits on the panel, and goes when vanilla throws the panel away.
+ * - **One injection per [key]**: while the panel holds a live injection under [key], another call returns it and
+ *   does nothing else. So a hook that fires twice, a build method that runs again, or a mod's own every-frame script
+ *   (the fallback where no hook point exists) can all just call it. To build it again, call [removeInjection] first.
+ * - **It survives `clearChildren()`**: when the panel clears its children, as vanilla does to rebuild a panel in
+ *   place, the injection is added again at the panel's next render, before its children draw, with [builder] run
+ *   again. So a hook on the panel's first build is enough. [removeInjection], disposing the container, or removing
+ *   it yourself ends it for good; only a clear brings it back.
+ * - **Nothing is global**: the record sits on the panel, and goes when vanilla throws the panel away.
  *
- * Because [builder] can run again after a clear, read what it needs from the panel (`this.parent`, getters, its
- * siblings) inside it, rather than capturing objects a vanilla rebuild replaces.
+ * Because [builder] can run again after a clear, read what it needs from the panel inside it (`this.parent`,
+ * getters, its siblings), rather than capturing objects that a vanilla rebuild replaces.
  *
- * Not for StarUI's own reactive containers: there, put the components in the container's builder.
+ * Not for StarUI's own containers: there, put the components in the container's builder.
  *
- * @param key unique per panel; prefix it with your mod id ("mymod:refit-button").
+ * @param key the injection's name, unique per panel. Prefix it with your mod's id (`"mymod:refit-button"`)
+ * @param size the size of the container
+ * @param modifier the [Modifier] to be applied to the container, usually its anchor
+ * @param placement where the container goes among the panel's children
+ * @param builder the content of the container. It runs again after a clear, and when a [UIState] it read changes
+ * @return the container: the new one, or the live one already under [key]
+ * @throws IllegalStateException if this panel is a StarUI container
+ * @see injection
+ * @see removeInjection
  */
 fun UIPanelAPI.inject(
     key: String,
@@ -76,14 +85,23 @@ fun UIPanelAPI.inject(
     return Injections.build(host, entry)
 }
 
-/** The live container [inject] made on this panel under [key], or null. */
+/**
+ * Returns the live container that [inject] made on this panel under [key], or `null` if there is none.
+ *
+ * @param key the injection's name
+ */
 fun UIPanelAPI.injection(key: String): CustomPanelAPI? {
     val host = Injections.hostOf(this)
     val entry = Injections.recordsOf(host, create = false)?.entries?.get(key) ?: return null
     return Injections.liveContainer(host, entry)
 }
 
-/** Removes the injection under [key] from this panel and disposes it; it does not come back. No-op if there is none. */
+/**
+ * Removes the injection under [key] from this panel and disposes it, for good: a later clear does not bring it back.
+ * Does nothing if there is none.
+ *
+ * @param key the injection's name
+ */
 fun UIPanelAPI.removeInjection(key: String) {
     val host = Injections.hostOf(this)
     val records = Injections.recordsOf(host, create = false) ?: return

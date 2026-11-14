@@ -18,9 +18,9 @@ import patchlib.api.query.MethodQuery
 import kotlin.math.roundToInt
 
 /**
- * An exact scale for vanilla ship displays, pixel aligned. Vanilla fits the ship into the panel, never above 1, and then
- * always multiplies by 0.95, so a ship never draws 1:1; it also places the ship 3% of the panel height above centre,
- * and centres on the panel's middle, which is a half pixel whenever the panel's width or height is odd.
+ * An exact scale for vanilla ship displays, pixel aligned. Vanilla fits the ship into the panel, never above 1, and
+ * then always multiplies by 0.95, so a ship never draws 1:1; it also places the ship 3% of the panel height above
+ * centre, and centres on the panel's middle, which is a half pixel whenever the panel's width or height is odd.
  *
  * For a display that has an exact scale ([ShipDisplayScale], set through `BoxedUIShipPreview.overwriteScale`) the three
  * redirects below use that scale, drop the 3% shift and put the sprite's edges on whole screen pixels. Every other
@@ -28,8 +28,8 @@ import kotlin.math.roundToInt
  * this class's own methods.
  *
  * Targets are inferred, not API (re-check them after a game update): the class by its readable methods (the same shape
- * StarUIManager uses to find it), `render` with 7 parameters, and the ship set-up method by its (String, String, String)
- * shape.
+ * StarUIManager uses to find it), `render` with 7 parameters, and the ship set-up method by its (String, String,
+ * String) shape.
  */
 // 0.98.5a-RC4 Windows: matches com.fs.starfarer.title.ooOO.do; set-up method o00000(String, String, String)
 @Patch(
@@ -60,7 +60,8 @@ internal object ShipDisplayExactScalePatch {
     /**
      * render first moves to the panel centre, `glTranslatef(x + w / 2, y + h / 2, 0)`; the ship's sprite bounds are
      * centred there. Moving that centre so `centre - scale * spriteSize / 2` is a whole screen pixel puts every sprite
-     * texel on a pixel at scale 1. The other glTranslatef in render (fighter formations) has other arguments and passes.
+     * texel on a pixel at scale 1. The other glTranslatef in render (fighter formations) has other arguments and
+     * passes.
      */
     @JvmStatic
     @RedirectMethodCall(
@@ -89,8 +90,9 @@ internal object ShipDisplayExactScalePatch {
 
     /**
      * The set-up method places each ship at `(-(spriteW / 2 - centreX), -(spriteH / 2 - centreY) + panelH * 0.03)`;
-     * without the 0.03 term the sprite bounds are centred exactly. It is the method's only Vector2f.set call. The public
-     * setVariant(String, String, String) has the same parameter shape and no such call, so nothing is woven there.
+     * without the 0.03 term the sprite bounds are centred exactly. It is the method's only Vector2f.set call. The
+     * public setVariant(String, String, String) has the same parameter shape and no such call, so nothing is woven
+     * there.
      */
     @JvmStatic
     @RedirectMethodCall(

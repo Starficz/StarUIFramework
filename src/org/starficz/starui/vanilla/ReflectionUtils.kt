@@ -201,13 +201,14 @@ internal object ReflectionUtils {
         ConcurrentHashMap<ReflectedConstructorsCacheKey, List<ReflectedConstructor>>()
 
     /**
-     * Finds a unique field matching the name and/or type on the provided `instance`'s class (or optionally, superclass's) and returns its value.
+     * Finds a unique field matching the name and/or type on the provided `instance`'s class (or optionally,
+     * superclass's) and returns its value.
      *
      * This method uses [getFieldsMatching] to find fields, specifically checking if the field's type is assignable *to*
      * the provided `type` parameter (i.e., the provided `type` is in interface or superclass of the field's type).
      *
-     * This assignable check is mainly useful for getting fields holding obfuscated classes that implement an accessible API.
-     * (So that you can pass in the API class to get a field holding the obfuscated implementation of said API)
+     * This assignable check is mainly useful for getting fields holding obfuscated classes that implement an accessible
+     * API. (So that you can pass in the API class to get a field holding the obfuscated implementation of said API)
      *
      * Requires [getFieldsMatching] to find exactly one matching field.
      *
@@ -226,13 +227,14 @@ internal object ReflectionUtils {
     }
 
     /**
-     * Finds a unique field matching the name and/or type on this object's class (or optionally, superclass's) and returns its value.
+     * Finds a unique field matching the name and/or type on this object's class (or optionally, superclass's) and
+     * returns its value.
      *
      * This method uses [getFieldsMatching] to find fields, specifically checking if the field's type is assignable *to*
      * the provided `type` parameter (i.e., the provided `type` is in interface or superclass of the field's type).
      *
-     * This assignable check is mainly useful for getting fields holding obfuscated classes that implement an accessible API.
-     * (So that you can pass in the API class to get a field holding the obfuscated implementation of said API)
+     * This assignable check is mainly useful for getting fields holding obfuscated classes that implement an accessible
+     * API. (So that you can pass in the API class to get a field holding the obfuscated implementation of said API)
      *
      * Requires [getFieldsMatching] to find exactly one matching field.
      *
@@ -246,7 +248,7 @@ internal object ReflectionUtils {
     @JvmSynthetic
     @JvmName("ExtensionGet")
     fun Any.get(name: String? = null, type: Class<*>? = null, searchSuperclass: Boolean = false): Any?{
-        val target = if(this is BoxedUIElement) this.obf else this
+        val target = if(this is BoxedUIElement) this.vanillaComponent else this
         val reflectedFields = target.getFieldsMatching(name, fieldAssignableTo=type, searchSuperclass=searchSuperclass)
         if (reflectedFields.isEmpty())
             throw IllegalArgumentException("No field found for name: '${name ?: "<any>"}' on class: ${target::class.java.name} " +
@@ -258,13 +260,14 @@ internal object ReflectionUtils {
     }
 
     /**
-     * Finds a unique field matching the type (and name if provided) on the provided `instance`'s class (or optionally, superclass's) and assigns `value` to it.
+     * Finds a unique field matching the type (and name if provided) on the provided `instance`'s class (or optionally,
+     * superclass's) and assigns `value` to it.
      *
      * This method uses [getFieldsMatching] to find fields, specifically checking if the type of the provided `value`
      * can be legally assigned *to* the field's actual type.
      *
-     * This assignment check is mainly useful for setting fields holding obfuscated classes that implement an accessible API.
-     * (So that you can pass in the API class to set a field holding the obfuscated implementation of said API)
+     * This assignment check is mainly useful for setting fields holding obfuscated classes that implement an accessible
+     * API. (So that you can pass in the API class to set a field holding the obfuscated implementation of said API)
      *
      * Requires [getFieldsMatching] to find exactly one matching field.
      *
@@ -281,13 +284,14 @@ internal object ReflectionUtils {
     }
 
     /**
-     * Finds a unique field matching the type (and name if provided) on this object's class (or optionally, superclass's) and assigns `value` to it.
+     * Finds a unique field matching the type (and name if provided) on this object's class (or optionally,
+     * superclass's) and assigns `value` to it.
      *
      * This method uses [getFieldsMatching] to find fields, specifically checking if the type of the provided `value`
      * can be legally assigned *to* the field's actual type.
      *
-     * This assignment check is mainly useful for setting fields holding obfuscated classes that implement an accessible API.
-     * (So that you can pass in the API class to set a field holding the obfuscated implementation of said API)
+     * This assignment check is mainly useful for setting fields holding obfuscated classes that implement an accessible
+     * API. (So that you can pass in the API class to set a field holding the obfuscated implementation of said API)
      *
      * Requires [getFieldsMatching] to find exactly one matching field.
      *
@@ -300,7 +304,7 @@ internal object ReflectionUtils {
     @JvmSynthetic
     @JvmName("ExtensionSet")
     fun Any.set(name: String? = null, value: Any?, searchSuperclass: Boolean = false) {
-        val target = if(this is BoxedUIElement) this.obf else this
+        val target = if(this is BoxedUIElement) this.vanillaComponent else this
         val valueType = value?.let{ it::class.javaPrimitiveType ?: it::class.java }
         val reflectedFields = target.getFieldsMatching(name, fieldAccepts=valueType, searchSuperclass=searchSuperclass)
         if (reflectedFields.isEmpty())
@@ -323,31 +327,31 @@ internal object ReflectionUtils {
     }
 
     /**
-     * Finds fields within the class `clazz` (and optionally, its superclass hierarchy) that match the specified criteria.
+     * Finds fields within the class `clazz` (and optionally, its superclass hierarchy) that match the specified
+     * criteria.
      *
-     * This function searches through fields declared in this class and its superclasses (up to `java.lang.Object`).
-     * It considers all fields regardless of their visibility (public, protected, private).
+     * This function searches through fields declared in this class and its superclasses (up to `java.lang.Object`). It
+     * considers all fields regardless of their visibility (public, protected, private).
      *
      * Fields are filtered based on the provided optional criteria:
      * - **`name`**: Matches fields with this exact name.
      * - **`type`**: Matches fields declared with this exact `Class` type.
      * - **`fieldAssignableTo` (for GET)**: Matches fields whose type can be assigned *to* the `fieldAssignableTo` type
-     *   (i.e., `fieldAssignableTo` is a supertype or interface of the field's type). Useful for finding fields
-     *   when you have a variable of a supertype.
+     *   (i.e., `fieldAssignableTo` is a supertype or interface of the field's type). Useful for finding fields when you
+     *   have a variable of a supertype.
      * - **`fieldAccepts` (for SET)**: Matches fields that can accept a value of the `fieldAccepts` type. This check
-     *   simulates assignment compatibility, including widening conversions (e.g., `int` to `long`) and
-     *   boxing/unboxing conversions between primitives and their wrappers (e.g., `int` to `Integer`).
+     *   simulates assignment compatibility, including widening conversions (e.g., `int` to `long`) and boxing/unboxing
+     *   conversions between primitives and their wrappers (e.g., `int` to `Integer`).
      *
-     * Note: Fields declared as `java.lang.Object` are generally excluded unless explicitly targeted by name,
-     * exact type, or an `Object` type in the `fieldAssignableTo` or `fieldAccepts` criteria, to avoid
-     * overly broad matches.
+     * Note: Fields declared as `java.lang.Object` are generally excluded unless explicitly targeted by name, exact
+     * type, or an `Object` type in the `fieldAssignableTo` or `fieldAccepts` criteria, to avoid overly broad matches.
      *
      * @param clazz The class in which to search for fields.
      * @param name The exact name the field must have (optional).
      * @param type The exact `Class` type the field must be declared with (optional).
      * @param fieldAssignableTo A type that the field's type must be assignable *to* (optional).
-     * @param fieldAccepts A type representing a value that must be assignable *to* the field's type,
-     *                     considering standard Java/Kotlin assignment conversions (optional).
+     * @param fieldAccepts A type representing a value that must be assignable *to* the field's type, considering
+     *   standard Java/Kotlin assignment conversions (optional).
      * @return A list of [ReflectedField] objects wrapping the matching fields. Returns an empty list if none match.
      */
     @JvmStatic
@@ -491,27 +495,28 @@ internal object ReflectionUtils {
     /**
      * Finds fields within `clazz`'s class hierarchy whose declared type match the specified criteria.
      *
-     * This method uses [getMethodsMatching] to find fields across `clazz`'s class and its superclasses. It identifies fields holding objects
-     * whose class possesses at least one method matching the specified criteria. The power comes from using
-     * known types for the method signature matching:
+     * This method uses [getMethodsMatching] to find fields across `clazz`'s class and its superclasses. It identifies
+     * fields holding objects whose class possesses at least one method matching the specified criteria. The power comes
+     * from using known types for the method signature matching:
      *
      * - **`methodName`**: Matches target methods with exact names, useful if the name is not obfuscated.
-     * - **`methodReturnType`**: A known type (`String.class`, API interface) that the target method's
-     *   return type must be assignable *to*.
+     * - **`methodReturnType`**: A known type (`String.class`, API interface) that the target method's return type must
+     *   be assignable *to*.
      * - **`numOfMethodParams`**: The exact number of parameters the target method must have.
      * - **`methodParameterTypes`**: An array of known types (`float.class`, `Vector2f.class`, API interface)
      *   representing arguments assignable *to* the target method's parameters (considers widening, boxing/unboxing).
      *
-     * This is useful for finding a field when you don't know its name or exact type, but you know it holds
-     * an object that has a method with a specific, known signature (e.g., "find the field holding
-     * an object that has a method accepting a `String` and returning a `boolean`").
+     * This is useful for finding a field when you don't know its name or exact type, but you know it holds an object
+     * that has a method with a specific, known signature (e.g., "find the field holding an object that has a method
+     * accepting a `String` and returning a `boolean`").
      *
      * @param clazz The class in which to search for fields.
      * @param methodName The exact name of a method that must exist on the field's type (optional).
-     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to* (optional).
+     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to*
+     *   (optional).
      * @param numOfMethodParams The exact number of parameters for a method on the field's type (optional).
-     * @param methodParameterTypes An array of known types representing arguments assignable *to*
-     *                             the parameters of a method on the field's type (optional).
+     * @param methodParameterTypes An array of known types representing arguments assignable *to* the parameters of a
+     *   method on the field's type (optional).
      * @return A list of [ReflectedField] objects wrapping fields whose type contains at least one matching method.
      */
     @JvmStatic
@@ -530,27 +535,28 @@ internal object ReflectionUtils {
     /**
      * Finds fields within a class hierarchy whose declared type match the specified criteria.
      *
-     * This method uses [getMethodsMatching] to find fields across this class and its superclasses. It identifies fields holding objects
-     * whose class possesses at least one method matching the specified criteria. The power comes from using
-     * known types for the method signature matching:
+     * This method uses [getMethodsMatching] to find fields across this class and its superclasses. It identifies fields
+     * holding objects whose class possesses at least one method matching the specified criteria. The power comes from
+     * using known types for the method signature matching:
      *
      * - **`methodName`**: Matches target methods with exact names, useful if the name is not obfuscated.
-     * - **`methodReturnType`**: A known type (`String.class`, API interface) that the target method's
-     *   return type must be assignable *to*.
+     * - **`methodReturnType`**: A known type (`String.class`, API interface) that the target method's return type must
+     *   be assignable *to*.
      * - **`numOfMethodParams`**: The exact number of parameters the target method must have.
      * - **`methodParameterTypes`**: An array of known types (`float.class`, `Vector2f.class`, API interface)
      *   representing arguments assignable *to* the target method's parameters (considers widening, boxing/unboxing).
      *
-     * This is useful for finding a field when you don't know its name or exact type, but you know it holds
-     * an object that has a method with a specific, known signature (e.g., "find the field holding
-     * an object that has a method accepting a `String` and returning a `boolean`").
+     * This is useful for finding a field when you don't know its name or exact type, but you know it holds an object
+     * that has a method with a specific, known signature (e.g., "find the field holding an object that has a method
+     * accepting a `String` and returning a `boolean`").
      *
      * @receiver The class in which to search for fields.
      * @param methodName The exact name of a method that must exist on the field's type (optional).
-     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to* (optional).
+     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to*
+     *   (optional).
      * @param numOfMethodParams The exact number of parameters for a method on the field's type (optional).
-     * @param methodParameterTypes An array of known types representing arguments assignable *to*
-     *                             the parameters of a method on the field's type (optional).
+     * @param methodParameterTypes An array of known types representing arguments assignable *to* the parameters of a
+     *   method on the field's type (optional).
      * @return A list of [ReflectedField] objects wrapping fields whose type contains at least one matching method.
      */
     @JvmSynthetic
@@ -586,10 +592,11 @@ internal object ReflectionUtils {
      *
      * @param instance The object instance of the class in which to search for fields.
      * @param methodName The exact name of a method that must exist on the field's type (optional).
-     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to* (optional).
+     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to*
+     *   (optional).
      * @param numOfMethodParams The exact number of parameters for a method on the field's type (optional).
-     * @param methodParameterTypes An array of known types representing arguments assignable *to*
-     *                             the parameters of a method on the field's type (optional).
+     * @param methodParameterTypes An array of known types representing arguments assignable *to* the parameters of a
+     *   method on the field's type (optional).
      * @return A list of [ReflectedField] objects wrapping fields whose type contains at least one matching method.
      */
     @JvmStatic
@@ -612,10 +619,11 @@ internal object ReflectionUtils {
      *
      * @receiver The object instance of the class in which to search for fields.
      * @param methodName The exact name of a method that must exist on the field's type (optional).
-     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to* (optional).
+     * @param methodReturnType A known type that a method's return type on the field's type must be assignable *to*
+     *   (optional).
      * @param numOfMethodParams The exact number of parameters for a method on the field's type (optional).
-     * @param methodParameterTypes An array of known types representing arguments assignable *to*
-     *                             the parameters of a method on the field's type (optional).
+     * @param methodParameterTypes An array of known types representing arguments assignable *to* the parameters of a
+     *   method on the field's type (optional).
      * @return A list of [ReflectedField] objects wrapping fields whose type contains at least one matching method.
      */
     @JvmSynthetic
@@ -637,16 +645,18 @@ internal object ReflectionUtils {
      * This function infers the target method signature based on the runtime types of the provided arguments in `args`.
      * It then uses [getMethodsMatching] to find all the methods matching the given `name` and inferred parameter types.
      *
-     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws `IllegalArgumentException`.
+     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws
+     * `IllegalArgumentException`.
      *
      * @param instance The object instance on which to invoke the method.
      * @param name The name of the method to invoke. (optional)
-     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the specific method overload.
+     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the
+     *   specific method overload.
      * @return The result returned by the invoked method.
      * @throws IllegalArgumentException if no method is found matching the provided name and inferred argument types
-     *                                  according to the rules of [getMethodsMatching] *OR*
-     *                                  if multiple methods match the criteria (ambiguity), preventing a safe invocation.
-     *                                  The exception message will detail the inferred parameter types causing the ambiguity.
+     *   according to the rules of [getMethodsMatching] *OR* if multiple methods match the criteria (ambiguity),
+     *   preventing a safe invocation. The exception message will detail the inferred parameter types causing the
+     *   ambiguity.
      */
     @JvmStatic
     @JvmOverloads
@@ -658,21 +668,23 @@ internal object ReflectionUtils {
      * This function infers the target method signature based on the runtime types of the provided arguments in `args`.
      * It then uses [getMethodsMatching] to find all the methods matching the given `name` and inferred parameter types.
      *
-     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws `IllegalArgumentException`.
+     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws
+     * `IllegalArgumentException`.
      *
      * @receiver The object instance on which to invoke the method.
      * @param name The name of the method to invoke. (optional)
-     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the specific method overload.
+     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the
+     *   specific method overload.
      * @return The result returned by the invoked method.
      * @throws IllegalArgumentException if no method is found matching the provided name and inferred argument types
-     *                                  according to the rules of [getMethodsMatching] *OR*
-     *                                  if multiple methods match the criteria (ambiguity), preventing a safe invocation.
-     *                                  The exception message will detail the inferred parameter types causing the ambiguity.
+     *   according to the rules of [getMethodsMatching] *OR* if multiple methods match the criteria (ambiguity),
+     *   preventing a safe invocation. The exception message will detail the inferred parameter types causing the
+     *   ambiguity.
      */
     @JvmSynthetic
     @JvmName("ExtensionInvoke")
     fun Any.invoke(name: String? = null, vararg args: Any?): Any? {
-        val target = if(this is BoxedUIElement) this.obf else this
+        val target = if(this is BoxedUIElement) this.vanillaComponent else this
         val paramTypes = args.map { arg -> arg?.let{ it::class.javaPrimitiveType ?: it::class.java } }.toTypedArray()
         val reflectedMethods = target.getMethodsMatching(name, parameterTypes=paramTypes)
         if (reflectedMethods.isEmpty())
@@ -685,42 +697,48 @@ internal object ReflectionUtils {
     }
 
     /**
-     * Invokes a static method on `clazz`'s class using reflection, simplifying calls by automatically matching argument types.
+     * Invokes a static method on `clazz`'s class using reflection, simplifying calls by automatically matching argument
+     * types.
      *
      * This function infers the target method signature based on the runtime types of the provided arguments in `args`.
      * It then uses [getMethodsMatching] to find all the methods matching the given `name` and inferred parameter types.
      *
-     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws `IllegalArgumentException`.
+     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws
+     * `IllegalArgumentException`.
      *
      * @param clazz The class on which to invoke the method.
      * @param name The name of the method to invoke. (optional)
-     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the specific method overload.
+     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the
+     *   specific method overload.
      * @return The result returned by the invoked method.
      * @throws IllegalArgumentException if no method is found matching the provided name and inferred argument types
-     *                                  according to the rules of [getMethodsMatching] *OR*
-     *                                  if multiple methods match the criteria (ambiguity), preventing a safe invocation.
-     *                                  The exception message will detail the inferred parameter types causing the ambiguity.
+     *   according to the rules of [getMethodsMatching] *OR* if multiple methods match the criteria (ambiguity),
+     *   preventing a safe invocation. The exception message will detail the inferred parameter types causing the
+     *   ambiguity.
      */
     @JvmStatic
     @JvmOverloads
     fun invoke(clazz: Class<*>, name: String? = null, vararg args: Any?): Any? { return clazz.invoke(name, *args) }
 
     /**
-     * Invokes a static method on this class using reflection, simplifying calls by automatically matching argument types.
+     * Invokes a static method on this class using reflection, simplifying calls by automatically matching argument
+     * types.
      *
      * This function infers the target method signature based on the runtime types of the provided arguments in `args`.
      * It then uses [getMethodsMatching] to find all the methods matching the given `name` and inferred parameter types.
      *
-     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws `IllegalArgumentException`.
+     * If [getMethodsMatching] return exactly 1 method, it invokes that method, otherwise it throws
+     * `IllegalArgumentException`.
      *
      * @receiver The class on which to invoke the method.
      * @param name The name of the method to invoke. (optional)
-     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the specific method overload.
+     * @param args The arguments to pass to the method. The runtime types of these arguments are used to find the
+     *   specific method overload.
      * @return The result returned by the invoked method.
      * @throws IllegalArgumentException if no method is found matching the provided name and inferred argument types
-     *                                  according to the rules of [getMethodsMatching] *OR*
-     *                                  if multiple methods match the criteria (ambiguity), preventing a safe invocation.
-     *                                  The exception message will detail the inferred parameter types causing the ambiguity.
+     *   according to the rules of [getMethodsMatching] *OR* if multiple methods match the criteria (ambiguity),
+     *   preventing a safe invocation. The exception message will detail the inferred parameter types causing the
+     *   ambiguity.
      */
     @JvmSynthetic
     @JvmName("ExtensionInvoke")
@@ -989,26 +1007,27 @@ internal object ReflectionUtils {
     /**
      * Finds constructors within `clazz`'s class that match the specified criteria.
      *
-     * Searches declared constructors within the receiver `Class`. Matching relies primarily on
-     * known elements of the constructor signature:
+     * Searches declared constructors within the receiver `Class`. Matching relies primarily on known elements of the
+     * constructor signature:
      *
      * - **`numOfParams`**: Matches constructors with a specific number of parameters.
      * - **`parameterTypes`**: Matches constructors where the parameter signature is compatible with the provided
-     *   `parameterTypes` array. This is powerful when using known types (e.g., `String.class`,
-     *   `Vector2f.class`, API interfaces) within the array. The check simulates invocation compatibility,
-     *   including widening and boxing/unboxing, allowing flexibility (e.g., finding a constructor expecting `Number`
-     *   by specifying `Integer.class`). A `null` element matches any non-primitive parameter (useful if you
-     *   know a parameter accepts null but not its obfuscated type).
+     *   `parameterTypes` array. This is powerful when using known types (e.g., `String.class`, `Vector2f.class`, API
+     *   interfaces) within the array. The check simulates invocation compatibility, including widening and
+     *   boxing/unboxing, allowing flexibility (e.g., finding a constructor expecting `Number` by specifying
+     *   `Integer.class`). A `null` element matches any non-primitive parameter (useful if you know a parameter accepts
+     *   null but not its obfuscated type).
      *
-     * This allows finding target constructors even when their names and the exact types involved are obfuscated,
-     * by relying on the structure and known parts of their signatures.
+     * This allows finding target constructors even when their names and the exact types involved are obfuscated, by
+     * relying on the structure and known parts of their signatures.
      *
      * @param clazz The class in which to search for constructors.
      * @param numOfParams The exact number of parameters the constructor must have (optional).
      * @param parameterTypes An array where elements are known types representing arguments that must be assignable *to*
-     *                       the constructor's corresponding parameter types, considering standard Java/Kotlin
-     *                       invocation conversions (optional). Can use `null` elements for parameters known to accept null.
-     * @return A list of [ReflectedConstructor] objects wrapping the matching constructors. Returns an empty list if none match.
+     *   the constructor's corresponding parameter types, considering standard Java/Kotlin invocation conversions
+     *   (optional). Can use `null` elements for parameters known to accept null.
+     * @return A list of [ReflectedConstructor] objects wrapping the matching constructors. Returns an empty list if
+     *   none match.
      */
     @JvmStatic
     @JvmOverloads
@@ -1022,26 +1041,27 @@ internal object ReflectionUtils {
     /**
      * Finds constructors within this class that match the specified criteria.
      *
-     * Searches declared constructors within the receiver `Class`. Matching relies primarily on
-     * known elements of the constructor signature:
+     * Searches declared constructors within the receiver `Class`. Matching relies primarily on known elements of the
+     * constructor signature:
      *
      * - **`numOfParams`**: Matches constructors with a specific number of parameters.
      * - **`parameterTypes`**: Matches constructors where the parameter signature is compatible with the provided
-     *   `parameterTypes` array. This is powerful when using known types (e.g., `String.class`,
-     *   `Vector2f.class`, API interfaces) within the array. The check simulates invocation compatibility,
-     *   including widening and boxing/unboxing, allowing flexibility (e.g., finding a constructor expecting `Number`
-     *   by specifying `Integer.class`). A `null` element matches any non-primitive parameter (useful if you
-     *   know a parameter accepts null but not its obfuscated type).
+     *   `parameterTypes` array. This is powerful when using known types (e.g., `String.class`, `Vector2f.class`, API
+     *   interfaces) within the array. The check simulates invocation compatibility, including widening and
+     *   boxing/unboxing, allowing flexibility (e.g., finding a constructor expecting `Number` by specifying
+     *   `Integer.class`). A `null` element matches any non-primitive parameter (useful if you know a parameter accepts
+     *   null but not its obfuscated type).
      *
-     * This allows finding target constructors even when their names and the exact types involved are obfuscated,
-     * by relying on the structure and known parts of their signatures.
+     * This allows finding target constructors even when their names and the exact types involved are obfuscated, by
+     * relying on the structure and known parts of their signatures.
      *
      * @receiver The class in which to search for constructors.
      * @param numOfParams The exact number of parameters the constructor must have (optional).
      * @param parameterTypes An array where elements are known types representing arguments that must be assignable *to*
-     *                       the constructor's corresponding parameter types, considering standard Java/Kotlin
-     *                       invocation conversions (optional). Can use `null` elements for parameters known to accept null.
-     * @return A list of [ReflectedConstructor] objects wrapping the matching constructors. Returns an empty list if none match.
+     *   the constructor's corresponding parameter types, considering standard Java/Kotlin invocation conversions
+     *   (optional). Can use `null` elements for parameters known to accept null.
+     * @return A list of [ReflectedConstructor] objects wrapping the matching constructors. Returns an empty list if
+     *   none match.
      */
     @JvmSynthetic
     @JvmName("ExtensionGetConstructorsMatching")
@@ -1084,8 +1104,9 @@ internal object ReflectionUtils {
     /**
      * Wraps a reflected field (`java.lang.reflect.Field`) discovered within a class.
      *
-     * Instances are typically obtained from [getFieldsMatching] or [getFieldsWithMethodsMatching].
-     * This class automatically handles making the underlying field accessible via `setAccessible(true)` before performing get/set operations.
+     * Instances are typically obtained from [getFieldsMatching] or [getFieldsWithMethodsMatching]. This class
+     * automatically handles making the underlying field accessible via `setAccessible(true)` before performing get/set
+     * operations.
      *
      * @property type The declared `Class` type of the wrapped field.
      * @property name The declared name of the wrapped field (which might be obfuscated).
@@ -1104,7 +1125,7 @@ internal object ReflectionUtils {
         private val accessible by lazy { setFieldAccessibleHandle.invoke(field, true); true }
 
         fun get(instance: Any?): Any? {
-            val target = if(instance is BoxedUIElement) instance.obf else instance
+            val target = if(instance is BoxedUIElement) instance.vanillaComponent else instance
             accessible
             return getFieldHandle.invoke(field, target)
         }
@@ -1117,7 +1138,7 @@ internal object ReflectionUtils {
          * @param value The new value to assign to the field.
          */
         fun set(instance: Any?, value: Any?) {
-            val target = if(instance is BoxedUIElement) instance.obf else instance
+            val target = if(instance is BoxedUIElement) instance.vanillaComponent else instance
             accessible
             setFieldHandle.invoke(field, target, value)
         }
@@ -1126,8 +1147,8 @@ internal object ReflectionUtils {
     /**
      * Wraps a reflected method (`java.lang.reflect.Method`) discovered within a class.
      *
-     * Instances are typically obtained from [getMethodsMatching].
-     * This class automatically handles making the underlying method accessible via `setAccessible(true)` before invocation.
+     * Instances are typically obtained from [getMethodsMatching]. This class automatically handles making the
+     * underlying method accessible via `setAccessible(true)` before invocation.
      *
      * @property returnType The declared return `Class` type of the wrapped method.
      * @property name The declared name of the wrapped method (which might be obfuscated).
@@ -1151,7 +1172,7 @@ internal object ReflectionUtils {
         private val accessible by lazy { setMethodAccessibleHandle.invoke(method, true); true }
 
         fun invoke(instance: Any?, vararg arguments: Any?): Any? {
-            val target = if(instance is BoxedUIElement) instance.obf else instance
+            val target = if(instance is BoxedUIElement) instance.vanillaComponent else instance
             accessible
             return invokeMethodHandle.invoke(method, target, arguments)
         }

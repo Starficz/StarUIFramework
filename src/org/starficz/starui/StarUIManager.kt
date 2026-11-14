@@ -17,13 +17,14 @@ import org.starficz.starui.vanilla.ReflectionUtils.invoke
 import java.lang.ref.WeakReference
 
 /**
- * Puts the registered [StarUIPlugin]s' panels on vanilla's screens, and tells you which screen panels are showing.
+ * Puts the registered [StarUIPlugin]s' panels on vanilla's screens, and tells which of vanilla's screen panels are
+ * showing.
  *
- * Each screen gets one full-size StarUI panel ([inject]), holding a full-size panel per plugin that has a builder for
- * it, at the moment vanilla builds the screen: the campaign core UI when it is made, a core tab when it opens (the
- * API's [CoreUITabListener]), the combat UI when a battle sets it up, the title screen when it is made, the mission
- * screen's refit when it is shown (PatchLib hooks in `patches/`). Nothing polls. A screen vanilla clears and
- * refills gets its panel back ([inject]).
+ * Each screen gets one full-size StarUI panel (an [inject]ion), holding a full-size panel for each plugin with a
+ * builder for that screen, at the moment vanilla builds the screen: the campaign core UI when it is made, a core tab
+ * when it opens (the API's [CoreUITabListener]), the combat UI when a battle sets it up, the warroom when it is first
+ * shown, the title screen when it is made, and the mission screen's refit when it is shown. Nothing polls. A screen
+ * that vanilla clears and refills gets its panel back.
  */
 object StarUIManager {
     private val registeredPlugins = mutableListOf<StarUIPlugin>()
@@ -35,8 +36,8 @@ object StarUIManager {
     internal const val SCREEN_BELOW_KEY = "staruiframework:screen-below"
 
     /**
-     * The core UI on screen: in the campaign the open interaction dialog's or else the campaign's
-     * (`CampaignUIAPI.getCore2`), on the title screen the mission screen's refit while it is open; null otherwise.
+     * The core UI on screen: in the campaign, the open interaction dialog's or else the campaign's
+     * (`CampaignUIAPI.getCore2`); on the title screen, the mission screen's refit while it is open. `null` otherwise.
      */
     val coreUI: UIPanelAPI?
         get() = when (val state = AppDriver.getInstance().currentState) {
@@ -45,7 +46,7 @@ object StarUIManager {
             else -> null
         }
 
-    /** The open core tab ([CoreUITabId.REFIT] for the mission screen's refit), or null. */
+    /** The open core tab, [CoreUITabId.REFIT] for the mission screen's refit, or `null` when none is open. */
     val currentCoreUITabID: CoreUITabId?
         get() = when (val state = AppDriver.getInstance().currentState) {
             is CampaignState -> coreUI?.invoke("getCurrentTabId") as? CoreUITabId
@@ -53,7 +54,7 @@ object StarUIManager {
             else -> null
         }
 
-    /** The open core tab's panel, or null. */
+    /** The panel of the open core tab, or `null` when none is open. */
     val currentCoreUITabPanel: UIPanelAPI?
         get() = when (val state = AppDriver.getInstance().currentState) {
             is CampaignState -> coreUI?.invoke("getCurrentTab") as? UIPanelAPI
@@ -61,34 +62,47 @@ object StarUIManager {
             else -> null
         }
 
-    /** In combat: the ship info panel (bottom left), or null. */
+    /** In combat, the ship info panel at the bottom left; `null` outside combat. */
     val combatShipInfo: UIPanelAPI?
         get() = (AppDriver.getInstance().currentState as? CombatState)?.invoke("getShipInfo") as? UIPanelAPI
 
-    /** In combat: the widget panel (the whole screen, over the battle), or null. */
+    /** In combat, the widget panel: the whole screen, over the battle. `null` outside combat. */
     val combatWidgetPanel: UIPanelAPI?
         get() = (AppDriver.getInstance().currentState as? CombatState)?.invoke("getWidgetPanel") as? UIPanelAPI
 
-    /** In combat: the warroom (command map; it covers the screen while shown), or null. */
+    /**
+     * In combat, the warroom (the command map), which covers the screen while it is shown; `null` outside combat and
+     * before it is first shown.
+     */
     val combatWarroom: UIPanelAPI?
         get() = (AppDriver.getInstance().currentState as? CombatState)?.invoke("getWarroom") as? UIPanelAPI
 
     /**
-     * Diagnostics: container scopes created and not yet disposed. UI that StarUI or a vanilla `clearChildren()`
-     * removed is disposed, so in a steady screen this number stays flat; if it keeps growing while the same UI is
-     * rebuilt, something is creating StarUI containers that are never torn down.
+     * Diagnostics: the number of container scopes created and not yet disposed. UI that StarUI or a vanilla
+     * `clearChildren()` removed is disposed, so on a steady screen this number stays flat. If it keeps growing while
+     * the same UI is rebuilt, something is creating StarUI containers that are never torn down.
      */
     val liveScopeCount: Int
         get() = Scope.liveCount
 
     /**
-     * Adds [plugin]'s panels to the screens vanilla builds from now on. Call it in `onApplicationLoad`: a screen
-     * that is already built (the campaign core UI of a loaded game, an open tab) gets them when vanilla builds it again.
+     * Adds [plugin]'s panels to the screens vanilla builds from now on. Registering the same plugin twice does nothing.
+     *
+     * Call it in `onApplicationLoad`: a screen that is already built (the campaign core UI of a loaded game, an open
+     * tab) gets the panels only when vanilla builds it again.
+     *
+     * @param plugin the plugin to add
      */
     fun registerPlugin(plugin: StarUIPlugin) {
         if (plugin !in registeredPlugins) registeredPlugins.add(plugin)
     }
 
+    /**
+     * Stops adding [plugin]'s panels to the screens vanilla builds from now on. Panels already on screen stay until
+     * vanilla builds their screen again.
+     *
+     * @param plugin the plugin to remove
+     */
     fun unregisterPlugin(plugin: StarUIPlugin) {
         registeredPlugins.remove(plugin)
     }

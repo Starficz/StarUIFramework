@@ -237,6 +237,7 @@ object StarUITestSuite {
         registerShipDisplayScaleTests()
         registerSectionTests()
         registerApiShapeTests()
+        registerToolkitTests()
         registerImageSizeTests()
         registerShipDisplayOptionTests()
         registerVanillaElementTests()

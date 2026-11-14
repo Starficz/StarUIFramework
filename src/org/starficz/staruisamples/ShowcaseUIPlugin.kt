@@ -14,7 +14,7 @@ import org.starficz.starui.components.*
 import org.starficz.starui.modifier.*
 import org.starficz.starui.runtime.*
 import org.starficz.starui.vanilla.*
-import org.starficz.starui.vanilla.VanillaColors.withAlpha
+import org.starficz.starui.vanilla.withAlpha
 import java.awt.Color
 
 /**

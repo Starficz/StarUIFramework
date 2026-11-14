@@ -16,8 +16,9 @@ import org.starficz.starui.modifier.anchor
 import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.ReflectionUtils.invoke
-import org.starficz.starui.vanilla.sectorMap
+import org.starficz.starui.components.sectorMap
 import org.starficz.starui.vanilla.VanillaColors
+import org.starficz.starui.vanilla.getChildrenNonCopy
 
 private data class TestShip(val id: Int, val name: String, val cost: Int)
 private val testShips = listOf(TestShip(1, "Onslaught", 300), TestShip(2, "Eagle", 150), TestShip(3, "Wolf", 40))
@@ -135,6 +136,56 @@ fun registerVanillaElementTests() {
         Input.sendList(root, Input.up(cell.cx, cell.cy))
         frame()
         expect(clicked?.name == "Wolf", "clicking the third row reports the third item (got ${clicked?.name})")
+    }
+
+    StarUITestSuite.group("table-sort") {
+        // A header click sorts by that column; again reverses; a column without sortBy, or a table with none, ignores it.
+        fun names(panel: CustomPanelAPI) = rowsOf(panel).map { rowTexts(it)[0] }
+        fun clickHeader(panel: CustomPanelAPI, col: Int) {
+            val header = vanillaTable(panel).invoke("getHeader") as UIPanelAPI
+            val button = header.getChildrenNonCopy().filterIsInstance<ButtonAPI>()[col]
+            Input.sendList(root, Input.move(button.cx, button.cy))
+            Input.sendList(root, Input.down(button.cx, button.cy))
+            Input.sendList(root, Input.up(button.cx, button.cy))
+            frame(); frame()
+        }
+        lateinit var sortable: CustomPanelAPI
+        lateinit var plain: CustomPanelAPI
+        lateinit var external: CustomPanelAPI
+        val sort = UIState<TableSort?>(TableSort(column = 1, descending = false))
+        root.Column(Size.exact(420f, 700f), elementAt(40f, 40f), spacing = 12f) {
+            sortable = Table(testShips, Size.fillMaxWidth()) {
+                column("Ship") { it.name }.sortBy { it.name }
+                column("Cost") { "${it.cost}" }.sortBy(descendingFirst = true) { it.cost }
+                column("Id") { "${it.id}" }
+            }
+            plain = Table(testShips, Size.fillMaxWidth()) { column("Ship") { it.name }; column("Cost") { "${it.cost}" } }
+            external = Table(testShips, Size.fillMaxWidth(), sort = sort) {
+                column("Ship") { it.name }.sortBy { it.name }
+                column("Cost") { "${it.cost}" }.sortBy { it.cost }
+            }
+        }
+        frame(); frame()
+        expect(names(sortable) == listOf("Onslaught", "Eagle", "Wolf"), "unsorted until a header is clicked (${names(sortable)})")
+        clickHeader(sortable, 0)
+        expect(names(sortable) == listOf("Eagle", "Onslaught", "Wolf"), "a header click sorts ascending (${names(sortable)})")
+        clickHeader(sortable, 0)
+        expect(names(sortable) == listOf("Wolf", "Onslaught", "Eagle"), "a second click reverses (${names(sortable)})")
+        clickHeader(sortable, 1)
+        expect(names(sortable) == listOf("Onslaught", "Eagle", "Wolf"), "descendingFirst starts descending (${names(sortable)})")
+        clickHeader(sortable, 2)
+        expect(names(sortable) == listOf("Onslaught", "Eagle", "Wolf"), "a column without sortBy ignores clicks (${names(sortable)})")
+        clickHeader(plain, 0)
+        expect(names(plain) == listOf("Onslaught", "Eagle", "Wolf"), "a table without sortBy is never sorted (${names(plain)})")
+
+        expect(names(external) == listOf("Wolf", "Eagle", "Onslaught"), "a sort state given to the table sorts it (${names(external)})")
+        clickHeader(external, 0)
+        expect(sort.value == TableSort(0, false), "a header click writes the given state (${sort.value})")
+        expect(names(external) == listOf("Eagle", "Onslaught", "Wolf"), "and the rows follow (${names(external)})")
+        sort.value = null
+        frame(); frame()
+        expect(names(external) == listOf("Onslaught", "Eagle", "Wolf"), "a null sort shows the items in their order (${names(external)})")
+        screenshot("final")
     }
 
     StarUITestSuite.group("table-keeps-sibling-order") {

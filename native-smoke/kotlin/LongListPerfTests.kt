@@ -20,7 +20,7 @@ import org.starficz.starui.Size
 import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.Font
 import org.starficz.starui.vanilla.path
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private val ROW_BG = Color(25, 35, 45)

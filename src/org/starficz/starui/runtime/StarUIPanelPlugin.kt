@@ -21,9 +21,13 @@ internal data class SlotBounds(
 )
 
 /**
- * StarUI's side of one component: its event handlers, render and advance callbacks, and for a container its layout
- * engine and reactive scope. A CustomPanel StarUI made, or one a modifier was applied to, has one as its plugin; a
- * leaf (label, button) gets one when a modifier needs it. Reach it with `Modifier.plugin { }` or [getAttached].
+ * StarUI's side of one component: its event handlers, its render and advance callbacks, and for a container its
+ * layout and reactive scope. A CustomPanel that StarUI made, or one a modifier was applied to, has one as its
+ * plugin; a leaf (a label, a button) gets one when a modifier needs it.
+ *
+ * It is the receiver of the lifecycle and drawing modifiers (`Modifier.onRender { }`, `onLayout { }`, ...), so the
+ * component's size and position are at hand there: [width], [height], [left], [top], and so on. Reach it directly
+ * with `Modifier.plugin { }` or [getAttached].
  */
 class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
 
@@ -62,17 +66,27 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         @Volatile
         internal var hasAttachedPlugins = false
 
-        /** [component]'s plugin: a CustomPanel's own, or the one a leaf got on its [UINode]; null when it has none. */
+        /**
+         * Returns [component]'s plugin: a CustomPanel's own, or the one a leaf got from a modifier. `null` when it has
+         * none.
+         *
+         * @param component the component, or its box
+         */
         fun getAttached(component: UIComponentAPI): StarUIPanelPlugin? {
-            val target = if (component is BoxedUIElement) component.obf else component
+            val target = if (component is BoxedUIElement) component.vanillaComponent else component
             if (target is CustomPanelAPI) return target.plugin as? StarUIPanelPlugin
             if (!hasAttachedPlugins) return null
             return NodeStore.leafPlugin(target)
         }
 
-        /** [component]'s plugin, made when it has none. It lives on the component's [UINode], as long as the component. */
+        /**
+         * Returns [component]'s plugin, made when it has none. It lives as long as the component. On a CustomPanel that
+         * has a plugin of its own (vanilla's or another mod's), the new plugin wraps it as its [delegate].
+         *
+         * @param component the component, or its box
+         */
         fun getOrCreate(component: UIComponentAPI): StarUIPanelPlugin {
-            val target = if (component is BoxedUIElement) component.obf else component
+            val target = if (component is BoxedUIElement) component.vanillaComponent else component
             if (target is CustomPanelAPI) {
                 val existing = target.plugin
                 if (existing is StarUIPanelPlugin) return existing
@@ -101,6 +115,27 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     lateinit var component: UIComponentAPI
         internal set
 
+    /** The width the component is drawn at: its own, or the width of the layout slot it is placed in. */
+    val width: Float get() = slotBounds?.width ?: component.width
+    /** The height the component is drawn at: its own, or the height of the layout slot it is placed in. */
+    val height: Float get() = slotBounds?.height ?: component.height
+    /** The x of the component's left edge, in screen coordinates. */
+    val x: Float get() = component.x + (slotBounds?.offsetX ?: 0f)
+    /** The y of the component's bottom edge, in screen coordinates (Starsector's y points up). */
+    val y: Float get() = component.y + (slotBounds?.offsetY ?: 0f)
+    /** The x of the component's left edge: [x]. */
+    val left: Float get() = x
+    /** The y of the component's bottom edge: [y]. */
+    val bottom: Float get() = y
+    /** The y of the component's top edge. */
+    val top: Float get() = y + height
+    /** The x of the component's right edge. */
+    val right: Float get() = x + width
+    /** The x of the component's centre. */
+    val centerX: Float get() = x + width / 2f
+    /** The y of the component's centre. */
+    val centerY: Float get() = y + height / 2f
+
     /** Creation order, so a scope can tell plugins that existed before its build from ones the build created. */
     private val serial = nextSerial()
 
@@ -117,13 +152,14 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     /** A scope at or below this node is waiting to be rebuilt. */
     internal var dirtyScopeBelow = false
 
-    /** True after [dispose]: the handlers are gone and the scope will never rebuild. */
+    /** Whether [dispose] has run: the handlers are gone and the scope will never rebuild. */
     var isDisposed = false
         private set
 
     /**
      * The plugin that was on this CustomPanel before StarUI attached, if any. Every callback is forwarded to it:
-     * underlays draw before it, overlays after it, and it sees input before StarUI's handlers.
+     * drawing behind the content happens before it, drawing in front after it, and it sees input before StarUI's
+     * handlers.
      */
     var delegate: CustomUIPanelPlugin? = null
         internal set
@@ -165,7 +201,7 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
 
     /** Number of measure + layout passes this node's own engine has started (as a layout root). For tests and tuning. */
     internal var layoutPassCount = 0
-    /** Free for your own use; StarUI never reads it. Cleared when a rebuild reuses the component. */
+    /** Free for your own use; StarUI never reads it. Cleared when a builder that runs again reuses the component. */
     var customData: Any? = null
 
     /** Set on the container an [org.starficz.starui.inject] call made: its key in the host panel's injections. */
@@ -294,12 +330,17 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     internal var inputCaptureRightPad = 0f
         private set
 
+    /** Whether the cursor is over the component, as of the last mouse event it saw. */
     var isHovering = false
         private set
 
     internal var hasClicked = false
         private set
 
+    /**
+     * Whether the component consumes the mouse events over it and the key events that reach it, so what is behind it
+     * does not see them. Off by default: events pass through.
+     */
     var consumeEvents = false
 
     private var inProcessInput = false
@@ -450,13 +491,13 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     }
 
     /**
-     * Asks for this node to be measured and laid out again on the next frame it renders. The request travels up
-     * through every StarUI layout container to the top-level node, which re-measures its whole tree, resizes itself
-     * and re-applies its anchor.
+     * Asks for this component to be measured and laid out again on the next frame it renders. The request travels up
+     * through every StarUI layout container to the top-level one, which measures its whole tree again, resizes itself
+     * and places itself again.
      *
-     * StarUI calls this by itself when children are added to or removed from a layout container and when a [Text]
-     * changes its string. Call it after changing something StarUI cannot see (a child's size set by hand, for
-     * example). It only sets flags, so it is cheap and safe to call from event handlers.
+     * StarUI calls this by itself when children are added to or removed from a layout container and when a
+     * [Text][org.starficz.starui.components.Text] changes its text. Call it after changing something StarUI cannot see,
+     * such as a child's size set by hand. It only sets flags, so it is cheap, and safe to call from event handlers.
      */
     fun requestLayout() {
         layoutRequests++
@@ -599,20 +640,21 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     }
 
     /**
-     * Tears down the StarUI side of this component and of everything below it: event handlers, render and advance
-     * callbacks, UIState listeners and reactive scopes. Use it when you remove UI for good; StarUI does it by itself
-     * for children it rebuilds and for children dropped by `clearChildren()`. A component removed with
-     * `removeComponent` is left alone, so it can be added somewhere else.
+     * Tears down the StarUI side of this component and of everything below it: the event handlers, the render and
+     * advance callbacks, the [UIState][org.starficz.starui.UIState] listeners and the reactive scopes.
+     *
+     * Use it when you remove UI for good. StarUI does it by itself for children it rebuilds and for children dropped by
+     * `clearChildren()`. A component removed with `removeComponent` is left alone, so it can be added somewhere else.
      */
     fun dispose() {
         if (::component.isInitialized) Scope.disposeTree(component) else disposeSelf()
     }
 
-    /** The non-empty handler lists by name, e.g. "onClick, renderBelow x2". */
+    /** The non-empty handler lists by name, e.g. "onClick, onRenderBelow x2". */
     internal fun describeHandlers(): String {
         val names = listOf(
             "onPositionChanged", "onClick", "onClickOutside", "onClickRelease", "onHover", "onHoverEnter", "onHoverExit",
-            "onMouseHeld", "onKeyDown", "onKeyUp", "onKeyHeld", "renderBelow", "render", "advance", "onLayout", "onFirstLayout",
+            "onMouseHeld", "onKeyDown", "onKeyUp", "onKeyHeld", "onRenderBelow", "onRender", "onAdvance", "onLayout", "onFirstLayout",
             "onValueChanged"
         )
         return handlerLists().mapIndexedNotNull { i, list ->
@@ -634,6 +676,10 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         onValueChangedFunctions.toList().forEach { it() }
     }
 
+    /**
+     * Calls [function] when the component moves or changes size, with its new position. The modifier form is
+     * [Modifier.onPositionChanged][org.starficz.starui.modifier.onPositionChanged].
+     */
     fun onPositionChanged(function: (PositionAPI) -> Unit) { register(onPositionChangedFunctions, function) }
     override fun positionChanged(position: PositionAPI) {
         super.positionChanged(position)
@@ -655,7 +701,11 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    fun renderBelow(function: (alphaMult: Float) -> Unit) { register(renderBelowFunctions, function) }
+    /**
+     * Calls [function] every frame, to draw behind the component's content. The modifier form is
+     * [Modifier.onRenderBelow][org.starficz.starui.modifier.onRenderBelow].
+     */
+    fun onRenderBelow(function: (alphaMult: Float) -> Unit) { register(renderBelowFunctions, function) }
     override fun renderBelow(alphaMult: Float) {
         // Before this node's children render and before any layout below runs: the safe point to replace children.
         if (Scope.hasPendingDetached) Scope.disposeDetachedPending()
@@ -676,15 +726,25 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         pushClip()
     }
 
-    /** Runs after every layout pass that sizes and positions this node. Use [onFirstLayout] for one-time setup. */
+    /**
+     * Calls [function] after every layout pass that sizes and positions the component. The modifier form is
+     * [Modifier.onLayout][org.starficz.starui.modifier.onLayout].
+     */
     fun onLayout(function: () -> Unit) { register(onLayoutFunctions, function) }
 
-    /** Runs once, after the first layout pass that sizes and positions this node. */
+    /**
+     * Calls [function] once, after the first layout pass that sizes and positions the component. The modifier form is
+     * [Modifier.onFirstLayout][org.starficz.starui.modifier.onFirstLayout].
+     */
     fun onFirstLayout(function: () -> Unit) {
         if (hasEverLaidOut) return   // a reused component had its first layout long ago
         register(onFirstLayoutFunctions, function)
     }
-    fun render(function: (alphaMult: Float) -> Unit) { register(renderFunctions, function) }
+    /**
+     * Calls [function] every frame, to draw in front of the component's content. The modifier form is
+     * [Modifier.onRender][org.starficz.starui.modifier.onRender].
+     */
+    fun onRender(function: (alphaMult: Float) -> Unit) { register(renderFunctions, function) }
     override fun render(alphaMult: Float) {
         popClip()
         runLayout()
@@ -701,7 +761,11 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         }
     }
 
-    fun advance(function: (amount: Float) -> Unit) { register(advanceFunctions, function) }
+    /**
+     * Calls [function] every frame, with the seconds since the last one. The modifier form is
+     * [Modifier.onAdvance][org.starficz.starui.modifier.onAdvance].
+     */
+    fun onAdvance(function: (amount: Float) -> Unit) { register(advanceFunctions, function) }
     override fun advance(amount: Float) {
         delegate?.advance(amount)
         // by index, and only while not disposed: a callback may dispose this UI (disposing clears the list)
@@ -776,14 +840,54 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         }
     }
 
+    /**
+     * Calls [function] when a mouse button is pressed over the component. The modifier form is
+     * [Modifier.onClick][org.starficz.starui.modifier.onClick].
+     */
     fun onClick(function: (InputEventAPI) -> Unit) { register(onClickFunctions, function) }
+    /**
+     * Calls [function] when the mouse button is released over the component after a press on it. The modifier form is
+     * [Modifier.onClickRelease][org.starficz.starui.modifier.onClickRelease].
+     */
     fun onClickRelease(function: (InputEventAPI) -> Unit) { register(onClickReleaseFunctions, function) }
+    /**
+     * Calls [function] when a mouse button is pressed outside the component. The modifier form is
+     * [Modifier.onClickOutside][org.starficz.starui.modifier.onClickOutside].
+     */
     fun onClickOutside(function: (InputEventAPI) -> Unit) { register(onClickOutsideFunctions, function) }
+    /**
+     * Calls [function] on every mouse event while the cursor is over the component. The modifier form is
+     * [Modifier.onHover][org.starficz.starui.modifier.onHover].
+     */
     fun onHover(function: (InputEventAPI) -> Unit) { register(onHoverFunctions, function) }
+    /**
+     * Calls [function] when the cursor moves onto the component. The modifier form is
+     * [Modifier.onHoverEnter][org.starficz.starui.modifier.onHoverEnter].
+     */
     fun onHoverEnter(function: (InputEventAPI) -> Unit) { register(onHoverEnterFunctions, function) }
+    /**
+     * Calls [function] when the cursor leaves the component. The modifier form is
+     * [Modifier.onHoverExit][org.starficz.starui.modifier.onHoverExit].
+     */
     fun onHoverExit(function: (InputEventAPI) -> Unit) { register(onHoverExitFunctions, function) }
+    /**
+     * Calls [function] on every mouse event over the component while the left button is held. The modifier form is
+     * [Modifier.onMouseHeld][org.starficz.starui.modifier.onMouseHeld].
+     */
     fun onMouseHeld(function: (InputEventAPI) -> Unit) { register(onMouseButtonHeldFunctions, function) }
+    /**
+     * Calls [function] when a key is pressed. The modifier form is
+     * [Modifier.onKeyDown][org.starficz.starui.modifier.onKeyDown].
+     */
     fun onKeyDown(function: (InputEventAPI) -> Unit) { register(onKeyDownFunctions, function) }
+    /**
+     * Calls [function] when a key is released. The modifier form is
+     * [Modifier.onKeyUp][org.starficz.starui.modifier.onKeyUp].
+     */
     fun onKeyUp(function: (InputEventAPI) -> Unit) { register(onKeyUpFunctions, function) }
+    /**
+     * Calls [function] on each key repeat while a key is held. The modifier form is
+     * [Modifier.onKeyHeld][org.starficz.starui.modifier.onKeyHeld].
+     */
     fun onKeyHeld(function: (InputEventAPI) -> Unit) { register(onKeyHeldFunctions, function) }
 }

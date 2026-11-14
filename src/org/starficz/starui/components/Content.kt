@@ -21,9 +21,32 @@ internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (th
 }
 
 /**
- * A line or paragraph of text. Wraps the text by default; with a fill or exact width it wraps lines to fit.
- * [highlightedText] colours parts of it: `listOf("1200" to Color.YELLOW)`.
- * Returns the vanilla [LabelAPI]. Setting `label.text` later is fine: the layout around it updates.
+ * High level element that displays text: a vanilla label.
+ *
+ * The default [font], [color], [size] and [textAlign] come from the [StarUITheme] provided by [Theme]. If a
+ * parameter is set here, it will always be used; if it is not set, the value from the theme is used instead. A
+ * [font] or [color] that is `null` in both falls back to vanilla's own paragraph font and text colour.
+ *
+ * By default the [Text] wraps its text: it is as wide as its longest line. With an exact or fill width, the text is
+ * wrapped to fit that width and the [Text] grows in height to show every line.
+ *
+ * The returned [LabelAPI] can be changed later: setting `label.text` lays out the components around it again.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Text("Supplies: 1200", highlightedText = listOf("1200" to VanillaColors.highlight))
+ * ```
+ *
+ * @param text the text to be displayed
+ * @param size the size of the [Text]. By default it wraps its text
+ * @param modifier the [Modifier] to be applied to this text
+ * @param font the font of the text. `null` is vanilla's paragraph font
+ * @param color the colour of the text. `null` is vanilla's text colour
+ * @param textAlign the alignment of the text within the lines of the paragraph
+ * @param highlightedText parts of [text] drawn in another colour, each one a piece of the text and its colour, in
+ *   the order they appear in [text]
+ * @return the vanilla label
  */
 fun UIPanelAPI.Text(
     text: String,
@@ -99,9 +122,36 @@ fun UIPanelAPI.Text(
 }
 
 /**
- * A sprite, by its path (`"graphics/icons/cargo/supplies.png"`). [size] also takes `ImageSize.native()` (the
- * sprite's own size) and `ImageSize.aspectWrap()`; [contentScale] says how the sprite fills a box of another shape.
- * The sprite must be loaded, or it draws nothing.
+ * A component that lays out and draws a sprite, by its path (`"graphics/icons/cargo/supplies.png"`). The sprite must
+ * be loaded (listed in the mod's `settings.json` graphics, or loaded with `SettingsAPI.loadTexture`), or it draws
+ * nothing.
+ *
+ * Besides the usual sizes, [size] takes `ImageSize.native()`, the sprite's own size (scaled, and shrunk to a maximum
+ * when given), and `ImageSize.aspectWrap()`, as large as the space allows while keeping the sprite's shape. When the
+ * [Image]'s box has another shape than the sprite, [contentScale] says how the sprite fills it.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Image("graphics/icons/cargo/supplies.png", ImageSize.native(scale = 2f))
+ * ```
+ *
+ * @param spritePath the path of the sprite to draw
+ * @param size the size of the [Image]. See [ImageSize]
+ * @param modifier the [Modifier] to be applied to this image
+ * @param contentScale the scale used to determine how the sprite fills the bounds when they are a different shape
+ *   from the sprite
+ * @param withOutline whether to draw a 1 pixel black outline around the sprite's shape
+ * @param textureClamp whether to clamp the sprite's texture at its edges while drawing, so a scaled sprite shows no
+ *   pixels from its opposite edge
+ * @param forceNoRounding whether to draw the sprite at its exact position. By default vanilla rounds the position of
+ *   an even-sized sprite to whole pixels, so it stays sharp
+ * @param renderSchematic whether to draw vanilla's schematic effect over the sprite: a yellow grid and a soft yellow
+ *   glow, shown only where the sprite is opaque
+ * @param showBorder whether to draw a 1 pixel border in [borderColor] around the [Image]'s bounds
+ * @param borderColor the colour of the border. `null` keeps vanilla's default
+ * @return the vanilla image
+ * @see ContentScale
  */
 fun UIPanelAPI.Image(
     spritePath: String,
@@ -176,7 +226,7 @@ fun UIPanelAPI.Image(
         return Pair(w, h)
     }
 
-    val node = finishLeaf(slot, rawImage.obf, size, modifier, handle = rawImage, intrinsic = calcIntrinsic(),
+    val node = finishLeaf(slot, rawImage.vanillaComponent, size, modifier, handle = rawImage, intrinsic = calcIntrinsic(),
         measure = { availW, availH -> calcIntrinsic(availW, availH) },
         layout = { assignedW, assignedH ->
             applyScaleMode()
@@ -188,20 +238,48 @@ fun UIPanelAPI.Image(
 }
 
 /**
- * Vanilla's ship display, showing [fleetMember] or [variant]. Its size is exact or fill (it has no content size).
+ * A component that draws a ship or a fighter wing: vanilla's ship display, showing [fleetMember] or [variant]. Its
+ * size is exact or fill, since a ship display has no content size of its own.
  *
- * Vanilla shrinks the ship to 95% of the space and draws it 3% above centre. `exactScale = 1f` draws it at its real
- * size instead, centred and pixel-sharp (`1f / Global.getSettings().screenScaleMult` for one sprite pixel per screen
- * pixel). It is made new on every rebuild, since the ship it shows may have changed.
+ * By default vanilla shrinks the ship to 95% of the display and draws it 3% above its centre. [exactScale] draws it
+ * at a fixed scale instead, centred and pixel-sharp: `exactScale = 1f` is one sprite pixel per UI pixel, and
+ * `1f / Global.getSettings().screenScaleMult` one sprite pixel per screen pixel.
  *
- * Labels show only for a [variant] with a [shipName]: [style] `NORMAL` puts the name at the top (Orbitron 20) and the
- * hull class and designation at the bottom, `MINI` the name alone at the top left (Victor 10), `NONE` nothing. They are
- * as wide as the display minus 10, so a small display wraps them. A [fleetMember] display never has labels (vanilla
- * makes it with style NONE), so [style], [labelColor] and [shipName] with a fleetMember are an error.
+ * Labels show only for a [variant] with a [shipName]. A [fleetMember] display never has labels (vanilla makes it
+ * with no label style), so passing [style], [labelColor] or [shipName] with a [fleetMember] throws.
  *
- * [scaleSmallerShips] shrinks smaller hulls by a fixed table (frigate 50%, destroyer 55%, cruiser 70%, fighter 75%), so
- * a fleet of mixed sizes reads by size. [scanlines] darkens the display with vanilla's scanline overlay: 0 is none,
- * 1 solid black (vanilla's own displays use 0.2 to 0.4).
+ * A [ShipDisplay] is made again each time its builder runs, since the fleet member or variant it shows is usually
+ * changed in place.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * ShipDisplay(Size.exact(120f, 120f), variant = member.variant, shipName = member.shipName)
+ * ```
+ *
+ * @param size the size of the [ShipDisplay]
+ * @param modifier the [Modifier] to be applied to this display
+ * @param fleetMember the fleet member to show, with its damage and its fighters' state
+ * @param variant the variant to show, when there is no [fleetMember]
+ * @param style the label style: `NORMAL` puts the name at the top (Orbitron 20) and the hull class and designation
+ *   at the bottom, `MINI` puts the name alone at the top left (Victor 10), `NONE` shows no labels. `null` is the
+ *   theme's style. The labels are as wide as the display minus 10, so a small display wraps them
+ * @param labelColor the colour of the labels. `null` is the theme's colour, or vanilla's friendly text colour
+ * @param shipName the ship name shown in the labels. Without one, no labels are shown
+ * @param hideLabels whether to hide the labels even when [style] and [shipName] would show them
+ * @param showFighters whether to draw the ship's fighters next to it
+ * @param showDestroyedFighters whether to also draw the fighters that were destroyed
+ * @param showBorder whether to draw a border around the display
+ * @param newBorderStyle whether the border is a 1 pixel line in [borderColor], instead of vanilla's older sprite
+ *   frame (`ui_border4`)
+ * @param borderColor the colour of the line border. `null` keeps vanilla's, its neutral text colour. The sprite
+ *   frame is not tinted
+ * @param scaleSmallerShips whether to shrink smaller hulls by vanilla's fixed table (frigate 50%, destroyer 55%,
+ *   cruiser 70%, fighter 75%), so a fleet of mixed sizes reads by size
+ * @param scanlines how dark vanilla's scanline overlay makes the display, from 0 (none) to 1 (solid black).
+ *   Vanilla's own displays use 0.2 to 0.4
+ * @param exactScale a fixed scale for the ship, or `null` for vanilla's fit
+ * @return the vanilla ship display
  */
 fun UIPanelAPI.ShipDisplay(
     size: BoundedSize = StarUITheme.current.shipDisplay.size,
@@ -250,7 +328,7 @@ fun UIPanelAPI.ShipDisplay(
     rawShip.setScanlines(scanlines)
     if (hideLabels) rawShip.hideLabels()
 
-    finishLeaf(slot, rawShip.obf, size, modifier, handle = rawShip, intrinsic = Pair(100f, 100f),
+    finishLeaf(slot, rawShip.vanillaComponent, size, modifier, handle = rawShip, intrinsic = Pair(100f, 100f),
         measure = { maxW, maxH -> Pair(if (maxW == Float.MAX_VALUE) 100f else maxW, if (maxH == Float.MAX_VALUE) 100f else maxH) },
         layout = { assignedW, assignedH -> rawShip.setSize(assignedW, assignedH) }
     )

@@ -66,8 +66,8 @@ internal object ScrollWheelPatch {
     /**
      * Scrolls [panel] to [x] the way vanilla's wheel scrolls vertically: the panel's own offset (what its scrollbar and
      * clamping read) is set at once, and the content container is given [x] as its target, which its advance eases
-     * towards (vanilla's `amount * (3 * distance + 200)` per frame, on both axes). The API setter also moves the content
-     * at once, so the content is put back where it is drawn before it gets the target.
+     * towards (vanilla's `amount * (3 * distance + 200)` per frame, on both axes). The API setter also moves the
+     * content at once, so the content is put back where it is drawn before it gets the target.
      */
     private fun easeX(context: BeforeContext, panel: ScrollPanelAPI, x: Float) {
         val content = panel.contentContainer

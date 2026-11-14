@@ -22,7 +22,7 @@ fun registerToolingTests() {
         val lines = dump.lines().filter { it.isNotBlank() }
         expect(lines[0].startsWith("Column ") && " at (0, 0)" in lines[0] && "size=(wrap, wrap)" in lines[0],
             "the first line is the dumped component itself, at its own origin (${lines[0]})")
-        expect("scope(builds=1, reactive)" in lines[0] && "renderBelow" in lines[0], "it names the scope and the attached modifiers (${lines[0]})")
+        expect("scope(builds=1, reactive)" in lines[0] && "onRenderBelow" in lines[0], "it names the scope and the attached modifiers (${lines[0]})")
         expect(lines[1].trim().startsWith("Text \"Rows: 2\"") && lines[1].startsWith("  "), "children are indented and labelled with their text (${lines[1]})")
         expect(lines.count { it.trim().startsWith("Spacer 100x20") && "size=(exact 100, exact 20)" in it && "onClick" in it } == 2,
             "both Spacers appear with their size, sizing and handlers")

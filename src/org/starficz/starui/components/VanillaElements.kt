@@ -98,21 +98,51 @@ private inline fun UIPanelAPI.VanillaHolder(
 // Stat grids
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The entries of a [StatGrid], in reading order (left to right, then down). */
+/**
+ * Receiver scope of a [StatGrid]'s entries block: the entries, in reading order (left to right, then down).
+ */
 @StarUIDsl
 class StatGridScope internal constructor() {
     internal val entries = ArrayList<Triple<String, String, Color?>>()
 
-    /** One label and its value; [valueColor] overrides the grid's value colour (vanilla's highlight). */
+    /**
+     * Adds one label and its value.
+     *
+     * @param label the label of the entry
+     * @param value the value of the entry
+     * @param valueColor the colour of the value, or `null` for the grid's (vanilla's highlight colour)
+     */
     fun entry(label: String, value: String, valueColor: Color? = null) {
         entries += Triple(label, value, valueColor)
     }
 }
 
 /**
- * Vanilla's label and value grid (as in ship and weapon stat tooltips): the entries in [columns] columns, filled left
- * to right, then down. `valueFirst = true` is vanilla's flipped grid: each value in a [valueWidth] column before its
- * label, [valuePad] apart.
+ * A component that shows vanilla's grid of labels and values, as in ship and weapon stat tooltips. The entries fill
+ * [columns] columns left to right, then down. With [valueFirst], it is vanilla's flipped grid: each value in a
+ * [valueWidth] column before its label.
+ *
+ * By default it wraps its content, at the width there is room for. It is made again when one of its arguments changes.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * StatGrid(columns = 2) {
+ *     entry("Hull", "12000")
+ *     entry("Armor", "1500")
+ *     entry("Flux capacity", "18000", valueColor = VanillaColors.positive)
+ * }
+ * ```
+ *
+ * @param size the size of the [StatGrid]
+ * @param modifier the [Modifier] to be applied to this grid
+ * @param columns the number of columns
+ * @param labelColor the colour of the labels, or `null` for vanilla's
+ * @param valueFirst whether each value comes before its label
+ * @param valueWidth the width of the value column when [valueFirst] is set
+ * @param valuePad the gap between a value and its label when [valueFirst] is set
+ * @param entries the entries of the grid
+ * @return the panel holding the vanilla grid
  */
 fun UIPanelAPI.StatGrid(
     size: Size = Size.wrapContent(),
@@ -143,8 +173,19 @@ fun UIPanelAPI.StatGrid(
 }
 
 /**
- * Vanilla's breakdown of a stat by source (as in the refit screen's stat tooltips): one line per modifier, its value
- * in a [valueWidth] column. [getter] formats the values; null uses vanilla's.
+ * A component that shows vanilla's breakdown of a stat by source, as in the refit screen's stat tooltips: one line per
+ * modifier, its value in a [valueWidth] column.
+ *
+ * By default it wraps its content, at the width there is room for. Since it reads live game objects, it is made again
+ * each time its builder runs.
+ *
+ * @param stat the stat to break down
+ * @param size the size of the [StatModGrid]
+ * @param modifier the [Modifier] to be applied to this grid
+ * @param valueWidth the width of the value column
+ * @param valuePad the gap after the value column
+ * @param getter formats the values, or `null` for vanilla's formatting
+ * @return the panel holding the vanilla grid
  */
 fun UIPanelAPI.StatModGrid(
     stat: MutableStat,
@@ -158,7 +199,17 @@ fun UIPanelAPI.StatModGrid(
     else addStatModGrid(width, valueWidth, valuePad, 0f, stat)
 }
 
-/** [StatModGrid] for a [StatBonus]. */
+/**
+ * A component that shows vanilla's breakdown of a [StatBonus] by source. See the [MutableStat] overload.
+ *
+ * @param stat the bonus to break down
+ * @param size the size of the [StatModGrid]
+ * @param modifier the [Modifier] to be applied to this grid
+ * @param valueWidth the width of the value column
+ * @param valuePad the gap after the value column
+ * @param getter formats the values, or `null` for vanilla's formatting
+ * @return the panel holding the vanilla grid
+ */
 fun UIPanelAPI.StatModGrid(
     stat: StatBonus,
     size: Size = Size.wrapContent(),
@@ -171,7 +222,20 @@ fun UIPanelAPI.StatModGrid(
     else addStatModGrid(width, valueWidth, valuePad, 0f, stat)
 }
 
-/** Vanilla's labelled value box (as on the market screen): [label] above [value], 42 tall. */
+/**
+ * A component that shows vanilla's labelled value box, as on the market screen: [label] above [value], 42 pixels
+ * tall.
+ *
+ * By default it wraps its content, at the width there is room for. It is made again when one of its arguments changes.
+ *
+ * @param label the label, on top
+ * @param value the value, below it
+ * @param size the size of the [LabelledValue]
+ * @param modifier the [Modifier] to be applied to this box
+ * @param labelColor the colour of the label
+ * @param valueColor the colour of the value
+ * @return the panel holding the vanilla box
+ */
 fun UIPanelAPI.LabelledValue(
     label: String,
     value: String,
@@ -187,19 +251,52 @@ fun UIPanelAPI.LabelledValue(
 // Relationship and importance
 // ---------------------------------------------------------------------------------------------------------------
 
-/** Vanilla's reputation bar for a relationship [value] from -1 (vengeful) to 1 (cooperative), 19 tall. */
+/**
+ * A component that shows vanilla's reputation bar for a relationship value, 19 pixels tall.
+ *
+ * By default it is as wide as there is room for. It is made again when one of its arguments changes.
+ *
+ * @param value the relationship, from -1 (vengeful) to 1 (cooperative)
+ * @param size the size of the [RelationshipBar]
+ * @param modifier the [Modifier] to be applied to this bar
+ * @return the panel holding the vanilla bar
+ */
 fun UIPanelAPI.RelationshipBar(value: Float, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
     VanillaElement("RelationshipBar", size, modifier, inputs = value) { width -> addRelationshipBar(value, width, 0f) }
 
-/** [RelationshipBar] for the player's standing with [faction]. Needs a campaign. */
+/**
+ * A component that shows vanilla's reputation bar for the player's standing with [faction]. Needs a campaign.
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param faction the faction whose standing with the player is shown
+ * @param size the size of the [RelationshipBar]
+ * @param modifier the [Modifier] to be applied to this bar
+ * @return the panel holding the vanilla bar
+ */
 fun UIPanelAPI.RelationshipBar(faction: FactionAPI, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
     VanillaElement("RelationshipBar", size, modifier, inputs = null /* the live standing */) { width -> addRelationshipBar(faction, width, 0f) }
 
-/** [RelationshipBar] for the player's standing with [person]. Needs a campaign. */
+/**
+ * A component that shows vanilla's reputation bar for the player's standing with [person]. Needs a campaign.
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param person the person whose standing with the player is shown
+ * @param size the size of the [RelationshipBar]
+ * @param modifier the [Modifier] to be applied to this bar
+ * @return the panel holding the vanilla bar
+ */
 fun UIPanelAPI.RelationshipBar(person: PersonAPI, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
     VanillaElement("RelationshipBar", size, modifier, inputs = null /* the live standing */) { width -> addRelationshipBar(person, width, 0f) }
 
-/** Vanilla's importance pips for a contact or other person (very low to very high). */
+/**
+ * A component that shows vanilla's importance pips for a contact or another person, from very low to very high.
+ * It is made again when one of its arguments changes.
+ *
+ * @param importance the importance shown
+ * @param size the size of the [ImportanceIndicator]
+ * @param modifier the [Modifier] to be applied to this indicator
+ * @return the panel holding the vanilla indicator
+ */
 fun UIPanelAPI.ImportanceIndicator(importance: PersonImportance, size: Size = Size.wrapContent(), modifier: Modifier = Modifier): CustomPanelAPI =
     VanillaElement("ImportanceIndicator", size, modifier, inputs = importance) { width -> addImportanceIndicator(importance, width, 0f) }
 
@@ -207,26 +304,52 @@ fun UIPanelAPI.ImportanceIndicator(importance: PersonImportance, size: Size = Si
 // Commodities and costs
 // ---------------------------------------------------------------------------------------------------------------
 
-/** The icons of a [CommodityIcons] group, in order. */
+/**
+ * Receiver scope of a [CommodityIcons]' icons block: the icons, in order.
+ */
 @StarUIDsl
 class CommodityIconsScope internal constructor() {
     internal val icons = ArrayList<Triple<CommoditySpecAPI, Int, IconRenderMode>>()
 
-    /** [count] icons of a commodity (`"supplies"`, `Commodities.FUEL`, ...), drawn in [mode] (dim, red, green, ...). */
+    /**
+     * Adds [count] icons of a commodity.
+     *
+     * @param commodityId the commodity's id (`"supplies"`, `Commodities.FUEL`, ...)
+     * @param count the number of icons
+     * @param mode how the icons are drawn (normal, dim, red, green, ...)
+     * @throws IllegalArgumentException if there is no commodity with that id
+     */
     fun icons(commodityId: String, count: Int, mode: IconRenderMode = IconRenderMode.NORMAL) {
         val spec = Global.getSettings().getCommoditySpec(commodityId)
             ?: throw IllegalArgumentException("CommodityIcons: no commodity \"$commodityId\"")
         icons += Triple(spec, count, mode)
     }
 
+    /**
+     * Adds [count] icons of a commodity.
+     *
+     * @param commodity the commodity
+     * @param count the number of icons
+     * @param mode how the icons are drawn (normal, dim, red, green, ...)
+     */
     fun icons(commodity: CommoditySpecAPI, count: Int, mode: IconRenderMode = IconRenderMode.NORMAL) {
         icons += Triple(commodity, count, mode)
     }
 }
 
 /**
- * Vanilla's row of commodity icons (as in market supply and demand tooltips), wrapping onto more rows when they do not
- * fit. [rowHeight] sets the icon size; [rows] fixes the number of rows; [centered] centres a single row.
+ * A component that shows vanilla's row of commodity icons, as in market supply and demand tooltips. The icons wrap
+ * onto more rows when they do not fit.
+ *
+ * By default it wraps its content, at the width there is room for. It is made again when one of its arguments changes.
+ *
+ * @param size the size of the [CommodityIcons]
+ * @param modifier the [Modifier] to be applied to this row
+ * @param rowHeight the height of a row, which sets the size of the icons, or `null` for vanilla's
+ * @param rows a fixed number of rows, or `null` to use as many as the icons need
+ * @param centered whether to centre a single row of icons
+ * @param icons the icons, in order
+ * @return the panel holding the vanilla icons
  */
 fun UIPanelAPI.CommodityIcons(
     size: Size = Size.wrapContent(),
@@ -249,21 +372,42 @@ fun UIPanelAPI.CommodityIcons(
     }
 }
 
-/** The costs of a [CostDisplay], in order. */
+/**
+ * Receiver scope of a [CostDisplay]'s costs block: the costs, in order.
+ */
 @StarUIDsl
 class CostDisplayScope internal constructor() {
     internal val costs = ArrayList<Triple<String, Int, Boolean>>()
 
-    /** [quantity] of a commodity; [consumed] = false shows it as needed but not used up (vanilla draws it dimmer). */
+    /**
+     * Adds the cost of a commodity.
+     *
+     * @param commodityId the commodity's id
+     * @param quantity the amount needed
+     * @param consumed whether the cost is used up. `false` shows it as needed but kept, drawn dimmer
+     */
     fun cost(commodityId: String, quantity: Int, consumed: Boolean = true) {
         costs += Triple(commodityId, quantity, consumed)
     }
 }
 
 /**
- * Vanilla's resource cost boxes (as in build and survey dialogs), under [title] (none when null). With
- * [withAvailable] each shows the player's stock and turns red when it is short. Needs a campaign: vanilla reads the
- * player fleet's cargo even without [withAvailable].
+ * A component that shows vanilla's resource cost boxes, as in the build and survey dialogs, under an optional
+ * [title]. With [withAvailable], each box also shows the player's stock and turns red when it is short.
+ *
+ * By default it wraps its content, at the width there is room for. It is made again when one of its arguments
+ * changes, and with [withAvailable] each time its builder runs, since the stock is read live. Needs a campaign:
+ * vanilla reads the player fleet's cargo even without [withAvailable].
+ *
+ * @param size the size of the [CostDisplay]
+ * @param modifier the [Modifier] to be applied to this display
+ * @param title the title above the boxes, or `null` for none
+ * @param withAvailable whether each box shows the player's stock
+ * @param color the main colour of the boxes
+ * @param darkColor the dark colour of the boxes
+ * @param boxHeight the height of the boxes, or `null` for vanilla's
+ * @param costs the costs, in order
+ * @return the panel holding the vanilla boxes
  */
 fun UIPanelAPI.CostDisplay(
     size: Size = Size.wrapContent(),
@@ -289,8 +433,19 @@ fun UIPanelAPI.CostDisplay(
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
- * Vanilla's grid of ship icons (as in fleet tooltips): [columns] by [rows] icons [iconSize] square, in [baseColor].
- * Ships beyond columns x rows are left out.
+ * A component that shows vanilla's grid of ship icons, as in fleet tooltips: [columns] by [rows] icons. Ships
+ * beyond `columns * rows` are left out.
+ *
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param ships the ships shown
+ * @param size the size of the [ShipList]
+ * @param modifier the [Modifier] to be applied to this list
+ * @param columns the number of icons in a row
+ * @param rows the number of rows
+ * @param iconSize the width and height of an icon
+ * @param baseColor the tint of the ship sprites in the icons, also the colour of the list's scrollbar handle
+ * @return the panel holding the vanilla list
  */
 fun UIPanelAPI.ShipList(
     ships: List<FleetMemberAPI>,
@@ -305,8 +460,18 @@ fun UIPanelAPI.ShipList(
 }
 
 /**
- * Vanilla's fleet summary (as in a fleet's tooltip): each ship's icon, name and class, in two columns when there is
- * room (330 wide or more). [sort] orders them largest first; empty shows vanilla's "None".
+ * A component that shows vanilla's fleet summary, as in a fleet's tooltip: each ship's icon, name and class, in two
+ * columns when there is room (330 pixels or more). With no [ships], it shows vanilla's "None".
+ *
+ * By default it wraps its content, at the width there is room for. Since it reads live game objects, it is made again
+ * each time its builder runs.
+ *
+ * @param ships the ships shown
+ * @param size the size of the [FleetSummary]
+ * @param modifier the [Modifier] to be applied to this summary
+ * @param sort whether to order the ships largest first
+ * @param showBaseHullForDHulls whether d-hulls are shown as their base hull
+ * @return the panel holding the vanilla summary
  */
 fun UIPanelAPI.FleetSummary(
     ships: List<FleetMemberAPI>,
@@ -319,7 +484,18 @@ fun UIPanelAPI.FleetSummary(
     showShips(ships, maxOf(1, ships.size), sort, showBaseHullForDHulls, 0f)
 }
 
-/** Vanilla's list of codex links under [title]: each entry id opens its codex page when clicked. */
+/**
+ * A component that shows vanilla's list of codex links under [title]. Each entry opens its codex page when clicked.
+ *
+ * By default it wraps its content, at the width there is room for. It is made again when one of its arguments changes.
+ *
+ * @param title the title above the links
+ * @param entryIds the ids of the codex entries
+ * @param size the size of the [CodexEntries]
+ * @param modifier the [Modifier] to be applied to this list
+ * @param sort whether vanilla sorts the entries
+ * @return the panel holding the vanilla list
+ */
 fun UIPanelAPI.CodexEntries(
     title: String,
     entryIds: Set<String>,
@@ -335,9 +511,17 @@ fun UIPanelAPI.CodexEntries(
 // ---------------------------------------------------------------------------------------------------------------
 
 /**
- * Vanilla's skill panel for [person]: their skills by aptitude, with elite markers and each skill's tooltip, as on
- * the character and officer screens. `admin = true` shows an administrator's skills; `oneColumn = true` stacks the
- * aptitudes in one column (for narrow places). Needs a campaign.
+ * A component that shows vanilla's skill panel for [person], as on the character and officer screens: their skills
+ * by aptitude, with elite markers and each skill's tooltip. Needs a campaign.
+ *
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param person the person whose skills are shown
+ * @param size the size of the [SkillPanel]
+ * @param modifier the [Modifier] to be applied to this panel
+ * @param admin whether to show the skills of an administrator
+ * @param oneColumn whether to stack the aptitudes in one column, for narrow places
+ * @return the panel holding the vanilla skill panel
  */
 fun UIPanelAPI.SkillPanel(
     person: PersonAPI,
@@ -350,11 +534,18 @@ fun UIPanelAPI.SkillPanel(
 }
 
 /**
- * An event's progress bar as its intel screen shows it (Hostile Activity, Hyperspace Topography, ...): the bar,
- * the icon of each stage above it at its progress, the marker of the current progress below it, and the event's own
- * tooltips on the bar and the stage icons. Vanilla's bar is the event's own `getBarWidth()` wide (750 for most
- * events) whatever room it gets, so the component is built at that width (plus the event's bar offset and half a
- * stage icon at the end) and wraps it. Needs a campaign.
+ * A component that shows an event's progress bar as its intel screen does (Hostile Activity, Hyperspace Topography,
+ * ...): the bar, the icon of each stage above it at its progress, the marker of the current progress below it, and
+ * the event's own tooltips on the bar and the stage icons. Needs a campaign.
+ *
+ * Vanilla's bar is the event's own `getBarWidth()` wide (750 pixels for most events) whatever room it gets, so the
+ * component is built at that width, plus the event's bar offset and half a stage icon at the end, and wraps it.
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param intel the event shown
+ * @param size the size of the [EventProgressBar]
+ * @param modifier the [Modifier] to be applied to this bar
+ * @return the panel holding the vanilla bar
  */
 fun UIPanelAPI.EventProgressBar(
     intel: BaseEventIntel,
@@ -397,10 +588,20 @@ fun UIPanelAPI.EventProgressBar(
 }
 
 /**
- * Vanilla's planet display (as in planet tooltips and the survey dialog): the planet, lit by its star, at the size it
- * gets; [showName] adds its name, [withClass] its type under it, [showConditions] the row of condition icons and
- * [showHazardRating] the hazard rating. Shows nothing for a planet that is not in the campaign (`PlanetAPI` objects
- * from the sector are). Needs a campaign.
+ * A component that shows vanilla's planet display, as in planet tooltips and the survey dialog: the planet, lit by
+ * its star, at the size it is given. Shows nothing for a planet that is not in the campaign; the sector's own
+ * `PlanetAPI` objects are. Needs a campaign.
+ *
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param planet the planet shown
+ * @param size the size of the [PlanetInfo]
+ * @param modifier the [Modifier] to be applied to this display
+ * @param showName whether to show the planet's name
+ * @param withClass whether to show the planet's type under its name
+ * @param showConditions whether to show the row of condition icons
+ * @param showHazardRating whether to show the hazard rating
+ * @return the panel holding the vanilla display
  */
 fun UIPanelAPI.PlanetInfo(
     planet: PlanetAPI,
@@ -421,9 +622,17 @@ fun UIPanelAPI.PlanetInfo(
 }
 
 /**
- * What the player's fleet needs to survey [planet] fully (as in the survey dialog): each resource, the amount, and
- * whether the fleet has it. [withText] adds vanilla's line above the grid. Needs a campaign: vanilla reads the player
- * fleet's cargo.
+ * A component that shows what the player's fleet needs to survey [planet] fully, as in the survey dialog: each
+ * resource, the amount, and whether the fleet has it. Needs a campaign: vanilla reads the player fleet's cargo.
+ *
+ * By default it wraps its content, at the width there is room for. Since it reads live game objects, it is made again
+ * each time its builder runs.
+ *
+ * @param planet the planet to survey
+ * @param size the size of the [SurveyRequirements]
+ * @param modifier the [Modifier] to be applied to this display
+ * @param withText whether to show vanilla's line of text above the grid
+ * @return the panel holding the vanilla display
  */
 fun UIPanelAPI.SurveyRequirements(
     planet: PlanetAPI,
@@ -435,8 +644,20 @@ fun UIPanelAPI.SurveyRequirements(
 }
 
 /**
- * Vanilla's cargo list (as in a fleet's or a market's tooltip): an icon, the name and the quantity of each stack, in
- * two columns when there is room (330 wide or more), up to [max] stacks. [sort] orders them largest first.
+ * A component that shows vanilla's cargo list, as in a fleet's or a market's tooltip: an icon, the name and the
+ * quantity of each stack, in two columns when there is room (330 pixels or more).
+ *
+ * By default it wraps its content, at the width there is room for. Since it reads live game objects, it is made again
+ * each time its builder runs.
+ *
+ * @param cargo the cargo shown
+ * @param size the size of the [CargoList]
+ * @param modifier the [Modifier] to be applied to this list
+ * @param max the largest number of stacks shown
+ * @param sort whether to order the stacks largest first
+ * @param itemHeight the height of a stack's line
+ * @param itemPad the gap between two lines
+ * @return the panel holding the vanilla list
  */
 fun UIPanelAPI.CargoList(
     cargo: CargoAPI,
@@ -451,8 +672,14 @@ fun UIPanelAPI.CargoList(
 }
 
 /**
- * Vanilla's playthrough record (the intel screen's "Playthrough" tab: the timeline of the player's achievements, with
- * its own scrolling table) at the size it gets. Needs a campaign.
+ * A component that shows vanilla's playthrough record, the intel screen's "Playthrough" tab: the timeline of the
+ * player's achievements, with its own scrolling table, at the size it is given. Needs a campaign.
+ *
+ * Since it reads live game objects, it is made again each time its builder runs.
+ *
+ * @param size the size of the [PlaythroughData]
+ * @param modifier the [Modifier] to be applied to this record
+ * @return the panel holding the vanilla record
  */
 fun UIPanelAPI.PlaythroughData(
     size: BoundedSize = Size.fillMaxSize(),
@@ -462,11 +689,37 @@ fun UIPanelAPI.PlaythroughData(
 }
 
 /**
- * Vanilla's sector map (as in intel and mission screens) at the size it gets, showing what [params] asks for
- * (`MapParams.showSystem`, `positionToShowAllMarkersAndSystems`, filters, ...). With a [title] it sits in vanilla's
- * titled box, in [color] and [dark]. `.sectorMap` on the returned panel gives the map as a [BoxedSectorMap] (pings,
- * `centerOn`, `centerOnEntity`, `zoomOutAndCenter`) once it is laid out. Vanilla lays a map out once, so
- * a size change makes it again, keeping its centre; so does the builder calling this running again. Needs a campaign.
+ * The vanilla map of a [SectorMap], boxed: its pings, centring and zoom, and the panel it is. `null` for any other
+ * panel, and before the map is first laid out, since vanilla makes a map at the size it gets.
+ *
+ * Vanilla lays a map out once, so StarUI makes it again when its size changes: read this when you use it, and do
+ * not keep it.
+ */
+val CustomPanelAPI.sectorMap: BoxedSectorMap?
+    get() = findSectorMap(this)?.let { BoxedSectorMap(it) }
+
+internal fun findSectorMap(component: UIComponentAPI): SectorMapAPI? {
+    if (component is SectorMapAPI) return component
+    if (component !is UIPanelAPI) return null
+    return component.getChildrenNonCopy().firstNotNullOfOrNull { findSectorMap(it) }
+}
+
+/**
+ * A component that shows vanilla's sector map, as in the intel and mission screens, at the size it is given and
+ * showing what [params] asks for (`MapParams.showSystem`, `positionToShowAllMarkersAndSystems`, filters, ...). With a
+ * [title], the map sits in vanilla's titled box. Needs a campaign.
+ *
+ * `.sectorMap` on the returned panel gives the map as a [BoxedSectorMap] (pings, `centerOn`, `centerOnEntity`,
+ * `zoomOutAndCenter`) once it is laid out. Vanilla lays a map out once, so a size change makes it again, keeping
+ * its centre. It is also made again each time its builder runs.
+ *
+ * @param params what the map shows
+ * @param size the size of the [SectorMap]
+ * @param modifier the [Modifier] to be applied to this map
+ * @param title the title of the box around the map, or `null` for a map without a box
+ * @param color the main colour of the box. By default the player faction's UI colour
+ * @param dark the dark colour of the box. By default the player faction's dark UI colour
+ * @return the panel holding the vanilla map
  */
 fun UIPanelAPI.SectorMap(
     params: MapParams,

@@ -27,14 +27,16 @@ object VanillaColors {
     /** Bad news in text (red). */
     val negative: Color get() = Misc.getNegativeHighlightColor()
 
-    /** Story-point options: text, background, hover. */
+    /** The text colour of story-point options. */
     val story: Color get() = Misc.getStoryOptionColor()
+    /** The background colour of story-point options. */
     val storyDark: Color get() = Misc.getStoryDarkColor()
+    /** The hover colour of story-point options. */
     val storyBright: Color get() = Misc.getStoryBrightColor()
 
     /** The black of vanilla's panels: opaque, a touch lighter than the screen behind them. */
     val panel: Color get() = Color(4, 6, 8, 255)
-
-    /** This colour with another alpha (0..255). */
-    fun Color.withAlpha(alpha: Int): Color = Color(red, green, blue, alpha)
 }
+
+/** This colour with another alpha (0..255). */
+fun Color.withAlpha(alpha: Int): Color = Color(red, green, blue, alpha)

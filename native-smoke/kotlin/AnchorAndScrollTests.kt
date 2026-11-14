@@ -13,7 +13,7 @@ import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.modifier.padding
 import org.starficz.starui.Overflow
 import org.starficz.starui.Size
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private val CHILD = Color(200, 140, 60)

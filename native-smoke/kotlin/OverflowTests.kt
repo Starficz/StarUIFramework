@@ -9,7 +9,7 @@ import org.starficz.starui.components.*
 import org.starficz.starui.modifier.*
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.children
-import org.starficz.starui.vanilla.scrollPanel
+import org.starficz.starui.components.scrollPanel
 import java.awt.Color
 
 private fun overflowAt(x: Float, y: Float) = Modifier.anchor(Anchor.inside.topLeft.ofParent(x, y))
