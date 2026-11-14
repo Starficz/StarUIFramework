@@ -19,6 +19,9 @@ public final class Groups {
                 case "ports":
                     all.addAll(PortChecks.steps());
                     break;
+                case "screens":
+                    all.addAll(ScreenChecks.steps());
+                    break;
                 default:
                     throw new IllegalArgumentException("Unknown group " + one);
             }

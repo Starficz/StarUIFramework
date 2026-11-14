@@ -1,6 +1,5 @@
 package org.starficz.starui.vanilla
 
-import com.fs.graphics.util.Fader
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.ui.*
 import org.starficz.starui.Anchor.AnchorData
@@ -33,64 +32,9 @@ internal fun findSectorMap(component: UIComponentAPI): SectorMapAPI? {
     return component.getChildrenNonCopy().firstNotNullOfOrNull { findSectorMap(it) }
 }
 
-var UIComponentAPI.fader: Fader?
-    get() = invoke("getFader") as Fader?
-    set(fader) { invoke("setFader", fader) }
-
-
 fun UIComponentAPI.setMouseOverPad(leftPad: Float, rightPad: Float, topPad: Float, bottomPad: Float) {
     invoke("setMouseOverPad", leftPad, rightPad, topPad, bottomPad)
 }
-
-val UIComponentAPI.mouseoverHighlightFader: Fader?
-    get() = invoke("getMouseoverHighlightFader") as Fader?
-
-val UIComponentAPI.topAncestor: UIPanelAPI?
-    get() = invoke("findTopAncestor") as UIPanelAPI?
-
-fun UIComponentAPI.setTooltipOffsetFromCenter(xMargin: Float, yMargin: Float){
-    invoke("setTooltipOffsetFromCenter", xMargin, yMargin)
-}
-
-fun UIComponentAPI.setTooltipPositionRelativeToAnchor(xMargin: Float, yMargin: Float, anchor: UIComponentAPI){
-    invoke("setTooltipPositionRelativeToAnchor", xMargin, yMargin, anchor)
-}
-
-fun UIComponentAPI.setSlideData(xOffset: Float, yOffset: Float, durationIn: Float, durationOut: Float){
-    invoke("setSlideData", xOffset, yOffset, durationIn, durationOut)
-}
-
-fun UIComponentAPI.slideIn(){
-    invoke("slideIn")
-}
-
-fun UIComponentAPI.slideOut(){
-    invoke("slideOut")
-}
-
-fun UIComponentAPI.forceSlideIn(){
-    invoke("forceSlideIn")
-}
-
-fun UIComponentAPI.forceSlideOut(){
-    invoke("forceSlideOut")
-}
-
-val UIComponentAPI.sliding: Boolean
-    get() = invoke("isSliding") as Boolean
-
-val UIComponentAPI.slidIn: Boolean
-    get() = invoke("isSlidIn") as Boolean
-
-val UIComponentAPI.slidOut: Boolean
-    get() = invoke("isSlidOut") as Boolean
-
-val UIComponentAPI.slidingIn: Boolean
-    get() = invoke("isSlidingIn") as Boolean
-
-var UIComponentAPI.enabled: Boolean
-    get() = invoke("isEnabled") as Boolean
-    set(enabled) { invoke("setEnabled", enabled) }
 
 // width, height, x and y are UIComponentAPI members since 0.98.5a (read-only; set them on `position`).
 
@@ -116,15 +60,6 @@ val UIComponentAPI.right
 
 fun UIComponentAPI.setLocation(x: Float, y: Float){
     position.setLocation(x, y)
-}
-
-/**
- * Uses x/yAlignOffset to position the bottom left of a UIComponent in absolute pixel coords,
- * where (0,0) is the bottom left of the screen.
- */
-fun UIComponentAPI.setAbsoluteLocation(x: Float, y: Float){
-    xAlignOffset += (x - position.x)
-    yAlignOffset += (y - position.y)
 }
 
 val UIComponentAPI.centerX
@@ -185,10 +120,6 @@ internal fun PositionAPI.relativeToBase(
     method.invoke(this, null, xAlignBase, yAlignBase, xAlignThis, yAlignThis, xOffset, yOffset)
 }
 
-val UIPanelAPI.lastComponent
-    get() = children.lastOrNull()
-
-
 // UIPanelAPI extensions that expose UIPanel methods
 private val childrenNonCopyMethods = HashMap<Class<*>, ReflectionUtils.ReflectedMethod>()
 
@@ -215,10 +146,6 @@ fun UIPanelAPI.findChildWithMethod(
     parameterTypes: Array<Class<*>?>? = null
 ): UIComponentAPI? {
     return children.find { it.getMethodsMatching(name, returnType, numOfParams, parameterTypes).isNotEmpty() }
-}
-
-fun UIPanelAPI.allChildrenWithMethod(methodName: String): List<UIComponentAPI> {
-    return children.filter { it.getMethodsMatching(methodName).isNotEmpty() }
 }
 
 

@@ -90,7 +90,10 @@ internal object NodeStore {
     /** Nodes of components that are in no panel yet and have no store of their own. */
     private val orphans = HashSet<UINode>()
 
-    private class StoreMethods(val add: ReflectionUtils.ReflectedMethod, val remove: ReflectionUtils.ReflectedMethod)
+    private class StoreMethods(
+        val add: ReflectionUtils.ReflectedMethod, val remove: ReflectionUtils.ReflectedMethod,
+        val get: ReflectionUtils.ReflectedMethod
+    )
     private val storeMethods = HashMap<Class<*>, StoreMethods?>()
 
     /** The store methods of [component]'s class, or null when it has none (labels). */
@@ -99,7 +102,26 @@ internal object NodeStore {
         val add = component.getMethodsMatching("addListener", parameterTypes = any).singleOrNull()
         val remove = component.getMethodsMatching("removeListener", parameterTypes = any).singleOrNull()
         val get = component.getMethodsMatching("getListeners", parameterTypes = arrayOf(Class::class.java)).singleOrNull()
-        if (add != null && remove != null && get != null) StoreMethods(add, remove) else null
+        if (add != null && remove != null && get != null) StoreMethods(add, remove, get) else null
+    }
+
+    /**
+     * The first object of [type] in [component]'s own vanilla store, or null (none, or no store). For StarUI's other
+     * per-component records (a panel's injections), which must live exactly as long as the panel, like nodes.
+     */
+    fun <T : Any> findInStore(component: UIComponentAPI, type: Class<T>): T? {
+        val target = component.actual
+        val store = storeOf(target) ?: return null
+        val found = store.get.invoke(target, type) as? List<*> ?: return null
+        return found.firstOrNull { type.isInstance(it) }?.let { type.cast(it) }
+    }
+
+    /** Puts [value] in [component]'s own vanilla store; false when its class has none (labels). */
+    fun putInStore(component: UIComponentAPI, value: Any): Boolean {
+        val target = component.actual
+        val store = storeOf(target) ?: return false
+        store.add.invoke(target, value)
+        return true
     }
 
     /** True once a node is held by something other than its own component (a label's): the add hook has work then. */

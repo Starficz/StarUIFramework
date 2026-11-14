@@ -191,21 +191,17 @@ fun registerPerfTests() {
         expect(rebuildMs < 50.0, "rebuilding 100 rows stays under 50 ms (${"%.2f".format(rebuildMs)} ms)")
         root.removeComponent(list)
 
-        // 3. Injection polling: StarUIManager.advance with 20 injections whose element is already present.
-        val targets = (0 until 20).map { i -> root.CustomPanel(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofParent(700f + i * 12f, 600f))) }
-        targets.forEachIndexed { i, target ->
-            StarUIManager.registerDynamicInjection(object : DynamicInjection {
-                override val id = "perf-injection-$i"
-                override fun findTarget(): UIPanelAPI = target
-                override fun UIPanelAPI.injectUI() { Spacer(Size.exact(4f, 4f)) }
-            })
+        // 3. inject as a polling fallback: 20 vanilla panels, each called every frame while its injection is live.
+        val targets = (0 until 20).map { i ->
+            Global.getSettings().createCustom(10f, 10f, null).also { root.addComponent(it).inTL(700f + i * 12f, 600f) }
         }
-        repeat(200) { StarUIManager.advance() }
-        t0 = System.nanoTime(); repeat(1000) { StarUIManager.advance() }
-        val advanceUs = (System.nanoTime() - t0) / 1e3 / 1000
-        log(String.format("PERF StarUIManager.advance with 20 settled injections: %.1f us per frame", advanceUs))
-        expect(targets.all { it.getChildrenNonCopy().size == 1 }, "each injection ran exactly once while its element stayed")
-        expect(advanceUs < 500.0, "injection polling stays under 0.5 ms per frame (${"%.1f".format(advanceUs)} us)")
+        val pollOnce = { targets.forEachIndexed { i, target -> target.inject("perf:injection-$i") { Spacer(Size.exact(4f, 4f)) } } }
+        repeat(200) { pollOnce() }
+        t0 = System.nanoTime(); repeat(1000) { pollOnce() }
+        val pollUs = (System.nanoTime() - t0) / 1e3 / 1000
+        log(String.format("PERF 20 settled inject calls: %.1f us per frame", pollUs))
+        expect(targets.all { it.getChildrenNonCopy().size == 1 }, "each panel got its injection exactly once")
+        expect(pollUs < 500.0, "20 settled inject calls stay under 0.5 ms per frame (${"%.1f".format(pollUs)} us)")
         frame()
         screenshot("final")
     }

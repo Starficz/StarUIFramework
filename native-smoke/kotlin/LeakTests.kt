@@ -10,6 +10,7 @@ import org.starficz.starui.modifier.onClick
 import org.starficz.starui.modifier.tooltip
 import org.starficz.starui.runtime.NodeStore
 import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.inject
 import org.starficz.starui.Size
 import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.ReflectionUtils.invoke
@@ -42,12 +43,19 @@ private fun buildPlainAndDrop(): List<Pair<String, WeakReference<Any>>> {
     return refs
 }
 
-/** StarUI components put straight into a vanilla panel (no StarUI container above them), as a DynamicInjection does. */
+/** StarUI components put straight into a vanilla panel (no StarUI container above them), and an inject() there. */
 private fun buildInVanillaAndDrop(): List<Pair<String, WeakReference<Any>>> {
     val vanillaPanel = Global.getSettings().createCustom(400f, 300f, null)
     val refs = ArrayList<Pair<String, WeakReference<Any>>>()
     refs += "(in a vanilla panel) a Button with onClick" to WeakReference<Any>(vanillaPanel.Button("press", modifier = Modifier.onClick { }) { })
     refs += "(in a vanilla panel) a label with a tooltip" to WeakReference<Any>(vanillaPanel.Text("tip", modifier = Modifier.tooltip("hello")))
+    // the injection record (with its builder) sits on the panel: it must go with the panel
+    val captured = Any()
+    var injectedButton: Any? = null
+    val injected = vanillaPanel.inject("leaks:injection") { injectedButton = Button("injected") { captured.hashCode() } }
+    refs += "(injected) the container" to WeakReference<Any>(injected)
+    refs += "(injected) its Button" to WeakReference<Any>(injectedButton)
+    refs += "(injected) an object its builder captured" to WeakReference<Any>(captured)
     refs += "(in a vanilla panel) the panel" to WeakReference<Any>(vanillaPanel)
     return refs
 }

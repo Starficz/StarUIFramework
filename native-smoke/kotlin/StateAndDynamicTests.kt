@@ -8,6 +8,7 @@ import org.starficz.starui.components.*
 import org.starficz.starui.modifier.anchor
 import org.starficz.starui.modifier.background
 import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.modifier.onAdvance
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.children
 import java.awt.Color
@@ -103,25 +104,118 @@ fun registerDynamicTests() {
         screenshot("final")
     }
 
-    StarUITestSuite.group("dynamic-injection") {
-        val host = root.CustomPanel(Size.exact(300f, 100f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(30, 30, 40)))
-        var injections = 0
-        val injection = object : DynamicInjection {
-            override val id = "starui-test-injection"
-            override fun findTarget(): UIPanelAPI = host
-            override fun UIPanelAPI.injectUI() {
-                injections++
-                CustomPanel(Size.exact(50f, 50f), Modifier.anchor(Anchor.inside.center.ofParent()).background(Color(200, 140, 60)))
-            }
+    StarUITestSuite.group("injection") {
+        /** A plain vanilla panel (no StarUI plugin) in the group's root: what inject is for. */
+        fun vanillaPanel(w: Float, h: Float, left: Float, top: Float, into: UIPanelAPI = root): CustomPanelAPI =
+            Global.getSettings().createCustom(w, h, null).also { into.addComponent(it).inTL(left, top) }
+
+        // ---- one container per key, placement ----
+        val host = vanillaPanel(300f, 100f, 40f, 40f)
+        vanillaPanel(60f, 30f, 0f, 0f, into = host)
+        var builds = 0
+        val orange: StarUIBuilder = { builds++; Spacer(Size.exact(50f, 50f), Modifier.background(Color(200, 140, 60))) }
+        val a = host.inject("test:a", builder = orange)
+        val again = host.inject("test:a", builder = orange)
+        expect(again === a, "a second inject with the same key returns the live container")
+        expect(builds == 1, "and does not run the builder again ($builds)")
+        expect(host.children.size == 2, "one vanilla child and one injection (got ${host.children.size})")
+        expect(host.children.last() === a, "Top: added after the panel's own children")
+        expect(host.injection("test:a") === a, "injection(key) finds it")
+        val b = host.inject("test:b", placement = InjectPlacement.Bottom) { Spacer(Size.exact(20f, 20f)) }
+        expect(host.children.first() === b, "Bottom: under the panel's own children")
+        expect(host.children.size == 3, "a different key adds a second container (got ${host.children.size})")
+
+        // ---- a clear brings it back at the panel's next render, above what vanilla put back ----
+        host.clearChildren()
+        val refill = Global.getSettings().createCustom(60f, 30f, null)
+        host.addComponent(refill).inTL(0f, 0f)
+        expect(host.injection("test:a") == null, "right after a clear the injection is gone")
+        frame()
+        val a2 = host.injection("test:a")
+        expect(a2 != null && a2 !== a, "the next render adds it again as a new container")
+        expect(builds == 2, "its builder ran again ($builds)")
+        expect(host.children.last() === a2, "Top again: after the children vanilla re-added")
+        expect(host.children.first() === host.injection("test:b"), "Bottom again: under them")
+        expect(host.children.size == 3, "nothing doubled (got ${host.children.size})")
+        expect((a.plugin as StarUIPanelPlugin).isDisposed, "the cleared container was disposed")
+        frame()
+        expect(builds == 2, "a later frame adds nothing more ($builds)")
+
+        // ---- removeInjection, removeComponent and dispose end it ----
+        host.removeInjection("test:b")
+        expect(host.injection("test:b") == null && host.children.size == 2, "removeInjection takes it out")
+        host.removeComponent(host.injection("test:a")!!)
+        host.clearChildren()
+        frame()
+        expect(host.injection("test:a") == null && builds == 2, "removed by hand, a clear does not bring it back ($builds)")
+        expect(host.injection("test:b") == null, "nor one ended by removeInjection")
+        val a3 = host.inject("test:a", builder = orange)
+        expect(builds == 3 && host.children.size == 1, "inject after the end makes a new one ($builds)")
+        (a3.plugin as StarUIPanelPlugin).dispose()
+        expect(host.injection("test:a") == null, "a disposed container is not live")
+        host.clearChildren()
+        frame()
+        expect(builds == 3 && host.children.isEmpty(), "disposed, a clear does not bring it back ($builds)")
+
+        // ---- a clear that re-adds the same container (vanilla reordering) keeps it ----
+        val keep = host.inject("test:keep") { Spacer(Size.exact(10f, 10f)) }
+        host.clearChildren()
+        host.addComponent(keep)
+        frame()
+        expect(host.injection("test:keep") === keep && host.children.size == 1, "re-added by the panel itself, it is kept as it is")
+        expect(!(keep.plugin as StarUIPanelPlugin).isDisposed, "and not disposed")
+
+        // ---- the injection has its own reactive scope ----
+        val count = UIState(0)
+        var label: LabelAPI? = null
+        val reactiveHost = vanillaPanel(300f, 40f, 40f, 160f)
+        reactiveHost.inject("test:reactive") { label = Text("count ${count.value}") }
+        frame()
+        count.value = 5
+        frame()
+        expect(label?.text == "count 5", "a UIState read in the builder rebuilds it (${label?.text})")
+
+        // ---- an anchor to a vanilla sibling ----
+        val anchorHost = vanillaPanel(300f, 100f, 40f, 220f)
+        val sibling = vanillaPanel(60f, 20f, 10f, 10f, into = anchorHost)
+        val anchored = anchorHost.inject("test:anchor", modifier = Modifier.anchor(Anchor.below.sibling(sibling).matchingLeftEdge(0f))) {
+            Spacer(Size.exact(40f, 10f), Modifier.background(Color(60, 160, 200)))
         }
-        StarUIManager.registerDynamicInjection(injection)
-        StarUIManager.advance()
-        StarUIManager.advance()
-        expect(injections == 1, "an injection runs once while its element is still in the target ($injections)")
-        expect(host.children.size == 1, "exactly one injected child (got ${host.children.size})")
-        host.removeComponent(host.children.first())
-        StarUIManager.advance()
-        expect(injections == 2, "removing the injected element makes the next advance re-inject ($injections)")
+        frame()
+        near(anchored.relLeft(anchorHost), 10f, "anchored below the vanilla sibling: left")
+        near(anchored.relTop(anchorHost), 30f, "anchored below the vanilla sibling: top")
+        // (an anchor is vanilla's relativeTo: like vanilla's own, it does not follow a sibling moved later by itself)
+
+        // ---- a handler inside an injection makes the host rebuild, and the rebuild injects again (as a hook does):
+        // the old container must not be disposed while its own handler list runs (RefitFilters' picker crash) ----
+        val rebuildHost = vanillaPanel(200f, 40f, 40f, 400f)
+        var rebuildNow = false
+        var rebuilds = 0
+        fun injectRebuilding(): CustomPanelAPI = rebuildHost.inject("test:rebuild", modifier = Modifier.onAdvance {
+            if (rebuildNow) {
+                rebuildNow = false
+                rebuilds++
+                rebuildHost.clearChildren()
+                injectRebuilding()
+            }
+        }) { Spacer(Size.exact(10f, 10f)) }
+        val beforeRebuild = injectRebuilding()
+        frame()
+        rebuildNow = true
+        val rebuildErr = thrown { frame() }
+        expect(rebuildErr == null, "an injection's own onAdvance can make the host rebuild and inject again (got $rebuildErr)")
+        expect(rebuilds == 1 && rebuildHost.children.size == 1, "one rebuild, one container ($rebuilds, ${rebuildHost.children.size})")
+        expect(rebuildHost.injection("test:rebuild").let { it != null && it !== beforeRebuild }, "the new container is the injection")
+        frame()
+        expect((beforeRebuild.plugin as StarUIPanelPlugin).isDisposed, "the old container is disposed at the next safe point")
+
+        // ---- not for StarUI's reactive containers ----
+        val reactive = root.Column(Size.exact(100f, 40f), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 340f))) {
+            Text("${count.value}")
+        }
+        val err = thrown { reactive.inject("test:bad") { } }
+        expect(err is IllegalStateException && err.message?.contains("inject") == true, "inject on a reactive container throws (got $err)")
+
         frame()
         screenshot("final")
     }

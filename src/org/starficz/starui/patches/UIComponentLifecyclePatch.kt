@@ -3,6 +3,7 @@ package org.starficz.starui.patches
 import com.fs.starfarer.api.input.InputEventAPI
 import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
+import org.starficz.starui.Injections
 import org.starficz.starui.runtime.ClipStack
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import patchlib.api.context.AfterContext
@@ -51,6 +52,8 @@ internal object UIComponentLifecyclePatch {
         )
     )
     fun onRenderBefore(context: BeforeContext) {
+        // a panel whose clearChildren() dropped an inject() container gets it back before its children draw
+        if (Injections.hasPending) Injections.beforeRender(context.self)
         if (ClipStack.depth == 0 && !StarUIPanelPlugin.hasAttachedPlugins) return
         val self = context.self as? UIComponentAPI ?: return
         if (self is CustomPanelAPI) {

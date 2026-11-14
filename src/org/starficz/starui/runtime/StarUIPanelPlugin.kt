@@ -168,8 +168,8 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     /** Free for your own use; StarUI never reads it. Cleared when a rebuild reuses the component. */
     var customData: Any? = null
 
-    /** A full-screen panel StarUIManager injected for a StarUIPlugin (how it finds its own panels again). */
-    internal var isInjectedRoot = false
+    /** Set on the container an [org.starficz.starui.inject] call made: its key in the host panel's injections. */
+    internal var injectionKey: String? = null
 
     // Used when a leaf component is placed inside a larger padded/aligned layout slot.
     internal var slotBounds: SlotBounds? = null
@@ -704,7 +704,12 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
     fun advance(function: (amount: Float) -> Unit) { register(advanceFunctions, function) }
     override fun advance(amount: Float) {
         delegate?.advance(amount)
-        advanceFunctions.forEach { it(amount) }
+        // by index, and only while not disposed: a callback may dispose this UI (disposing clears the list)
+        var i = 0
+        while (i < advanceFunctions.size && !isDisposed) {
+            advanceFunctions[i](amount)
+            i++
+        }
         // This node's children have advanced already (vanilla advances children before the plugin), so they can be
         // replaced now. When a StarUI parent is also marked it will flush everything below it in a moment.
         // Not when detached: a callback above may just have removed this node (a vanilla panel rebuilding itself).

@@ -10,6 +10,11 @@ public class CheckPlugin extends BaseModPlugin {
     @Override
     public void onApplicationLoad() {
         log.info("LIVE_CHECK application loaded");
+        // the screens group: a StarUIPlugin that labels every screen, registered before vanilla builds any
+        String group = System.getProperty("live.check");
+        if (group != null && java.util.Arrays.asList(group.split(",")).contains("screens")) {
+            org.starficz.starui.livecheck.LiveScreens.register();
+        }
     }
 
     @Override

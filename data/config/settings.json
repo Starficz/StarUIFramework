@@ -1,6 +1,0 @@
-{
-	"plugins":{
-		"StarUIFrameworkCombatHandler":"org.starficz.starui.internal.CombatUIAdderScript"
-	}
-}
-

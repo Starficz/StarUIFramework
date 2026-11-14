@@ -3,6 +3,7 @@ package org.starficz.starui.patches
 import com.fs.starfarer.api.ui.PositionAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
+import org.starficz.starui.Injections
 import org.starficz.starui.runtime.NodeStore
 import org.starficz.starui.runtime.Scope
 import org.starficz.starui.runtime.StarUIPanelPlugin
@@ -116,7 +117,10 @@ internal object UIPanelContainerPatch {
         val panel = context.self as? UIPanelAPI ?: return
         for (child in panel.getChildrenNonCopy()) {
             val plugin = StarUIPanelPlugin.getAttached(child) ?: continue
-            if (!plugin.isDisposed) Scope.noteDetached(child)
+            if (plugin.isDisposed) continue
+            Scope.noteDetached(child)
+            // an inject() container: built again at the panel's next render, after vanilla has refilled it
+            if (plugin.injectionKey != null) Injections.childCleared(panel, child)
         }
     }
 

@@ -18,7 +18,7 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
   **2.1.x**, so compile with `-api-version 2.1`.
 - Imports live in four packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`,
   `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`, `StarUIPlugin`,
-  `DynamicInjection`, `requestLayout`, `dumpLayout`), `.components` (Column, Text, ..., `ButtonGroup`, `key`),
+  `inject`, `InjectPlacement`, `requestLayout`, `dumpLayout`), `.components` (Column, Text, ..., `ButtonGroup`, `key`),
   `.modifier` (Modifier and its extensions, `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, the
   `Boxed*` types, vanilla helpers). `.runtime` holds `StarUIPanelPlugin` (the receiver of `Modifier.plugin { }`);
   everything else in it, and in `.layout`, is internal.
@@ -42,10 +42,42 @@ To attach to vanilla screens, use one of these:
 - **`StarUIPlugin`**: implement it, override `addPanelToCampaignUI`, `addPanelToRefitTab`,
   `addPanelToCombatScreen`, etc. (see `StarUIPlugin.kt`), then call
   `StarUIManager.registerPlugin(it)` in `onApplicationLoad`. Each builder gets a full-size `CustomPanelAPI` over that
-  screen and is re-injected whenever vanilla rebuilds the screen.
-- **`DynamicInjection`**: for a specific vanilla sub-panel. `findTarget()` returns the panel (or null) and
-  `UIPanelAPI.injectUI()` adds your components. Register with `StarUIManager.registerDynamicInjection(it)`. It
-  re-runs when your injected element disappears. Example: Combat AI Tweaks' `ui/RefitButton.kt`.
+  screen, added at the moment vanilla builds it (the campaign core UI when it is made, a core tab when it opens,
+  the combat UI when a battle sets it up, the warroom (command map) when it is first shown, the title screen, the
+  mission screen's refit when it is shown) and back
+  after vanilla clears and refills it. Nothing polls. A screen built before a plugin registered gets its panel the
+  next time vanilla builds it, so register in `onApplicationLoad`. The warroom hands input to its children
+  before its map, so a control in `addPanelToCombatWarroom` takes the clicks on it before the map sees them. `StarUIManager.coreUI`,
+  `currentCoreUITabID`, `currentCoreUITabPanel` and the `combat*` panels read the screen that is showing now.
+- **`panel.inject(key, size, modifier, placement) { }`**: for a specific vanilla sub-panel. It adds one StarUI
+  `CustomPanel` (its own reactive scope) to the panel and builds your components in it. Call it at the moment
+  vanilla builds the panel: a PatchLib `@After` on the method or constructor that builds it, with the hook's
+  `self` (or a panel reached from it) as the receiver. Your mod then compiles against `PatchLibAPI.jar` too.
+
+  ```kotlin
+  // 0.98.5a-RC4: the refit's hullmod list (refitPanel.getModDisplay().getMods()); never clears its children
+  @Patch(target = ClassMatch(typeName = "com.fs.starfarer.coreui.refit.ModWidget"))
+  object RefitButtonPatch {
+      @JvmStatic
+      @After(target = MethodMatch(methodType = MethodType.CONSTRUCTOR))
+      fun afterCreate(context: AfterContext) {
+          val widget = context.self as? UIPanelAPI ?: return
+          widget.inject("mymod:refit-button") { Button("AI Config") { /* ... */ } }
+      }
+  }
+  ```
+
+  - One injection per `key` per panel (prefix keys with your mod id). While it is live, another call returns it
+    and does nothing, so a hook that fires twice, a build method that runs again, or your own every-frame script
+    (the fallback where no hook point exists) can all just call it. `panel.injection(key)` finds it.
+  - When the panel clears its children (how vanilla rebuilds a panel in place), the injection comes back at the
+    panel's next render, above what vanilla put back, with the builder run again. So hooking the panel's first
+    build is enough. `removeInjection(key)`, `dispose()` on the container, or removing it yourself ends it for good.
+  - Since the builder can run again, read what it needs from the panel inside it (`this.parent`, getters,
+    siblings) instead of capturing objects a vanilla rebuild replaces.
+  - `placement = InjectPlacement.Bottom` puts it under the panel's own children. Not for StarUI's own reactive
+    containers (it throws): put the components in their builder.
+  - Example: Combat AI Tweaks' `ui/RefitButton.kt`.
 
 ## Containers
 
@@ -339,8 +371,8 @@ Column {
 ```
 src/org/starficz/starui/
   (root)                the everyday types: Sizing.kt (Size, Axis), Alignment.kt, Overflow.kt, Anchor.kt, UIState.kt,
-                        StarUITheme.kt, StarUIManager.kt (injection), StarUIPlugin.kt, DynamicInjection.kt,
-                        RequestLayout.kt, LayoutDump.kt, Dsl.kt
+                        StarUITheme.kt, StarUIManager.kt (screen roots), StarUIPlugin.kt, Injection.kt
+                        (inject), RequestLayout.kt, LayoutDump.kt, Dsl.kt
   components/           Containers.kt (Column, Row, Box, CustomPanel, overflow and scroll hosts, key, reuse helpers),
                         LazyLists.kt (LazyColumn, LazyRow), Content.kt (Text, Image, ShipDisplay), Controls.kt
                         (Button, TextField, checkboxes, sliders), ButtonGroup.kt, Spacers.kt, Sections.kt, Tables.kt,
@@ -360,8 +392,10 @@ src/org/starficz/starui/
   patches/              PatchLib hooks, one per file: UIComponentLifecyclePatch (render, advance, input, culling),
                         UIPanelContainerPatch (child changes, box unwrapping), ClipInputPatch, LabelTextPatch,
                         NativeValuePatches (text field, checkbox, slider values), ButtonListenerChainPatch,
-                        ScrollWheelPatch (nested and horizontal wheel), ShipDisplayExactScalePatch
-  internal/             ModPlugin and the scripts that drive StarUIManager
+                        ScrollWheelPatch (nested and horizontal wheel), ShipDisplayExactScalePatch,
+                        the StarUIPlugin screens: CoreUIScreenPatch, CombatScreenPatch, TitleScreenPatch,
+                        MissionRefitPatch (the core tabs use the API's CoreUITabListener instead)
+  internal/             ModPlugin (registers the tab listener on game load)
 native-smoke/           in-game test suite (test-only, never shipped)
 docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md (overflow, wheel, long-list numbers)
 ```
@@ -405,6 +439,17 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   hands it a StarUI Box with `setNext`: the holo draws, advances and feeds input to that content itself, so the
   content is not a child in the UI tree. It is a layout root of its own (its exact size is set from the holo's) and
   its scope flushes itself; the holo's plugin owns it (`ownedOutsideTree`) and disposes it with itself.
+- **Screens.** `StarUIManager` injects one screen panel per vanilla screen (`inject` with key
+  `staruiframework:screen`, or `-below` under the combat ship info) holding a panel per registered plugin with a
+  builder for it; none when no plugin has one. The moment comes from the API's `CoreUITabListener` for core tabs
+  (guarded: vanilla can announce a tab it put off, with the old tab still showing) and from four PatchLib hooks
+  for the rest. Its getters compute from `AppDriver`'s current state on every read; nothing is cached per frame.
+- **Injection.** `inject` keeps a `Records` object (key to size, modifier, placement, builder, the container
+  weakly) in the host panel's vanilla store (`NodeStore.findInStore` / `putInStore`), so it goes with the panel.
+  The container's plugin carries `injectionKey`. `UIPanelContainerPatch.onChildrenCleared` marks a cleared live
+  container's entry and its host pending; the render `@Before` in `UIComponentLifecyclePatch` (one `hasPending`
+  check per component) builds those entries again on the host's next render, before its children draw. The build
+  runs with outer key and read tracking hidden, so a call from inside another builder does not disturb it.
 - **Registrations made during a build on a plugin that outlives it** (the container's own plugin, an older plugin)
   are undone before the next build (`Scope.addCleanup`). Handlers on reused children are cleared by
   `resetForReuse()`.
