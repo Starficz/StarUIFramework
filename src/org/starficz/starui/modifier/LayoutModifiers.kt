@@ -255,9 +255,18 @@ internal object VanillaDialogFit {
     fun fit(plugin: StarUIPanelPlugin) {
         val self = plugin.component
         val panel = self.parent ?: return
-        val dw = self.position.width - panel.position.width
-        val dh = self.position.height - panel.position.height
-        if (kotlin.math.abs(dw) < 0.5f && kotlin.math.abs(dh) < 0.5f) return
+        // whole pixels. The width changes by even amounts (the dialog stays centred on whole pixels); the height so
+        // the dialog's ends odd: its see-through background alternates two scanline strengths row by row from the
+        // bottom, and at an even height the frame's top inner line falls on the darker row (a dark top edge). The
+        // panel may get a pixel more than the content
+        fun even(d: Float) = kotlin.math.ceil(d / 2f) * 2f
+        val dw = even(kotlin.math.ceil(self.position.width) - panel.position.width)
+        var dh = kotlin.math.ceil(self.position.height) - panel.position.height
+        val dialogH = dialogAbove(panel)?.position?.height ?: 0f
+        if ((kotlin.math.ceil(dialogH + dh)).toInt() % 2 == 0) dh += 1f
+        val w = panel.position.width + dw
+        val h = panel.position.height + dh
+        if (dw == 0f && dh == 0f) return
         val dialog = dialogAbove(panel)
         if (dialog == null) {
             if (!warned) {
@@ -267,7 +276,7 @@ internal object VanillaDialogFit {
             }
             return
         }
-        panel.position.setSize(self.position.width, self.position.height)
+        panel.position.setSize(w, h)
         // the dialog's own setSize: it also sizes its holo frame and background (its position's would not)
         ReflectionUtils.invoke(dialog, "setSize", dialog.position.width + dw, dialog.position.height + dh)
     }

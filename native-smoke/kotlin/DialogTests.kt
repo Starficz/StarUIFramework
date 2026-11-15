@@ -75,7 +75,7 @@ fun registerDialogTests() {
 
             val noConfirm = showDialog(Size.exact(300f, 60f), confirmText = null, onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
             frame()
-            near(noConfirm.holo!!.position.height, 60f + 20f + 14f, "with no buttons the window is (h + 20) high inside its frame")
+            near(noConfirm.holo!!.position.height, 60f + 20f + 14f + 1f, "with no buttons the window is (h + 20) high inside its frame, one more to be odd")
             key(Keyboard.KEY_RETURN)
             expect(confirmed == 2 && noConfirm.isOpen, "with no confirm button Enter does nothing")
             key(Keyboard.KEY_ESCAPE)
@@ -125,10 +125,10 @@ fun registerDialogTests() {
             val hostH = big.layer.host!!.position.height
             val holo = big.holo!!
             near(holo.position.width, hostW - 100f, "a fill dialog is the screen less 50 px a side")
-            near(holo.position.height, hostH - 100f, "and as tall")
+            near(holo.position.height, hostH - 100f, "and as tall (to a pixel: window heights are odd)", tolerance = 1.01f)
             near(holo.cx, hostW / 2, "centred")
-            expect(holo.lastBackground == org.starficz.starui.vanilla.HoloBackground.Dialog,
-                "its background is the opaque Dialog one by default (${holo.lastBackground})")
+            expect(holo.lastBackground == org.starficz.starui.vanilla.HoloBackground.Default,
+                "its background is vanilla custom dialog's 125/175 by default (${holo.lastBackground})")
             val layout = big.layer.root!!.dumpLayout()
             expect(layout.contains("\"Fills the screen\""), "dumpLayout lists the dialog's content under its holo")
             val dump = org.starficz.starui.runtime.DebugDump.dump("t1", root)
@@ -147,7 +147,7 @@ fun registerDialogTests() {
             val wrapped = showDialog { Spacer(Size.exact(222f, 77f)) }
             frame(1)
             near(wrapped.holo!!.position.width, 222f + 34f, "a wrap dialog is as wide as its content plus the window (${wrapped.holo!!.position.width})")
-            near(wrapped.holo!!.position.height, 77f + 69f, "and as tall, buttons included, on its first frame (${wrapped.holo!!.position.height})")
+            near(wrapped.holo!!.position.height, 77f + 69f + 1f, "and as tall, buttons included (one more: odd), on its first frame (${wrapped.holo!!.position.height})")
             wrapped.cancel()
             frame()
             val larger = UIState(false)
@@ -155,7 +155,7 @@ fun registerDialogTests() {
                 if (larger.value) Spacer(Size.exact(300f, 200f)) else Spacer(Size.exact(100f, 50f))
             }
             frame(30)   // the holo draws (and so lays out) its content once it has folded open
-            near(growing.holo!!.position.width, 134f, "it starts around the small content (${growing.holo!!.position.width})")
+            near(growing.holo!!.position.width, 184f, "it starts as wide as its Confirm button, wider than the small content (${growing.holo!!.position.width})")
             larger.value = true
             frame(30)
             near(growing.holo!!.position.width, 334f, "and grows with it when the content changes (${growing.holo!!.position.width})")

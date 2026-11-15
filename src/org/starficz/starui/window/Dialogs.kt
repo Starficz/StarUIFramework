@@ -28,6 +28,7 @@ import org.starficz.starui.runtime.nodeFor
 import org.starficz.starui.vanilla.BoxedUIHolo
 import org.starficz.starui.vanilla.ButtonFont
 import org.starficz.starui.vanilla.HoloBackground
+import org.starficz.starui.vanilla.ReflectionUtils.invoke
 
 /**
  * Which of a [Dialog]'s opens and closes show vanilla's burst of static over its window (the holo's noise layer; no
@@ -160,7 +161,8 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * confirmation over a dialog over a panel. The window is vanilla's custom dialog's: the content, a Box of [size], 10 px
  * in from the window's inner edge; the buttons (150 x 25, Orbitron 20) 10 px from its bottom right, the cancel button
  * in the corner. Its inner size is (width + 20) x (height + 55), or (height + 20) with no buttons; the frame adds 7 px
- * on every side.
+ * on every side, and the window is a pixel taller when its height would be even (its see-through background then
+ * hides the frame's top inner line).
  *
  * [size] is the content's, per axis: wrap (the default) makes the window as large as the content, measured before it
  * first shows and again whenever the content changes; exact is that size; fill is as large as the screen allows.
@@ -189,9 +191,9 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * @param contentKey a key for the content: when it changes, the window's content (buttons included) is built again
  *   behind vanilla's static transition, for a dialog with pages
  * @param codexEntryId the codex entry F2 opens, or `null` for the codex as it was last left
- * @param background the window's dark background: [HoloBackground.Dialog] (the default) is the opaque one of
- *   vanilla's market pickers, so a busy screen under it (a core tab) does not show through;
- *   [HoloBackground.Default] is the holo's see-through default that vanilla's custom dialog keeps
+ * @param background the window's dark background: [HoloBackground.Default] (the default) is vanilla's custom
+ *   dialog's, see-through, with the frame's inner line showing; `HoloBackground(200, 225)` is vanilla's save dialog's,
+ *   nearly opaque; [HoloBackground.Dialog] is vanilla's market dialogs', opaque (it hides the inner line)
  * @param pause whether the campaign or battle pauses while it is open
  * @param builder the content, in its Box; the parameter confirms or cancels from the content
  * @return the dialog
@@ -207,7 +209,7 @@ fun UIPanelAPI.Dialog(
     static: DialogStatic = DialogStatic.Vanilla,
     contentKey: Any? = null,
     codexEntryId: String? = null,
-    background: HoloBackground = HoloBackground.Dialog,
+    background: HoloBackground = HoloBackground.Default,
     pause: Boolean = true,
     builder: (@StarUIDsl CustomPanelAPI).(dialog: StarUIDialog) -> Unit
 ): StarUIDialog {
@@ -245,7 +247,7 @@ fun showDialog(
     static: DialogStatic = DialogStatic.Vanilla,
     contentKey: Any? = null,
     codexEntryId: String? = null,
-    background: HoloBackground = HoloBackground.Dialog,
+    background: HoloBackground = HoloBackground.Default,
     pause: Boolean = true,
     builder: (@StarUIDsl CustomPanelAPI).(dialog: StarUIDialog) -> Unit
 ): StarUIDialog {
@@ -264,6 +266,16 @@ fun showDialog(
         }
     ) { layer -> dialogWindow(layer.dialog!!, size, confirmText, cancelText, contentKey, background, builder) }
     return dialog
+}
+
+/**
+ * A holo height made odd (one pixel more when even). The holo's see-through background alternates two strengths of
+ * scanline, row by row from its bottom edge: at an even height the frame's top inner line falls on the darker row
+ * and disappears, while at an odd one it shows as on the other edges (vanilla's own dialogs have odd heights).
+ */
+internal fun oddHolo(height: Float): Float {
+    val h = kotlin.math.ceil(height)
+    return if (h.toInt() % 2 == 0) h + 1f else h
 }
 
 /** The window of a dialog, in its layer's full-screen Box: vanilla's custom dialog, measure for measure. */
@@ -288,6 +300,9 @@ private fun CustomPanelAPI.dialogWindow(
         is Axis.FillMax -> max
         else -> null
     }
+    // the buttons along the bottom: the window is never narrower than they are
+    val buttonCount = (if (confirmText != null) 1 else 0) + (if (cancelText != null) 1 else 0)
+    val buttonsWidth = if (buttonCount == 0) 0f else buttonCount * StarUIDialog.BUTTON_WIDTH + (buttonCount - 1) * margin
     val knownW = known(asked.width, maxW)
     val knownH = known(asked.height, maxH)
     val width = knownW ?: dialog.wrapWidth ?: 1f
@@ -301,18 +316,26 @@ private fun CustomPanelAPI.dialogWindow(
     fun fit() {
         if (knownW != null && knownH != null) return
         val measured = (content.plugin as StarUIPanelPlugin).measure(knownW ?: maxW, knownH ?: maxH)
-        val w = knownW ?: minOf(maxW, maxOf(1f, measured.first))
-        val h = knownH ?: minOf(maxH, maxOf(1f, measured.second))
+        // whole pixels (a text measures 312.6 wide: a window of fractions draws its frame and background a pixel
+        // apart), and on a wrapping width never narrower than the buttons along its bottom
+        val w = knownW ?: minOf(maxW, kotlin.math.ceil(maxOf(1f, measured.first, buttonsWidth)))
+        val h = knownH ?: minOf(maxH, kotlin.math.ceil(maxOf(1f, measured.second)))
         if (knownW == null) dialog.wrapWidth = w
         if (knownH == null) dialog.wrapHeight = h
-        val holoSize = NodeSize(Axis.Exact(w + chromeW), Axis.Exact(h + chromeH))
+        val holoSize = NodeSize(Axis.Exact(w + chromeW), Axis.Exact(oddHolo(h + chromeH)))
         val node = nodeFor(holo.vanillaComponent)
         if (node.size != holoSize) {
             node.size = holoSize
+            // the holo's own size now, not at the next layout: it folds open to the size it has when it opens, and
+            // a frame opened at the first, provisional size stayed that size around the larger content
+            val holoW = w + chromeW
+            val holoH = oddHolo(h + chromeH)
+            val p = holo.vanillaComponent.position
+            if (p.width != holoW || p.height != holoH) holo.vanillaComponent.invoke("setSize", holoW, holoH)
             holo.vanillaComponent.requestLayout()
         }
     }
-    holo = Holo(Size.exact(width + chromeW, height + chromeH), Modifier.align(Alignment.Center),
+    holo = Holo(Size.exact(width + chromeW, oddHolo(height + chromeH)), Modifier.align(Alignment.Center),
         background = background, contentKey = contentKey, animateFirstOpen = false, contentInset = inset) {
         // after every layout of the content (it changed): fit the window to it again
         content = Box(contentSize, Modifier.align(Alignment.TopLeft).margin(margin).onLayout { fit() }) { builder(dialog) }

@@ -253,9 +253,10 @@ Fill is as large as the screen allows.
   (buttons too) behind vanilla's static transition, for pages.
 - F2 opens the codex (at `codexEntryId`, or as last left), as vanilla's dialogs do. A click outside the window
   flickers it.
-- `background`: `HoloBackground.Dialog` (the default) is the opaque one of vanilla's market pickers; a busy panel
-  under the window (a core tab) stays hidden. `HoloBackground.Default` is the see-through one vanilla's custom
-  dialog keeps, for a window over a calm screen that should match it exactly.
+- `background`: `HoloBackground.Default` (the default) is vanilla's custom dialog's, see-through, with the frame's
+  inner line showing. Over a busy screen (a core tab) a denser one hides it better: `HoloBackground(200, 225)` is
+  vanilla's save dialog's, nearly opaque; `HoloBackground.Dialog` (255 / 255) is vanilla's market dialogs', opaque,
+  and it covers the frame's inner line.
 
 ### A toast
 

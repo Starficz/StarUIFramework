@@ -100,8 +100,8 @@ To attach to vanilla screens, use one of these:
   same lifetime rules) and `showDialog(size, ...)` from handlers (`size` is the content's: wrap by default, the window
   measured around the content before its first frame and after every content layout; exact; fill): vanilla's custom dialog window, measure for
   measure (Holo of (w + 34) x (h + 69), content 10 px in, 150 x 25 Orbitron 20 TL_BR buttons bottom right, the
-  confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1; opaque `HoloBackground.Dialog`
-  by default; never closer than 50 px to the screen's edge: a larger size shrinks). Enter,
+  confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1; vanilla's see-through `HoloBackground.Default`
+  by default; window heights odd (the background's scanlines hide the frame's top inner line at even heights); never closer than 50 px to the screen's edge: a larger size shrinks). Enter,
   Space, G and the confirm button call `onConfirm`; Escape and the cancel button `onCancel`; F2
   `showCodex(codexEntryId)`; a click outside flickers the window. `DialogStatic` picks the static bursts (open, confirm, cancel). The builder's
   `StarUIDialog` has `confirm()`, `cancel()`, `isOpen`. `dialog.visualPanel.showStarUIPanel(w, h) { }` (`SidePanel.kt`) fills an
