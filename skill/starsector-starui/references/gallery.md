@@ -1,12 +1,7 @@
 # Gallery
 
-Vanilla screenshots in `assets/images/`: what the player is used to. Two sets:
-
-- `vanilla_*`: whole screens from game 0.98a-RC8 at 100% UI scale.
-- `rc6_*`: one part each (a tooltip, a dialog, a list, a filter bank), cropped from 0.98.5a-RC6 at 1600x900 and
-  100% UI scale, so one pixel in the image is one UI unit.
-
-Open the two or three that match your task; each costs context.
+Vanilla screenshots in `assets/images/`: `vanilla_*` whole screens (0.98a-RC8), `rc6_*` one part each (0.98.5a-RC6,
+1600x900); 100% UI scale, 1 px = 1 UI unit. Open two or three; each costs context.
 
 | Your panel is | Open |
 |---|---|
@@ -39,9 +34,8 @@ Open the two or three that match your task; each costs context.
 
 ### Tooltips
 
-Vanilla's tooltip frame: thin cyan side edges with short ticks at the corners, black inside, no fill strip behind the
-title. The key hints ("F1 more info  F2 open Codex") sit in a small box of their own hanging under the bottom left,
-keys in yellow, words in gray.
+Frame: thin cyan side edges with corner ticks, black inside, no title strip. Key hints ("F1 more info  F2 open
+Codex") in their own small box under the bottom left, keys yellow, words gray.
 
 | Image | Shows | Look at |
 |---|---|---|
@@ -134,20 +128,16 @@ keys in yellow, words in gray.
 | [rc6_combat_command_hud.png](../assets/images/rc6_combat_command_hud.png) | Combat, top right | Small-caps captions over digital counters with icons; Full Assault! / Full Retreat! as outline buttons with icons |
 | [rc6_combat_hud_ship.png](../assets/images/rc6_combat_hud_ship.png) | Combat, bottom left | The combat HUD's own look (green on black, small caps, thin lines): not the campaign look, use it only for UI shown in battle |
 
-The mockup generator's example boards (`scripts/mockup/example_board.py`: list and detail, tiles, states, table,
-editor, spacing, experiment, side panel, density, parts, text) show what a board for approval looks like; build them
-once ([mockups.md](mockups.md#run-it)).
+Example boards: `scripts/mockup/example_board.py` ([mockups.md](mockups.md#run-it)).
 
 ## Reading the vanilla shots
 
-- Vanilla lists get their order from spacing, alignment and one filled row, not from boxes around everything.
-- Almost every vanilla list has a table header and right aligned number columns.
-- Buttons sit at the bottom or at the right end; they are few.
-- Text on vanilla panels is names, states and numbers. Explanations are in tooltips and in the Codex.
-- Yellow is numbers and hotkeys. Orange red is "cannot". Green is rare (story points, "ready").
-- Teal strips head sections; inside a faction's screen (market, comm directory, intel detail) the strips and
-  buttons take the faction's colour instead.
-- One card per kind of thing, reused everywhere: the fleet member card is the same in a dialog's fleet panel and in
-  deployment.
-- A live capture of the vanilla screen next to your panel (`starsector-hotreload`: `hot.sh shot`) is better than
-  any of these: it is the player's own build.
+- Order comes from spacing, alignment and one filled row, not boxes.
+- Lists have a table header and right-aligned number columns.
+- Few buttons, at the bottom or the right end.
+- Panel text is names, states, numbers; explanations are tooltips and the Codex.
+- Yellow: numbers and hotkeys. Orange red: "cannot". Green: rare (story points, "ready").
+- Teal strips head sections; in a faction's screens (market, comm directory, intel detail) strips and buttons take its
+  colour.
+- One card per kind of thing, reused (the fleet member card in dialogs and deployment).
+- A live capture (`hot.sh shot`) beats all of these: it is the player's own build.

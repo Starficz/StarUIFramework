@@ -1,8 +1,8 @@
 # Driving a hot game for UI work
 
-How to reach a screen, act on it and capture it without touching the user's mouse, keyboard or focus. Coordinates
-below are client pixels of the **1600x900 test window**, measured on 0.98.5a-RC4 and checked on RC6 with no mods
-that change these screens. Measure anything else on a capture.
+Reach a screen, act on it and capture it without touching the user's mouse, keyboard or focus. Coordinates are
+client pixels of the **1600x900 test window** (measured on 0.98.5a-RC4, checked on RC6, no mods changing these
+screens); measure anything else on a capture.
 
 Contents: [The loop for a panel](#the-loop-for-a-panel) · [Seeing a UI change](#seeing-a-ui-change) ·
 [Reaching a screen](#reaching-a-screen) · [Making test state](#making-test-state) ·
@@ -24,28 +24,22 @@ bash "$HOT" ctl bkey ESCAPE; bash "$HOT" ctl bkey R    # reopen: built UI stays 
 bash "$HOT" ctl bmove 5 5; bash "$HOT" shot refit-after   # StarUI rebuilds by itself: skip the reopen
 ```
 
-Show the user before and after captures as pairs. Keep the game open between your rounds; `hot.sh stop` when the
-self-test is done, unless you hand the game to the user to look at.
+Show before and after as pairs. Keep the game open between rounds; `hot.sh stop` when done unless handing it over.
 
 ## Seeing a UI change
 
-A reload swaps the code; it does not by itself rebuild UI that is already on screen. A panel shows the new code the
-next time the code that builds it runs. Tested on 0.98.5a-RC4 (Kotlin 2.2):
+A reload swaps code; UI on screen shows it when its building code runs again:
 
 | UI | After a reload |
 |---|---|
-| **StarUI** (1.0.0-alpha and later) | Rebuilt by itself: StarUI sees the agent's counter and rebuilds every live UI scope within a fraction of a second, keeping state, scroll positions and focus. The game log says `StarUI: hot reload N, rebuilding M UI scopes`. Nothing to do |
-| Any other UI | Old code until its building code runs again: a state change re-runs the container that reads it; vanilla building the screen again (close and reopen a tab) rebuilds a panel made on that screen; the campaign UI, the title screen and combat only when vanilla makes them again (load the save, restart) |
+| **StarUI** (1.0.0-alpha+) | Rebuilt by itself within a fraction of a second, state, scroll and focus kept (log: `StarUI: hot reload N, rebuilding M UI scopes`) |
+| Other UI | Old code until rebuilt: a state change reruns its container; reopening a tab rebuilds panels made there; campaign UI, title and combat only when vanilla remakes them (load, restart) |
 
-The counter is the system property `starsector.hotreload.generation`: the agent sets it to `"0"` before any mod loads
-and raises it by one on every reload that changed code. Mods may read it (`System.getProperty` passes the mod
-classloader's gate); in a normal game it is absent.
+The counter is the system property `starsector.hotreload.generation` (`"0"` before mods load, +1 per changing
+reload; absent in normal games; readable by mods).
 
-For a panel you are working on:
-
-1. **StarUI**: nothing. Rebuild the jar and capture.
-2. **Other UI**: rebuild the panel when the counter changes, in an `advance` that runs while it is open. Dev only;
-   take it out before a release (without the agent the property is absent and this does nothing):
+1. **StarUI**: nothing to do.
+2. **Other UI**: a dev-only rebuild hook in an `advance` while it is open (does nothing without the agent):
 
    ```kotlin
    private var seenGeneration: String? = System.getProperty("starsector.hotreload.generation")
@@ -56,35 +50,29 @@ For a panel you are working on:
    }
    ```
 
-   Without it, close and reopen the screen (`ctl bkey ESCAPE`, then its hotkey).
-3. **Capture after every reload**: `ctl bmove 5 5`, then `shot NAME`; show before and after as pairs.
-4. **Restart** (`hot.sh stop`, `hot.sh start`, `hot.sh continue`) when the reload prints `WARN` for new static
-   fields or a changed static initializer: a new `val` in an existing `object` or file (a new `UIState` there) stays
-   `null` until then, so the panel throws or shows nothing. A new `object` or class is fine without a restart. New
-   sprites and data files need a restart too.
-5. **Read the layout as text** after a reload when the change is about sizes: log `panel.dumpLayout()` from a debug
-   key and read it in the work folder's `logs/starsector.log` ([Finding where to click](#finding-where-to-click)).
-6. **Developing StarUI itself** next to a mod: `start ... --dep "<StarUIFramework folder>" --dep-jar <fresh build>`;
-   its classes reload the same way.
+   Or reopen the screen (`ctl bkey ESCAPE`, its hotkey).
+3. **Capture after every reload** (`ctl bmove 5 5`, `shot NAME`).
+4. **Restart** after a `WARN` (new static fields, changed static initializers): a new `val` in an existing `object` or
+   file (a new `UIState`) stays `null`. New `object`s or classes are fine. New sprites and data need a restart.
+5. Size changes: read `panel.dumpLayout()` (debug key, `logs/starsector.log`) or `hot.sh dump`.
+6. StarUI itself next to a mod: `start ... --dep "<StarUIFramework folder>" --dep-jar <fresh build>`.
 
 ## Reaching a screen
 
 | Screen | How |
 |---|---|
 | Title screen | Where `start` ends. Continue (1233, 283), Missions (1235, 362), New Game (1222, 396), Codex (1248, 463), Settings (1237, 497) |
-| Campaign | `hot.sh campaign`: `continue` (the newest save of this work folder) when there is one, else `newgame` (about a minute; makes the save `continue` loads later). Both end paused; `continue` alone answers `NO_SAVE` at once in a new work folder |
-| Core tabs | From the campaign, the tab bar at y 885: Character (75), Fleet (202), Refit (330), Crew/Cargo (458), Map (586), Intel (714), Command (842). `bkey R` opens refit. `bkey ESCAPE` closes a tab |
-| Pause | `bkey SPACE` toggles it. Keep the campaign paused while capturing: it logs and moves while running |
-| Refit simulator (a battle) | Refit tab, dismiss the refit notice the first time (Dismiss, 1075 511), Run simulation (682, 825); pick ships in the deploy dialog, Deploy, `bkey SPACE` to unpause |
-| Officer level-up | Fleet tab, an empty captain portrait (825, 300), then the officer's "Level up!" button. The officer needs a pending level: give it with `hot.sh console` ([Making test state](#making-test-state)), not from the project's code |
-
-A panel a mod builds when vanilla builds a screen shows new code the next time vanilla builds it
-([Seeing a UI change](#seeing-a-ui-change)).
+| Campaign | `hot.sh campaign` (`continue` if a save exists, else `newgame`, ~1 min); both end paused; `continue` alone says `NO_SAVE` at once |
+| Core tabs | Tab bar at y 885: Character (75), Fleet (202), Refit (330), Crew/Cargo (458), Map (586), Intel (714), Command (842); hotkeys C, F, R, I, Tab, E, D; `bkey ESCAPE` closes |
+| Pause | `bkey SPACE` toggles; keep the campaign paused while capturing |
+| Refit simulator | Refit, dismiss the notice the first time (Dismiss, 1075 511), Run simulation (682, 825), deploy, `bkey SPACE` |
+| Officer level-up | Fleet tab, an empty captain portrait (825, 300), the officer's "Level up!"; give the pending level with `hot.sh console` |
+| A market | `hot.sh console "goto jangala"`, click the planet, unpause briefly; options by number keys (`bkey 3` trade) |
 
 ## Making test state
 
-UI that needs a game state (credits, story points, an officer with a level to spend, a fleet, a market's condition)
-gets it from Console Commands, never from temporary code in the project:
+Game state (credits, story points, an officer to level, a fleet) comes from Console Commands, never temporary project
+code:
 
 ```bash
 bash "$HOT" start "<project>" --jar "<build>" --with lw_console   # once: Console Commands in the test game
@@ -94,20 +82,16 @@ bash "$HOT" console "addstorypoints 5"
 bash "$HOT" console 'runcode Console.showMessage("" + Global.getSector().getPlayerFleet().getFleetData().getOfficersCopy().size());'
 ```
 
-- It prints the console's output, then `CONSOLE_DONE`. `help` lists the commands, `help <command>` explains one;
-  `runcode` takes any Java statement (the starsector-knowledge skill has a Console Commands runcode guide).
-- Commands run in the campaign or a battle (the title screen's background battle too, where campaign commands answer
-  "campaign-only"). `NOT_RUN` means nothing ran it: get into the campaign first.
-- `NO_CONSOLE`: Console Commands is not installed in the game's mods folder, or the game was not started `--with
-  lw_console`. How it works: the reload agent passes the request on (mods may not read files), and the test helper
-  mod runs it on the game's thread (`tools/HotHelper*.java`, built when Console Commands is installed).
-- Setup the panel needs every time (a fixed officer, a test fleet) can be a `--dep` test-only mod of your own with a
-  `ModPlugin`, kept outside the project.
+- Prints the output, then `CONSOLE_DONE`. `help [command]`; `runcode` takes any Java statement (starsector-knowledge
+  has a runcode guide). `spawnfleet pirates 30`, `goto <entity>` set up encounters.
+- Runs in campaign or battle (the title's background battle answers "campaign-only"). `NOT_RUN`: get into the campaign.
+- `NO_CONSOLE`: not installed, or not started `--with lw_console`. (The agent passes the request on; the helper mod runs
+  it on the game thread, `tools/HotHelper*.java`.)
+- Setup needed every time (a fixed officer, a test fleet): a `--dep` test-only mod with a `ModPlugin`, outside the project.
 
 ## Input
 
-**Click by name.** `hot.sh click TEXT` finds the component on screen and clicks the centre of its shown part, so no
-coordinates are measured and a moved button is still hit:
+**Click by name** (no coordinates; moved buttons are still hit):
 
 ```bash
 bash "$HOT" find "Bounties" --contains            # every match: kind, size, position, shown or hidden, click point
@@ -116,95 +100,73 @@ bash "$HOT" click "Confirm" --contains --kind Button   # vanilla adds the shortc
 bash "$HOT" wheel "Personal Bounty - Ra Han" 5    # turn the wheel 5 notches down over that row's list
 ```
 
-- TEXT matches a label's, button's or text field's text, or a StarUI key (`key(id) { }`), exactly; `--contains`
-  matches a case-insensitive part. `--kind` narrows by kind: StarUI's component names (`Button`, `Text`, `Column`),
-  vanilla's `Button`, `Label`, `TextField`, `Panel`, `ScrollPanel`. A panel-drawn vanilla button (intel rows, filter
-  chips) has no text of its own: its labels are found, and clicking one clicks the button.
-- It searches the whole screen the way StarUI's `findAll` does: vanilla panels and scroll panels, StarUI containers,
-  holo and dialog content (vanilla's title menu and dialogs too), and the content of panel-drawn buttons.
-- `hidden` means scrolled out of view, cut by a clipping container, off screen or transparent (a closed holo, a
-  faded panel). It says nothing about what is drawn over a component: the click is real input, so a modal window
-  over it takes the click, as it would the player's. Capture to check what happened.
-- It needs StarUI in the game, which answers the request: StarUI mods have it; for another mod start with
-  `--with staruiframework`. `NO_ANSWER` means no StarUI panel rendered (the game is still loading).
-- Positions in the list are screen units from the top left, y down; `click=(x, y)` is capture pixels (the UI scale
-  applied).
+- TEXT matches a label's, button's or field's text, or a StarUI key, exactly; `--contains`: case-insensitive part.
+  `--kind`: StarUI names (`Button`, `Text`, `Column`) or vanilla's `Button`, `Label`, `TextField`, `Panel`,
+  `ScrollPanel`. Panel-drawn buttons (intel rows, filter chips) are found by their labels; clicking one clicks the
+  button.
+- Searches like StarUI's `findAll`: panels, scroll panels, StarUI containers, holo and dialog content (vanilla's title
+  menu and dialogs too), panel-drawn buttons' content.
+- `hidden`: scrolled away, clipped, off screen or transparent; not what is drawn over it. The click is real input
+  (a modal over it takes it); capture to check.
+- Needs StarUI loaded (`--with staruiframework` for other mods); `NO_ANSWER`: no StarUI panel rendered yet.
+- Listed positions: screen units, top left, y down; `click=(x, y)`: capture pixels.
 
-`ctl` posts window messages to the game window only, by coordinates:
+`ctl` posts window messages to the game window, by coordinates:
 
 | Command | Does |
 |---|---|
 | `ctl bmove X Y` | Move the game's mouse (hover) |
 | `ctl bclick X Y` / `ctl brclick X Y` | Left / right click |
-| `ctl bwheel X Y N [MOD]...` | Turn the wheel N notches over X, Y (N > 0 down, < 0 up) |
-| `ctl bkey NAME [N]` | A key press: `ESCAPE`, `ENTER`, `SPACE`, `TAB`, `BACK`, `F1`-`F12`, `A`-`Z`, `0`-`9`, `UP`, ... |
-| `ctl bcombo MOD... KEY` | A key with modifiers held (`bcombo CTRL SHIFT U`): only works while the window is active, see below |
-| `ctl btype TEXT` | Type lowercase letters, digits, space, `-`, `.`, `/` |
+| `ctl bwheel X Y N [MOD]...` | Wheel N notches over X, Y (> 0 down) |
+| `ctl bkey NAME [N]` | Key press: `ESCAPE`, `ENTER`, `SPACE`, `TAB`, `BACK`, `F1`-`F12`, `A`-`Z`, `0`-`9`, `UP`, ... |
+| `ctl bcombo MOD... KEY` | Key with modifiers (`bcombo CTRL SHIFT U`): active window only |
+| `ctl btype TEXT` | Lowercase letters, digits, space, `-`, `.`, `/` |
 
-- **Move before you click.** The first click on a control sometimes only updates hover. `bmove` a few pixels away,
-  wait half a second, then `bclick`.
-- **No modifier keys in the background.** The game clears its own Ctrl, Shift and Alt flags on every frame its
-  window is not the active one (`Display.isActive()`, in its input code), so a chord sent to a background window
-  arrives without them, whatever is sent; LWJGL also drops a Shift the physical keyboard does not hold. Shift+click,
-  Ctrl+click and shortcuts such as Ctrl + Shift + U are out of reach behind other windows, and typed text has no
-  capitals or Shift characters. Reach those states another way (a console command, a debug key without a modifier),
-  or ask the user to press the chord in a `--front` game. If the person at the PC holds Shift while you type,
-  letters can come out as capitals.
-- **No drags** in the background. The wheel works (`hot.sh wheel`, `ctl bwheel`); the plain wheel only, since Shift
-  is out of reach.
-- Number keys pick options in an interaction dialog (`bkey 2`).
+- **Move before clicking**: the first click sometimes only updates hover; `bmove` near it, wait half a second, click.
+- **No modifiers in the background**: the game clears Ctrl, Shift and Alt every frame its window is inactive
+  (`Display.isActive()`), and LWJGL drops a Shift the keyboard doesn't hold. Shift/Ctrl+click, chords like
+  Ctrl + Shift + U, and capitals are out of reach; use a console command or modifier-free debug key, or ask the user
+  in a `--front` game. A Shift held at the PC can capitalise typed letters.
+- **No drags**; the plain wheel works.
+- Number keys pick interaction dialog options (`bkey 2`).
+- A clicked fleet member is picked up (drag): click its slot again to put it back.
 
 ## Captures
 
-- `hot.sh shot NAME` writes `captures/NAME.png` (the client area, 1600x900) and prints its path. Open it with the
-  image tool and look; a command that ran proves nothing.
-- **Park the cursor first** (`ctl bmove 5 5`) or a tooltip may cover the shot. With a modal window open (a dialog, a
-  layer), park on an empty spot inside the window instead: a move outside it may not reach the component that owns
-  the tooltip (the modal takes the mouse), and the tooltip stays up. Check the shot for a leftover tooltip. For a
-  tooltip shot, hover on purpose: `ctl bmove X Y`, wait a second, `shot`.
-- **Read the UI as text**: `hot.sh dump` prints every StarUI panel on screen (`dumpLayout`: kind, text, size,
-  position, sizing), dialog content included, from the game log. Use it to check positions and texts without a
-  screenshot, and to find what to click.
-- The window must be behind other windows, not minimized. If a capture is black, ask the user not to minimize it.
-- Check 1 px alignment on a 2x crop, not by eye on the full frame: crop the panel's rectangle plus 2 px and scale it
-  by 2 with nearest-neighbour (no smoothing), for example with Pillow
-  (`img.crop((x, y, x + w, y + h)).resize((w * 2, h * 2), Image.NEAREST)`). Put a vanilla widget's crop next to
-  yours when the panel copies one.
-- Captures stay in the work folder. Tell the user which ones you reported on.
+- `hot.sh shot NAME` writes `captures/NAME.png` (client area) and prints the path; open and look.
+- **Park the cursor first** (`ctl bmove 5 5`); with a modal open, park on an empty spot inside it (outside may not reach
+  the tooltip's owner). Check shots for leftover tooltips. Tooltip shots: `bmove X Y`, wait a second, `shot`.
+- `hot.sh dump`: every StarUI panel as text (positions, texts) without a screenshot.
+- Behind other windows, never minimized (black capture).
+- 1 px alignment on a 2x crop: rectangle plus 2 px, nearest-neighbour
+  (`img.crop((x, y, x + w, y + h)).resize((w * 2, h * 2), Image.NEAREST)`), vanilla's crop beside yours.
+- Captures stay in the work folder; say which ones you reported on.
 
 ## Finding where to click
 
-- By name: `hot.sh find TEXT` gives the click point; `hot.sh click TEXT` clicks it ([Input](#input)).
-- Something without text (an icon, an empty slot): find a labelled neighbour or its row by key, and measure from
-  its position, or measure on a capture (capture pixels are client pixels).
-- In code inside the game, StarUI's `findAll { }` on any panel gives the same results as objects (`isShown`,
-  `visibleCenterX`, `path`).
+- By name: `hot.sh find` / `click` ([Input](#input)).
+- No text (icon, empty slot): measure from a labelled neighbour or a keyed row, or on a capture (capture = client pixels).
+- In-game code: StarUI's `findAll { }` (`isShown`, `visibleCenterX`, `path`).
 
 ## Waiting
 
-- `hot.sh wait PATTERN [SECONDS]` waits for a log line written after the call; `hot.sh wait` with no pattern waits
-  for the log to go quiet (a load finished). Quiet never comes while the campaign runs unpaused: pause first.
-- After a click that opens a screen, half a second to a second is enough; capture to confirm.
-- If something looks stuck, capture first: a dialog, a crash box or the title screen explains more than the log.
-- `CRASHED:` or `ERROR` lines in `logs/starsector.log` mean the game hit an exception; read them before anything else.
+- `hot.sh wait PATTERN [SECONDS]`: a log line written after the call; no pattern: the log goes quiet (never while the
+  campaign runs: pause).
+- After a click opening a screen, half a second to a second; capture to confirm.
+- Stuck: capture first (a dialog, crash box or title screen says more than the log).
+- `CRASHED:` or `ERROR` in `logs/starsector.log`: read them first.
 
 ## Checking a layout
 
-For each panel, capture every state the design names (worst-case data, empty, selected, blocked, a tooltip open)
-and check:
-
-- no text overlaps text, an icon or a border; nothing is cut off;
-- shared edges line up, gaps match the spacing the design asks for, text is centred in its box to the pixel;
-- the panel at the second size: `hot.sh stop`, then `start --resolution 1280x768` (click positions above are for
-  1600x900 only).
-
-Set states from code where clicks cannot reach them (a debug key that fills a list with worst-case entries).
+Capture every state the design names (worst case, empty, selected, blocked, a tooltip) and check: no overlaps or cut
+text; shared edges, design spacing, text centred to the pixel; the second size (`hot.sh stop`, `start --resolution
+1280x768`; click positions above are 1600x900 only). Unreachable states: set from code (a debug key filling worst-case
+entries).
 
 ## Limits
 
-- One click target at a time: no drag, and no modifier keys behind other windows (above).
-- `newgame` and `continue` click fixed positions of the 1600x900 window with no mods that change the title or new
-  game screens. With such mods, measure on a capture and use `ctl`.
-- The game's F12 screenshot key does not save a file from a background key press. Use `shot`.
-- Fast Rendering, when installed, now and then hung a game right after a load in background runs: the window keeps
-  its last frame and the process uses no CPU. Stop and start again.
+- One target at a time: no drags, no modifiers behind other windows.
+- `newgame` / `continue` click fixed 1600x900 positions with no mods changing title or new-game screens; otherwise
+  measure and use `ctl`.
+- F12 screenshots don't save from background presses: use `shot`.
+- Fast Rendering now and then hung a game right after a load in background runs (last frame frozen, no CPU): restart.

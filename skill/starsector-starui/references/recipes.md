@@ -1,19 +1,15 @@
 # Recipes
 
-Small component functions for parts StarUI has no component for. Each is compiled and checked in StarUI's in-game
-suite (group `skill-recipes`, file `native-smoke/kotlin/SkillRecipes.kt` in the StarUIFramework repo). Copy them
-into your mod and rename freely.
-
-Imports they use: `org.starficz.starui.*`, `.components.*`, `.modifier.*`, `org.lwjgl.opengl.GL11` (the accent
-toast), and from `.vanilla` `withAlpha`, `Font`,
-`VanillaColors`.
+Component functions for parts StarUI has no component for, each compiled and checked in the in-game suite (group
+`skill-recipes`). Copy and rename freely. Imports: `org.starficz.starui.*`, `.components.*`, `.modifier.*`,
+`org.lwjgl.opengl.GL11`, and `withAlpha`, `Font`, `VanillaColors` from `.vanilla`.
 
 Contents: [Change row](#change-row) · [Guarded button](#guarded-button) · [Cost button](#cost-button) ·
 [Tabs](#tabs) · [Toast content](#toast-content)
 
-Now components, no longer recipes: one line text cut with `...` is `Text(..., overflow = TextOverflow.Ellipsis)`,
-exclusive modes are `AreaCheckbox`es in a `RadioGroup` ([components.md](components.md#content-and-controls)), and a
-management panel or a confirmation is a `Dialog` ([setup.md](setup.md#a-dialog)).
+Now components: cut text is `Text(..., overflow = TextOverflow.Ellipsis)`, modes are `AreaCheckbox`es in a
+`RadioGroup` ([components.md](components.md#content-and-controls)), panels and confirmations are a `Dialog`
+([setup.md](setup.md#a-dialog)).
 
 ## Change row
 
@@ -38,12 +34,12 @@ fun UIPanelAPI.ChangeRow(label: String, old: String, new: String) {
 }
 ```
 
-The Row fills its width, so call it in a container with a known width.
+Fills its width: call it in a container with a known width.
 
 ## Guarded button
 
-A blocked button stays in place, grey, with one red reason on a line whose height is reserved also while the
-button is enabled ([buttons.md](buttons.md#states)).
+A blocked button stays in place, grey, its red reason on a line reserved even while enabled
+([buttons.md](buttons.md#states)).
 
 ```kotlin
 fun UIPanelAPI.GuardedButton(
@@ -67,12 +63,12 @@ fun UIPanelAPI.GuardedButton(
 GuardedButton("Train", reason = shortBy.value?.let { "Needs $it more Supplies" }) { train() }
 ```
 
-Checked: the button greys out, the reason stays on one line, and the block's height is the same with and without the
-reason. The block gets wider when a reason is longer than the button; in a Row, keep room for it.
+Checked: greys out, the reason stays on one line, same height with and without it. A long reason widens the block;
+leave room in a Row.
 
 ## Cost button
 
-A single cost rides on its button: icon, label, amount, the amount red when the player is short
+A single cost on its button: icon, label, amount (red when short)
 ([buttons.md](buttons.md#icons-and-second-text-on-a-button)).
 
 ```kotlin
@@ -96,15 +92,13 @@ fun UIPanelAPI.CostButton(
 CostButton("Send", Global.getSettings().getCommoditySpec("supplies").iconName, 40, affordable = supplies >= 40) { send() }
 ```
 
-Checked: a click on the face reaches the button under it. The face does not brighten on hover with the button;
-that is accepted. Add the cost against the stock as the button's tooltip (a parameter passed on to its
-`Modifier.tooltip`; on a button that tooltip also shows while it is disabled, so the player sees it while short). Give it the cut of its line: `ALL` alone on a strip, `TL_BR` in the bottom row
-next to other `TL_BR` buttons.
+Checked: clicks on the face reach the button; the face does not glow on hover (accepted). Add cost against stock
+as its `Modifier.tooltip` (shows while disabled). Cut of its line: `ALL` alone on a strip, `TL_BR` in the bottom row.
 
 ## Tabs
 
-`TOP` cut buttons in a Row, the selected one bright on the opaque dark fill ([buttons.md](buttons.md#tabs)). A tab
-change makes that button again (colours are fixed at creation), which is expected.
+`TOP` buttons in a Row, the selected one bright on opaque dark ([buttons.md](buttons.md#tabs)); a tab change remakes
+the button (colours are fixed at creation).
 
 ```kotlin
 fun UIPanelAPI.Tabs(labels: List<String>, selected: UIState<Int>, width: Float = 130f) {
@@ -124,14 +118,13 @@ fun UIPanelAPI.Tabs(labels: List<String>, selected: UIState<Int>, width: Float =
 }
 ```
 
-Checked: a click selects that tab, which is made again with its bright label. Put the tab Row and the counters in
-one `Row(Size.fillMaxWidth())` with a `FlexSpacer()` between them, and a `Divider(thickness = 1f)` under it.
+Checked. Tabs and counters: one `Row(Size.fillMaxWidth())` with a `FlexSpacer()` between, a `Divider(thickness = 1f)`
+under it.
 
 ## Toast content
 
-`showToast(text)` is a plain panel with the text. For a notice with more presence, pass one of these as the
-content: `showToast(duration = 5f) { IntelToast("Charter renewed", "Halberd survey team: 30 more days.", icon) }`.
-The toast's own panel (background, border, padding, the slide and the click to dismiss) stays around it.
+Content for a toast with more presence: `showToast(duration = 5f) { IntelToast("Charter renewed", "Halberd survey team: 30 more days.", icon) }`;
+the toast's panel, slide and click-to-dismiss stay around it.
 
 ```kotlin
 /** A toast like vanilla's intel notices: an icon, the title in the faction colour, the text in gray. */
@@ -167,7 +160,6 @@ fun UIPanelAPI.HeadingToast(title: String, text: String, width: Float = 280f) {
 }
 ```
 
-- `IntelToast` reads like the campaign's message list and intel updates: use it for news about a thing (a
-  commodity, a fleet, a planet) with its icon. `AccentToast` is the lightest; `accent = VanillaColors.negative`
-  for a failure. `HeadingToast` is a small intel panel, for a notice that is more than a line.
-- Checked: each one sized and laid out on its own and inside a toast.
+`IntelToast`: like the campaign's message list, for news about a thing with its icon. `AccentToast`: lightest
+(`accent = VanillaColors.negative` for failures). `HeadingToast`: a small intel panel for more than a line. Checked
+alone and inside a toast.

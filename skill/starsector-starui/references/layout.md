@@ -1,166 +1,124 @@
 # Layout: hosts, sizes, archetypes, contract
 
-Where a panel lives, how big it may be, which overall shape it takes, and the contract every panel is built
-against. How StarUI attaches to each host: [setup.md](setup.md#where-ui-can-go). "(engine)" marks numbers measured
-on 0.98a-RC8.
+Where a panel lives, how big it may be, its overall shape, and the contract every panel is built against. Attaching:
+[setup.md](setup.md#where-ui-can-go). "(engine)": measured on 0.98a-RC8.
 
 Contents: [Hosts](#hosts) · [Screen sizes](#screen-sizes) · [Archetypes](#archetypes) ·
-[Layout contract](#layout-contract) · [Rebuild pattern and view state](#rebuild-pattern-and-view-state) ·
-[Coordinates](#coordinates)
+[Layout contract](#layout-contract) · [View state](#view-state) · [Coordinates](#coordinates)
 
 ## Hosts
 
-Pick the smallest host that holds the feature. Say which one you picked and why.
+The smallest host that holds the feature; say which and why.
 
 | Host | Use it when | Cost |
 |---|---|---|
-| **A line or section in an existing tooltip** | The feature only shows a few values about a thing that already has a tooltip | None. Often the right answer. |
-| **Stock interaction dialog with a side panel** | The player visits a place or person; a few actions; flavour text matters. The dialog's text and numbered options stay on the left, your panel sits on the right. | Lowest of the real panels. Feels most like the game. |
-| **Custom dialog** | A management panel: lists, a detail column, several actions | The default for anything with a list plus actions |
-| **Intel panel** | Something the player checks from anywhere, or that reports over time | Bound to the intel screen's layout |
-| **A vanilla screen** | The feature belongs on a vanilla screen (refit, a core tab, combat, the title screen) | `StarUIPlugin` covers whole screens with no patch; a sub-panel needs `inject` from a PatchLib hook, which can break on game updates |
-| **A layer over a screen** | A window of its own over the current screen (any screen: title, campaign, a dialog, a battle), opened from a button there | `Layer` in a builder, `showLayer` elsewhere ([setup.md](setup.md#a-layer-over-a-screen)): modal, dimmed, pausing, Escape to dismiss; layers stack |
+| **A line or section in an existing tooltip** | A few values about a thing that already has a tooltip | None; often right |
+| **Interaction dialog with a side panel** | A place or person to visit, a few actions, flavour matters; text and options left, your panel right | Lowest; feels most like the game |
+| **Custom dialog** | A management panel: lists, a detail column, several actions | The default for list plus actions |
+| **Intel panel** | Checked from anywhere, or reports over time | Bound to the intel layout |
+| **A vanilla screen** | Belongs on refit, a core tab, combat, the title screen | `StarUIPlugin` for whole screens; sub-panels need `inject` (can break on updates) |
+| **A layer over a screen** | Its own window over any screen, opened from a button there | `Layer` / `showLayer` ([setup.md](setup.md#a-layer-over-a-screen)): modal, dimmed, pausing, Escape dismisses, stacking |
 
 ### Stock interaction dialog with a side panel
 
-The default interaction dialog is a full UI on its own: prose on the left, numbered options below it, and a
-visual panel on the right that normally shows a picture. `dialog.visualPanel.showStarUIPanel(w, h) { }` puts a
-StarUI panel there (vanilla's `showCustomPanel` underneath). The generator's example `example_sidepanel` board shows the result.
+Prose and numbered options left, a visual panel right: `dialog.visualPanel.showStarUIPanel(w, h) { }` (board:
+`example_sidepanel`). Prefer it over a custom dialog when options do the navigation (Leave, Talk to, Back) and the
+panel needs few buttons; the feature has a voice (secretary, dockmaster, a lore line per visit); the content is cards
+or one summary.
 
-Use it before reaching for a custom dialog when:
+It is one column of about 600 px: a list plus detail, a table with more than four value columns, or rows over ~560 px
+(14 skill icons, a ship list) need a custom dialog opened from a dialog option.
 
-- the options list can do the navigation (Leave, Talk to, Back) and the panel only needs a few buttons of its
-  own;
-- the feature has a voice: a secretary, a dockmaster, a line of lore per visit;
-- the content is a list of cards or one summary, not a list plus a detail column.
-
-Tiebreak with the custom dialog: the side panel is one column of about 600 px. If the feature needs a list
-plus a detail column, a table with more than four value columns, or any row wider than about 560 px (14 skill
-icons, a ship list), it does not fit: use a custom dialog and open it from a dialog option, so the place and
-its voice stay in the dialog and the management happens in the panel.
-
-Notes:
-
-- About 600 px wide. Keep the height to what fits at 1280 x 768.
-- Vanilla draws nothing behind a custom panel there: the campaign map and its outlines would show through.
-  `showStarUIPanel` gives it a black background (its `background` parameter).
-- The left side has no chrome: plain text and options. Do not rebuild it inside your panel.
-- Options that cost a story point use the story colour; disabled options are gray with the reason in the
-  option's tooltip. That is the dialog's own behaviour (rules or the dialog plugin), not panel code.
-- Text printed to the dialog scrolls away. State that must stay visible belongs in the panel.
-- The panel follows the same parts and rules as any other: title line with `?`, cards or rows, each action
-  on the card it belongs to.
+- Keep the height to what fits at 1280 x 768.
+- Vanilla draws nothing behind it (the map shows through); `showStarUIPanel` draws black (`background`).
+- Don't rebuild the left side's text and options in your panel.
+- Story-point options use the story colour; disabled options are gray with the reason in their tooltip (rules or the
+  dialog plugin, not panel code).
+- Dialog text scrolls away: persistent state belongs in the panel.
+- Same parts and rules as any panel (title line with `?`, cards or rows, actions on their cards).
 
 ### Dialog window
 
-`Dialog(onDismissRequest, size, confirmText, cancelText) { dialog -> }` in a builder, `showDialog(size, ...)` from
-a click handler: vanilla's custom dialog window on a modal layer, over any screen and over other dialogs
-([setup.md](setup.md#a-dialog)). `size` is the content's: wrap by default (the window fits the content), exact, or
-fill (as large as the screen allows); it never comes closer than 50 px to the screen's edge.
+`Dialog(onDismissRequest, size, confirmText, cancelText) { dialog -> }` in a builder, `showDialog(size, ...)` from a
+handler: vanilla's custom dialog on a modal layer, over any screen and other dialogs ([setup.md](setup.md#a-dialog)).
+`size` is the content's: wrap (default), exact or fill; never within 50 px of the screen edge (larger shrinks).
 
-- (engine) The window is `(w + 20) x (h + 55)` inside a 7 px frame; your content is `w x h` 10 px in; the
-  buttons are 150 x 25, `TL_BR`, Orbitron 20, bottom right, Cancel in the corner and Confirm left of it.
-- Size it from the screen: `w = min(designWidth, screenWidth - 100)`, same for height. Use
-  `Global.getSettings().getScreenWidth()` and `getScreenHeight()`; they are in virtual pixels and already
-  account for the player's UI scale.
-- Name the host button for what it does: "Return" when the dialog only closes, "Confirm" plus "Cancel" when
-  the dialog commits as a whole.
-- Dialogs stack: the confirmation over a panel is a `Dialog` in the panel's builder. (engine) Vanilla's own
-  `showCustomDialog` allows one per interaction dialog and `showConfirmDialog` does nothing while a dialog is open;
-  neither limit applies to `Dialog`.
-- Vanilla pickers (cargo, fleet member) opened from a dialog's content are vanilla dialogs on the same screen
-  panel, so they open above it; not run yet with StarUI's `Dialog`.
+- (engine) Window `(w + 20) x (h + 55)` inside a 7 px frame; content 10 px in; buttons 150 x 25, `TL_BR`, Orbitron 20,
+  bottom right, Cancel in the corner, Confirm left of it.
+- Host buttons: "Return" when it only closes, "Confirm" plus "Cancel" when it commits as a whole.
+- Dialogs stack: a confirmation is a `Dialog` in the panel's builder. (engine) Vanilla's `showCustomDialog` allows one
+  per interaction dialog and `showConfirmDialog` does nothing while a dialog is open; `Dialog` has neither limit.
+- Vanilla pickers (cargo, fleet member) opened from dialog content open above it; untested with `Dialog`.
 
 ### Intel panel and tooltips
 
-An intel's large description gets a `CustomPanelAPI` (`IntelInfoPlugin.createLargeDescription(panel, w, h)`):
-StarUI builds into it. Its small list entry and tooltips are `TooltipMakerAPI` content; keep those to vanilla's
-own calls. The design rules hold; the layout is a single flowing column.
+`IntelInfoPlugin.createLargeDescription(panel, w, h)` gives a `CustomPanelAPI`: build StarUI into it. The small list
+entry and tooltips are `TooltipMakerAPI` content: vanilla's calls. One flowing column; design rules hold.
 
 ## Screen sizes
 
-- Design at **1600 x 900**. Check at **1280 x 768**. Every action button must be on screen at both.
-- A typical large custom dialog: 1000 to 1200 wide, 640 to 720 high at 1600 x 900.
-- Fix the widths of things that cannot shrink first (an icon row that must show a full set, number columns,
-  buttons), then split what is left: a detail column that must show 14 icons of 32 px in one row is 500 px wide,
-  whatever that leaves for the list.
-- Width shrinks first in the list's flexible column (the name), never in number columns or buttons.
-- Height shrinks in the scroll areas. Pinned blocks keep their height.
-- If the fixed parts alone do not fit at 1280 x 768, the panel has too much pinned content: move something
-  into the scroll area or behind a tab.
-- Show one board at the small size in the mockups when the panel is large.
+- Design at **1600 x 900**, check at **1280 x 768**; every action button on screen at both.
+- Large custom dialogs: 1000 to 1200 wide, 640 to 720 high at 1600 x 900.
+- Fix non-shrinking widths first (full icon rows, number columns, buttons), then split the rest (14 icons of 32 px in
+  one row: a 500 px detail column, whatever that leaves the list).
+- Width shrinks in the flexible column (the name), never number columns or buttons; height in scroll areas, never
+  pinned blocks.
+- Fixed parts don't fit at 1280 x 768: too much pinned; move it into the scroll area or a tab.
+- Mock up one small-screen board for large panels.
 
 ## Archetypes
 
-Pick one from what the content is, by the vanilla screen that holds the same kind of content
-([gallery.md](gallery.md)).
+By the vanilla screen with the same kind of content ([gallery.md](gallery.md)):
 
 | The content is | Archetype | Vanilla |
 |---|---|---|
-| Entries the player compares by their values | Table, with the detail or a summary beside or below it | industry picker, custom production, colony list |
-| Entries to pick one from, each with a picture or controls | List and detail: a list left, the selected entry's detail right | intel screen, officer picker |
-| Things known by face, one or two values each | Picture tiles, the detail in a tooltip or beside them | colony screen |
-| One thing with several settings | Editor: stat rows with `-` / `+`, banks of actions | refit |
-| A report or an event | One flowing column: headings, paragraphs, a bar, a small table, one button | intel event |
-| A fixed sequence of choices | The interaction dialog's numbered options, with a side panel for state | any dialog |
+| Entries compared by value | Table, detail or summary beside or below | industry picker, custom production, colony list |
+| Entries to pick from, with pictures or controls | List left, selection's detail right | intel screen, officer picker |
+| Things known by face, one or two values | Picture tiles, detail in a tooltip or beside | colony screen |
+| One thing with several settings | Editor: stat rows with `-` / `+`, action banks | refit |
+| A report or event | One flowing column: headings, paragraphs, a bar, a small table, one button | intel event |
+| A fixed sequence of choices | Numbered dialog options with a side panel for state | any dialog |
 
-- Fix the widths that cannot shrink first (number columns, buttons, an icon row that must show a full set), then
-  give the rest to the flexible column.
-- Space blocks 10 apart with a section heading over each group (centred), lines 3 apart, as vanilla does.
-- The commit and cancel row sits at the bottom right in `TL_BR`; a bank of actions on the thing on screen in
-  `BL_TR`.
+Blocks 10 apart under centred section headings, lines 3 apart; commit row bottom right `TL_BR`; action banks `BL_TR`.
 
 ## Layout contract
 
-Every panel is built to this contract. A reviewer checks a panel against it line by line.
+Every panel is built to this; reviewers check it line by line.
 
-1. **Sizes from the panel, not from text.** Fixed widths (`Size.exact`) for what cannot shrink (number columns,
-   buttons, icon rows), a fill (`Size.fillMaxWidth()`, `Axis.FillMax(weight)`) for the flexible part, so no
-   element moves when a text changes. Wrapped text (a `Text` with an exact or fill width) is measured by StarUI and
-   what follows is placed below it. Anchors (an `AnchorPanel`, or a `CustomPanel` as the escape hatch) only where
-   the design places things freely.
-2. **No overlap and no cut text for worst case data**: 40 character names, 9 digit credits, 300 day counters,
-   14 skills, 30 colonies, 200 list entries, and the empty list.
-   - One line text is cut to its box with `...`, the full text in a tooltip: `Text(..., overflow = TextOverflow.Ellipsis)`.
-   - Wrapped text has an exact or fill width; StarUI places what follows below its measured height.
-   - A number column is as wide as the widest value it can hold, measured with the game.
-   - An icon row is two rows at most, then `+N`.
-3. **Lists scroll and keep their offset.** A scroll column ends on a whole block and never on a heading.
-   The scroll offset survives every rebuild (StarUI keeps it).
-4. **Actions sit with what they change and are visible.** Each action is next to the thing it changes; the
-   commit and cancel row is pinned outside the scroll area. Every action button is visible at 1600 x 900 and at
-   1280 x 768.
-5. **States keep the layout.** A blocked button is grey with its reason in red (on a reserved line, or in its
-   tooltip). An empty list keeps its heading and one gray line. A hidden optional block does not move pinned
-   blocks.
-6. **Vanilla's spacing.** 3 between lines that belong together, 5 for small gaps, 10 between blocks and around a
-   section heading ([design-rules.md](design-rules.md#spacing-and-alignment)).
-7. **Look.** Black interiors; fill only for the selected row, buttons, heading bars and table header strips.
-   Fonts and colours through accessors, never raw RGB. Every button the faction's base on dark, story-point actions
-   in the story colours; cuts as vanilla uses them ([buttons.md](buttons.md)).
-8. **Tooltip rule.** Explaining text is a tooltip on the control it explains; panel rules sit behind the `?`
-   icon ([design-rules.md](design-rules.md#text-on-the-panel-and-the-tooltip-rule)).
-9. **Confirmations are the game's popup.** No Confirm and Cancel pair in place, no custom modal.
-10. **Every view is reachable from code** through its `UIState`s (selected tab, selected entry, open sub view),
-   so a test or a debug command can show each state for a screenshot.
+1. **Sizes from the panel, not text**: `Size.exact` for what can't shrink (number columns, buttons, icon rows), fill
+   (`fillMaxWidth()`, `Axis.FillMax(weight)`) for the flexible part, so nothing moves when text changes. Wrapped
+   text (exact or fill width) is measured; what follows goes below. Anchors (`AnchorPanel`, or `CustomPanel` as the
+   escape hatch) only where the design places things freely.
+2. **No overlap or cut text with worst-case data** (40-char names, 9-digit credits, 300-day counters, 14 skills,
+   30 colonies, 200 entries, empty): one-line text `overflow = TextOverflow.Ellipsis`; wrapped text has an exact or
+   fill width; number columns fit the widest value (measured); icon rows two rows, then `+N`.
+3. **Lists scroll and keep their offset**, ending on a whole block, never a heading (StarUI keeps offsets).
+4. **Actions with what they change, and visible**; the commit row pinned outside the scroll area; every action visible
+   at both screen sizes.
+5. **States keep the layout**: blocked buttons grey with a red reason (reserved line or tooltip); empty lists keep
+   their heading and a gray line; hidden optional blocks don't move pinned ones.
+6. **Vanilla's spacing**: 3, 5, 10 ([design-rules.md](design-rules.md#spacing-and-alignment)).
+7. **Look**: black interiors; fills only on selected row, buttons, heading bars, table headers; colours and fonts via
+   accessors; buttons faction base on dark, story colours for story points; vanilla's cuts ([buttons.md](buttons.md)).
+8. **Tooltip rule**: explanations on the control; panel rules behind `?`
+   ([design-rules.md](design-rules.md#text-on-the-panel-and-the-tooltip-rule)).
+9. **Confirmations are the game's popup**: no inline pair, no custom modal.
+10. **Every view reachable from code** through its `UIState`s (tab, selected entry, sub view), so tests and debug
+    commands can show each state.
 
 ## View state
 
-StarUI replaces the manual rebuild: see [reactive.md](reactive.md).
+See [reactive.md](reactive.md).
 
-- One `UIState` per thing that decides what is shown: selected tab, selected entry id, open sub view. Keep them in
-  an object outside the UI. Nothing else decides what is shown.
-- Click handlers change those states; the builders that read them run again on the next frame, reusing the native
-  objects. Scroll offsets, focus and hover survive.
-- Game data that changes over time is mirrored into a state from `onAdvance` only when it changed (a day passed, a
-  bar moved by a pixel), not every frame.
-- Each block is a small component function (`fun UIPanelAPI.TeamRow(team: Team)`) that builds only its own part.
-  Blocks do not know about each other.
+- One `UIState` per thing deciding what shows (tab, selected id, sub view), in an object outside the UI; nothing else
+  decides.
+- Handlers change them; reading builders rerun next frame, reusing objects (scroll, focus, hover survive).
+- Changing game data is mirrored from `onAdvance` only when it changed (a day passed, a bar moved a pixel).
+- Each block is a small component function (`fun UIPanelAPI.TeamRow(team: Team)`) building only its part.
 
 ## Coordinates
 
-- StarUI layout, anchors and `dumpLayout()` measure from the parent's top left, y down.
-- Rendering (`Modifier.onRender`, `onRenderBelow`) uses screen coordinates with **y up**: the plugin's `x`, `y`
-  (the bottom edge), `width`, `height`.
-- `SettingsAPI.getMouseX()` / `getMouseY()` and `PositionAPI` share the same virtual coordinates, y up.
+- StarUI layout, anchors, `dumpLayout()`: parent's top left, y down.
+- Rendering (`onRender`, `onRenderBelow`): screen coordinates, **y up**: plugin `x`, `y` (bottom), `width`, `height`.
+- `getMouseX()` / `getMouseY()` and `PositionAPI`: the same virtual coordinates, y up.
 - `glScissor` needs real pixels: multiply by `getScreenScaleMult()`.
