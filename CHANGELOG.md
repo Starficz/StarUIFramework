@@ -26,6 +26,7 @@ Added:
   like the rest.
 - SkillIcon: vanilla's framed skill icon on its own (learned, elite, thin border, or a person's level live).
 - Modifier.hoverState(state): hover into a UIState<Boolean>.
+- The KDoc is inside jars/StarUIFramework.jar, next to the classes: no separate sources jar to attach.
 - The starui.dump system property logs every StarUI panel on screen as dumpLayout text.
 
 Fixed:
