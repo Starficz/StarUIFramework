@@ -5,8 +5,8 @@ uploads an asset of that name (and is not marked as a GitHub prerelease, which "
     python release.py
 
 What goes in is the mod a player installs, nothing else: mod_info.json, the version file, LICENSE, README.md,
-CHANGELOG.md, data/, jars/ (the IntelliJ-built jar and the sources jar) and src/. Left out: .idea, out/, docs/,
-skill/, native-smoke/, AGENTS.md and the build scripts.
+CHANGELOG.md, icon.ico (the mod managers' icon), data/, jars/ (the IntelliJ-built jar and the sources jar) and
+src/. Left out: .idea, out/, docs/, skill/, native-smoke/, AGENTS.md and the build scripts.
 
 Before packing it rebuilds jars/StarUIFramework-sources.jar (build_sources_jar.py), and stops when a source file is
 newer than jars/StarUIFramework.jar: rebuild the jar in IntelliJ first.
@@ -20,7 +20,7 @@ import build_sources_jar
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 MOD_FOLDER = "StarUIFramework"
-FILES = ["mod_info.json", "staruiframework.version", "LICENSE", "README.md", "CHANGELOG.md"]
+FILES = ["mod_info.json", "staruiframework.version", "LICENSE", "README.md", "CHANGELOG.md", "icon.ico"]
 FOLDERS = ["data", "jars", "src"]
 SKIP_DIRS = {"__pycache__", ".idea"}
 SKIP_SUFFIXES = (".tmp", ".pyc", ".iml")
