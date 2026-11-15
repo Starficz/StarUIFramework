@@ -3,7 +3,7 @@
 Done means seen in game in every state and through the review checklist. Compiling proves nothing about layout.
 
 Contents: [The layout as text](#the-layout-as-text) · [Finding and driving](#finding-and-driving) ·
-[In the game](#in-the-game) · [States to see](#states-to-see) ·
+[Scripted checks](#scripted-checks) · [In the game](#in-the-game) · [States to see](#states-to-see) ·
 [Asking for screenshots](#asking-for-screenshots) · [Review checklist](#review-checklist) ·
 [2x pixel comparison](#2x-pixel-comparison) · [Reporting](#reporting)
 
@@ -51,9 +51,21 @@ Find by text or key, press with real input at the shown part; vanilla UI and Sta
   `StarUITesting.windowHost = panel` (windows open on the test's panel and never pause); `StarUITesting.reset()` at
   the end. Not for release code.
 
+## Scripted checks
+
+For pass or fail lines instead of driving by hand (a popup only one screen has): `starsector-native-smoke`, if
+installed (its own `SKILL.md`).
+
+- Open the screen first (a tab, a dialog), then build or find the panel: UI tied to a screen closes or never builds
+  while that screen is not current. `StarUIManager.currentCoreUITabPanel` reaches the open tab's panel.
+- Test code runs in the game's script loader, which refuses `java.lang.reflect`: call the mod's own entry points
+  and StarUI, never reflection. Don't swallow exceptions in checks; a `SecurityException` in a `catch` looks like a
+  missing component.
+
 ## In the game
 
-`starsector-hotreload` ships with StarUI: read its `SKILL.md` and `references/driving.md`.
+`starsector-hotreload` is its own skill folder, installed next to this one: read its `SKILL.md` and
+`references/driving.md`.
 
 ```bash
 HOT=<starsector-hotreload>/scripts/hot.sh

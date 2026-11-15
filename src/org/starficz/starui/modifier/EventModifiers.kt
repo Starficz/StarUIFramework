@@ -54,8 +54,10 @@ fun Modifier.onClick(action: (InputEventAPI) -> Unit) = this.then { it.applyToPl
  */
 fun Modifier.onClickRelease(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onClickRelease(action) } }
 /**
- * [action] will be called when a mouse button is pressed anywhere outside the component: to close a popup or a
- * menu, for example.
+ * [action] will be called when a mouse button is pressed outside the component's own bounds: to close a popup or a
+ * menu, for example. Put it on the menu itself, not on a full-screen parent: a component that covers the screen has
+ * no outside, so it never fires there. Like every input modifier it only sees events that reach this component
+ * (a modal layer or a panel consuming events above it takes them first).
  *
  * @param action will be called when a mouse button is pressed outside the component
  */

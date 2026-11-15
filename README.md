@@ -2,7 +2,7 @@
 
 A Compose-style Kotlin DSL for building Starsector UI out of the game's own UI elements.
 
-**Alpha (1.0.0-alpha).** The API may still change before 1.0.0.
+**Alpha (1.0.0-alpha.2).** The API may still change before 1.0.0.
 
 Requires LazyLib and PatchLib. Built for Starsector 0.98.5a-RC6.
 

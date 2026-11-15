@@ -60,6 +60,8 @@ Contents: [Reactive](#reactive) · [Layout and sizes](#layout-and-sizes) · [Tex
 | A window reopens on every rebuild, or never closes | `showLayer` in a builder (throws), or a `Layer` whose state nothing resets | `Layer` under a state; reset it in `onDismissRequest` and the close button |
 | A vanilla button's own action stopped | Listener replaced | `button.onClick { }` from `vanilla` keeps it |
 | A tooltip covers the next button | Default location is above | `Modifier.tooltip(location = TooltipLocation.LEFT)` in a right column |
+| `onClickOutside` never fires | On a full-screen component: outside means outside its own bounds | Put it on the menu or popup itself; keys (Escape) can stay on the root |
+| Two equal values in a `Text` share one colour | Listed once | List each occurrence: `highlightedText = listOf("1" to a, "1" to b)` (matched in order) |
 
 ## Screens and inject
 

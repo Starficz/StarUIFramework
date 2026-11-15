@@ -72,7 +72,7 @@ object Showcase {
     private fun UIPanelAPI.nav(layer: StarUILayer) {
         Column(Size.fillMaxHeight(width = 190f), spacing = 2f) {
             Text("StarUI", font = Font.ORBITRON_24_BOLD, color = VanillaColors.base)
-            Text("showcase, 1.0.0-alpha", color = VanillaColors.gray)
+            Text("showcase, 1.0.0-alpha.2", color = VanillaColors.gray)
             Text("Ctrl + Shift + U", color = VanillaColors.gray)
             // the pages scroll when the screen is too short for them all; the toggles stay at the bottom
             Column(Size.fillMaxSize(), Modifier.margin(top = 4f), overflow = Overflow.ScrollVertical) {

@@ -5,7 +5,7 @@ description: Live-test a Starsector mod in a game that stays open, isolated from
 
 # Starsector hot reload
 
-One game that stays open; rebuild the jar and it reloads. Version 2.0.0, used on Starsector 0.98.5a-RC4 and RC6.
+One game that stays open; rebuild the jar and it reloads. Version 2.1.0, used on Starsector 0.98.5a-RC4 and RC6.
 
 - **Isolated**: its own mods folder (the mod, its dependencies, added mods), saves, logs and captures in a work
   folder; the user's install, mods, saves and settings are never changed.

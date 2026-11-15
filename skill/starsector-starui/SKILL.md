@@ -11,7 +11,7 @@ no virtual tree. Layout, input, rendering and updates are added through PatchLib
 
 ## Version
 
-**StarUI 1.0.0-alpha** (API may change) for **Starsector 0.98.5a-RC6**. Name both versions in your first reply.
+**StarUI 1.0.0-alpha.2** (API may change) for **Starsector 0.98.5a-RC6**. Name both versions in your first reply.
 Check `version` in `mods/StarUIFramework/mod_info.json` (ask for the game folder; never search the disk); if it
 differs, the install wins: read signatures from its jar or sources. Numbers marked "(engine)" were measured on
 0.98a-RC8: check with one capture.
@@ -165,7 +165,10 @@ layout warnings (none allowed before showing). Needs Python 3; PNGs need `node` 
 
 ## Related skills
 
-- **`starsector-hotreload`** (ships with StarUI): the in-game loop ([verify.md](references/verify.md)).
+- **`starsector-hotreload`** (a separate skill folder in StarUI's release, installed next to this one): the in-game
+  loop ([verify.md](references/verify.md)).
+- **`starsector-native-smoke`**, if installed: scripted checks in a real game
+  ([verify.md](references/verify.md#scripted-checks)).
 - **`starsector-knowledge`**, if installed: game API, decompiled sources, sprites, data.
 - **`patchlib`**, if installed: the hooks `inject` is called from.
 
