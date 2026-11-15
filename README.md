@@ -2,9 +2,9 @@
 
 A Compose-style Kotlin DSL for building Starsector UI out of the game's own UI elements.
 
-**Prerelease (0.1.0).** The API may still change before 1.0.
+**Alpha (1.0.0-alpha).** The API may still change before 1.0.0.
 
-Requires LazyLib and PatchLib. Built for Starsector 0.98.5a-RC4.
+Requires LazyLib and PatchLib. Built for Starsector 0.98.5a-RC6.
 
 ## Example
 
@@ -24,6 +24,12 @@ StarUIManager.registerPlugin(MyScreens)
 ```
 
 To add UI to a vanilla panel that isn't one of the `StarUIPlugin` screens, call `inject` on it from a PatchLib hook.
+
+## Showcase
+
+Press **Ctrl + Shift + U** on the title screen, in the campaign or in combat to open the showcase: a page for every
+feature, each with a live demo next to the code that makes it, ready to copy. The pages for campaign parts (fleets,
+cargo, the sector map) need a game loaded. Press the same keys again, or Close, to leave it.
 
 Every public class and function has KDoc. To see it in IntelliJ, attach `jars/StarUIFramework-sources.jar` to the
 StarUIFramework library (Project Structure > Libraries > the library > `+` > the jar): hover and Quick

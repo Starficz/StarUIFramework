@@ -54,9 +54,15 @@ def copy_api():
     examples = os.path.join(SKILL, "examples")
     shutil.rmtree(examples, ignore_errors=True)
     os.makedirs(examples)
-    for name in os.listdir(SAMPLES):
-        if name.endswith(".kt"):
-            shutil.copy2(os.path.join(SAMPLES, name), examples)
+    # the samples with their subfolders (the showcase is examples/showcase/)
+    for dirpath, dirnames, filenames in os.walk(SAMPLES):
+        dirnames[:] = [d for d in dirnames if d not in SKIP]
+        rel = os.path.relpath(dirpath, SAMPLES)
+        for name in filenames:
+            if name.endswith(".kt"):
+                out = os.path.join(examples, rel)
+                os.makedirs(out, exist_ok=True)
+                shutil.copy2(os.path.join(dirpath, name), out)
     return count
 
 
@@ -69,6 +75,22 @@ def check_version():
     if not re.search(r"\*\*StarUI " + re.escape(version) + r"\*\*", text):
         fail("SKILL.md does not name StarUI %s (mod_info.json); update its Version section" % version)
     return version
+
+
+MAX_DESCRIPTION = 1024  # claude.ai's skill import refuses a longer frontmatter description
+
+
+def check_description(folder):
+    with open(os.path.join(folder, "SKILL.md"), encoding="utf-8") as f:
+        text = f.read()
+    m = re.match(r"---\n(.*?)\n---", text.replace("\r", ""), re.S)
+    d = m and re.search(r"^description:\s*(.*?)(?=^\w+:|\Z)", m.group(1), re.S | re.M)
+    if not d:
+        fail("%s/SKILL.md has no description in its frontmatter" % os.path.basename(folder))
+    n = len(d.group(1).strip())
+    if n > MAX_DESCRIPTION:
+        fail("%s/SKILL.md: the description is %d characters, the import allows %d"
+             % (os.path.basename(folder), n, MAX_DESCRIPTION))
 
 
 def pack(folder, out, skip=frozenset()):
@@ -89,6 +111,8 @@ def main():
     p.add_argument("--install", action="store_true")
     a = p.parse_args()
     version = check_version()
+    check_description(SKILL)
+    check_description(HOT)
     n = copy_api()
     out = os.path.join(DIST, "starsector-starui.skill")
     size = pack(SKILL, out, SKIP)

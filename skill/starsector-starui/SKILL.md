@@ -1,6 +1,6 @@
 ---
 name: starsector-starui
-description: Design and build Starsector mod UI that looks like the game made it, in Kotlin with StarUI (StarUIFramework, mod id staruiframework, package org.starficz.starui), a Compose-style DSL where every call makes a real vanilla UI object - Column, Row, Box, Text, Button, Table, LazyColumn, Section, Holo, sliders, ship displays - with reactive UIState, Modifier, typed sizes, per-axis scrolling, StarUIPlugin screens and inject() into any vanilla panel. Holds the design guide (look, colour roles, parts, which button where in which colour, density, the tooltip rule), a mockup generator that draws boards at game pixel size for approval before code, every part built in StarUI, tested recipes, traps, and a verify loop with the bundled starsector-hotreload skill. Use it whenever a mod depends on staruiframework or imports org.starficz.starui, the user mentions StarUI, or designs, mocks up, builds, changes or reviews Starsector mod UI in Kotlin (panel, screen, dialog, overlay, list, table, button, tooltip, "make it look vanilla", a screenshot with complaints about alignment, overlap, density or colours).
+description: Design and build Starsector mod UI that looks like the game made it, in Kotlin with StarUI (StarUIFramework), a Compose-style DSL where every call makes a real vanilla UI object - Column, Row, Box, Text, Button, Table, LazyColumn, Section, Holo, sliders, ship displays - with reactive UIState, typed sizes, per-axis scrolling, StarUIPlugin screens and inject() into any vanilla panel. Holds the design guide (look, colour roles, parts, button placement and colour, density, the tooltip rule), a mockup generator for boards at game pixel size, every part built in StarUI, tested recipes, traps, and a verify loop with the bundled starsector-hotreload skill. Use it whenever a mod depends on staruiframework or imports org.starficz.starui, the user mentions StarUI, or designs, mocks up, builds, changes or reviews Starsector mod UI in Kotlin (panel, screen, dialog, overlay, list, table, button, tooltip, "make it look vanilla", screenshots with alignment, overlap, density or colour complaints).
 ---
 
 # StarUI
@@ -15,10 +15,10 @@ virtual tree. Layout, input, rendering and reactive updates are added to the nat
 
 ## Version
 
-This skill is **StarUI 0.1.0** (a prerelease; the API can still change) for **Starsector 0.98.5a-RC4**. In the first
+This skill is **StarUI 1.0.0-alpha** (an alpha; the API can still change) for **Starsector 0.98.5a-RC4**. In the first
 reply of a conversation that uses this skill, say that you are working from it and name both versions. Check the
 user's install: the `version` in `mods/StarUIFramework/mod_info.json` (ask for the game folder if you do not have it;
-never search the disk). When it differs from 0.1.0, the install wins: say that this skill's `api/` copy may be stale
+never search the disk). When it differs from 1.0.0-alpha, the install wins: say that this skill's `api/` copy may be stale
 and read the signatures from the install's jar or sources instead. Numbers marked "(engine)" were measured on
 0.98a-RC8; check them with one capture before relying on them.
 
@@ -172,7 +172,7 @@ StarUI:
 | Layout dump, in-game check, states, screenshot request, review checklist, 2x comparison, report | [references/verify.md](references/verify.md) |
 | Reference images: vanilla screens and what to look at in each | [references/gallery.md](references/gallery.md) |
 | Exact signatures and KDoc | `api/org/starficz/starui/` |
-| Working code using nearly every component | `examples/ShowcaseUIPlugin.kt`, `examples/ExampleUIPlugin.kt` |
+| Working code for every feature, a page per feature (each demo between `// snippet:` markers is the code the showcase shows beside it) | `examples/showcase/` (`LayoutPages.kt`, `ContentPages.kt`, `ControlsPages.kt`, `ListPages.kt`, `StatePages.kt`, `InputPages.kt`, `WindowsPages.kt`, `VanillaPages.kt`, `HostPages.kt`, `RecipePages.kt`), `examples/ExampleUIPlugin.kt` |
 
 A small task (one component, one fix) reads this file, `components.md`, `reactive.md`, `traps.md`, the one section
 of `parts.md` or `buttons.md` it needs, and the `api/` file of the component it touches. Images cost context: open

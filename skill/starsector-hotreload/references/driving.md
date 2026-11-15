@@ -33,7 +33,7 @@ next time the code that builds it runs. Tested on 0.98.5a-RC4 (Kotlin 2.2):
 
 | UI | After a reload |
 |---|---|
-| **StarUI** (0.1.0 and later) | Rebuilt by itself: StarUI sees the agent's counter and rebuilds every live UI scope within a fraction of a second, keeping state, scroll positions and focus. The game log says `StarUI: hot reload N, rebuilding M UI scopes`. Nothing to do |
+| **StarUI** (1.0.0-alpha and later) | Rebuilt by itself: StarUI sees the agent's counter and rebuilds every live UI scope within a fraction of a second, keeping state, scroll positions and focus. The game log says `StarUI: hot reload N, rebuilding M UI scopes`. Nothing to do |
 | Any other UI | Old code until its building code runs again: a state change re-runs the container that reads it; vanilla building the screen again (close and reopen a tab) rebuilds a panel made on that screen; the campaign UI, the title screen and combat only when vanilla makes them again (load the save, restart) |
 
 The counter is the system property `starsector.hotreload.generation`: the agent sets it to `"0"` before any mod loads

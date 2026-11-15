@@ -172,7 +172,7 @@ and last a click handler or builder where there is one.
   reorders them. To move a child above its siblings, remove it and add it again.
 - For vanilla's colours use `VanillaColors` (from `vanilla`): the player faction's `base`, `dark` and `bright`, `text`,
   `gray`, `highlight`, `positive`, `negative`, the story-point colours and `panel`, each read live. The showcase
-  (`staruisamples/ShowcaseUIPlugin.kt`) is styled with them.
+  (`staruisamples/showcase/`) is styled with them.
 - `Slider` and `ProgressBar` are the vanilla slider (`SettingsAPI.createSlider`) and return a `BoxedUISlider` (its
   `SliderAPI` and the component it is); it holds one value (its `min` is a floor, `max` an overflow mark). `step` is
   a step size (Compose's `steps` is a count). `configure` is a named argument taking any `SliderAPI` setter; it runs

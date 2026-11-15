@@ -2,7 +2,6 @@ package org.starficz.starui.internal
 
 import com.fs.starfarer.api.BaseModPlugin
 import org.starficz.starui.StarUIManager
-import org.starficz.staruisamples.ShowcaseUIPlugin
 
 
 internal class ModPlugin : BaseModPlugin() {
@@ -11,8 +10,9 @@ internal class ModPlugin : BaseModPlugin() {
 
     override fun onApplicationLoad() {
         StarUIManager.initAtApplicationLoad()
-        // The showcase: a "StarUI showcase" button on the title screen (collapsed until clicked)
-        //StarUIManager.registerPlugin(ShowcaseUIPlugin.Plugin())
+        // The showcase: Ctrl + Shift + U opens it on the title screen, in the campaign and in combat (a chord, so a
+        // player never opens it by accident)
+        StarUIManager.registerPlugin(org.starficz.staruisamples.showcase.Showcase.Plugin())
         // Older title-screen demo panel, for manual testing only:
         // StarUIManager.registerPlugin(org.starficz.staruisamples.ExampleUIPlugin.ExampleStarUIPlugin())
     }

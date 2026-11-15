@@ -4,9 +4,9 @@
     "author": "Starficz",
     "utility": "false",
     "library": "true",
-    "version": "0.1.0",
+    "version": "1.0.0-alpha",
     "description": "A modern UI framework for Starsector built with a Kotlin DSL.",
-    "gameVersion": "0.98.5a-RC4",
+    "gameVersion": "0.98.5a-RC6",
     "jars":["jars/StarUIFramework.jar"],
     "modPlugin":"org.starficz.starui.internal.ModPlugin",
     "dependencies": [

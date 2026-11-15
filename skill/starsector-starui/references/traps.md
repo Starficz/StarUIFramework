@@ -124,7 +124,7 @@ For `Modifier.onRender` / `onRenderBelow` code.
 | `SecurityException` on reflection | The game's script class loader refuses `java.lang.reflect` | Use the API or StarUI's toolkit; for anything else, the reflection route the game allows (`starsector-knowledge`, `docs/ui/attach-reflection.md`, when installed) |
 | `column(...) { }.sortBy { it.x }` does not compile with `sortBy` as a lambda argument | `sortBy` is a fluent call on the returned column, not a parameter | `column("Cost") { "${it.cost}" }.sortBy { it.cost }` |
 | A name from Compose does not exist (`Modifier.size`, `fillMaxWidth()` as a modifier, `remember`) | StarUI's API differs | Look it up in `api/`; sizes are the `size` argument |
-| A hot reload did not change an open StarUI panel | No `StarUI: hot reload N, rebuilding M UI scopes` line in the game log: the game was not started by `starsector-hotreload`, or runs a StarUI jar older than 0.1.0; or the reload printed `WARN` (a new static field: restart) | Start the game with `hot.sh start`; with a dependency jar, pass the current one (`--dep`, `--dep-jar`); restart after a `WARN` |
+| A hot reload did not change an open StarUI panel | No `StarUI: hot reload N, rebuilding M UI scopes` line in the game log: the game was not started by `starsector-hotreload`, or runs a StarUI jar older than 1.0.0-alpha; or the reload printed `WARN` (a new static field: restart) | Start the game with `hot.sh start`; with a dependency jar, pass the current one (`--dep`, `--dep-jar`); restart after a `WARN` |
 
 ## Process
 

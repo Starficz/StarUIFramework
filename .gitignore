@@ -95,3 +95,6 @@ skill/starsector-starui/api/
 skill/starsector-starui/examples/
 skill/dist/
 __pycache__/
+
+# Release zips (release.py)
+/release/

@@ -5,7 +5,7 @@
 #   stage-mod.sh PROJECT_DIR STAGE_DIR [JAR...]
 # JAR: a freshly built jar (from the project's compile gate). It replaces the mod_info.json "jars" entry with the same
 # file name, else the first entry. Without JAR the project's own jars are copied as they are.
-# Not linked: jars out build lib libs docs src gradle native-smoke, folders starting with '.', folders holding jars.
+# Not linked: jars out build lib libs docs gradle native-smoke, folders starting with '.', folders holding jars.
 # Links are junctions on Windows (Git Bash, or WSL against a Windows install) and symlinks elsewhere.
 set -euo pipefail
 (( $# >= 2 )) || { sed -n '2,8p' "$0" >&2; exit 2; }
@@ -49,7 +49,7 @@ for e in "${entries[@]}"; do [[ $e == */* ]] && jar_dirs+="${e%%/*} "; done
 for entry in "$PROJECT"/*; do
     name=${entry##*/}
     if [[ -d $entry ]]; then
-        case $name in jars|out|build|lib|libs|docs|src|gradle|native-smoke) continue ;; esac
+        case $name in jars|out|build|lib|libs|docs|gradle|native-smoke) continue ;; esac
         [[ $jar_dirs == *" $name "* ]] && continue
         if winpath "$STAGE" >/dev/null 2>&1; then
             MSYS_NO_PATHCONV=1 cmd.exe /c mklink /J "$(winpath "$STAGE/$name")" "$(winpath "$entry")" >/dev/null ||
