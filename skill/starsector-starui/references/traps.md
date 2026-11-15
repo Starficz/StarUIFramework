@@ -82,6 +82,9 @@ Contents: [Reactive](#reactive) · [Layout and sizes](#layout-and-sizes) · [Tex
 | `CostDisplay` or a faction `RelationshipBar` throws on the title screen | They need a campaign | Only in campaign screens |
 | A label moved to another panel lost its handlers | It was taken out of a panel that was thrown away before it was added elsewhere | Add it to its new parent first |
 | A `Spacer` does not show | Spacers draw nothing | `Modifier.background(color)` |
+| A `TooltipMakerPanel`'s text starts 5 px right of the StarUI text beside it | Vanilla insets tooltip content 5 px from the tooltip's left edge | Expected; build the block in StarUI if it must line up (a `TooltipMakerPanel` is the last resort) |
+| A `SkillIcon` shows nothing on hover | Vanilla's skill tooltip is not in the API, so the icon has none | `Modifier.tooltip { }` with the skill's name and what it does |
+| A `SkillIcon` keeps its old look after a person learns the skill | The level overload shows the level you passed | `SkillIcon(skillId, person)`: it reads the person's level every frame |
 
 ## Drawing
 

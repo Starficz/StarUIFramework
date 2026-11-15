@@ -6,6 +6,7 @@ import com.fs.starfarer.api.campaign.econ.CommoditySpecAPI
 import com.fs.starfarer.api.campaign.FactionAPI
 import com.fs.starfarer.api.campaign.PersonImportance
 import com.fs.starfarer.api.campaign.PlanetAPI
+import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
 import com.fs.starfarer.api.characters.PersonAPI
 import com.fs.starfarer.api.combat.MutableStat
 import com.fs.starfarer.api.combat.StatBonus
@@ -14,6 +15,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.impl.campaign.intel.events.BaseEventIntel
 import com.fs.starfarer.api.ui.*
 import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
+import com.fs.starfarer.api.util.Misc
 import org.starficz.starui.BoundedSize
 import org.starficz.starui.layout.VanillaElementEngine
 import org.starficz.starui.modifier.Modifier
@@ -23,6 +25,7 @@ import org.starficz.starui.Size
 import org.starficz.starui.StarUIDsl
 import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.*
+import org.starficz.starui.vanilla.ReflectionUtils.invoke
 import java.awt.Color
 
 // Vanilla TooltipMakerAPI content as StarUI components. Each is built on a temporary tooltip at the width its
@@ -586,6 +589,99 @@ fun UIPanelAPI.CodexEntries(
     sort: Boolean = true
 ): CustomPanelAPI = VanillaElement("CodexEntries", size, modifier, inputs = listOf(title, entryIds.toSet(), sort)) { _ ->
     addCodexEntries(title, entryIds, sort, 0f)
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Skill icons
+// ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * Vanilla's framed skill icon for [skillId] at a [stats]' level: the engine's own icon, found at load, which draws
+ * the skill's art (dimmed when not learned), the cut-corner frame in the aptitude's colour (doubled when learned) and
+ * the elite frame at level 2, and reads the level from [stats] every frame. It builds its sprites for its first size,
+ * so it is made at its final size.
+ */
+private fun newSkillIcon(skillId: String, stats: MutableCharacterStatsAPI, thinBorder: Boolean, width: Float, height: Float): UIComponentAPI {
+    val constructor = VanillaClasses.skillIconConstructor ?: throw IllegalStateException(
+        "StarUI: SkillIcon needs vanilla's skill icon class, which was not found at load (the log says why)."
+    )
+    val spec = Global.getSettings().getSkillSpec(skillId)
+        ?: throw IllegalArgumentException("SkillIcon: no skill with the id \"$skillId\"")
+    // vanilla's frame colour: the aptitude's, a third of the way to the light highlight colour, opaque
+    val light = Misc.setAlpha(Global.getSettings().getColor("tooltipTitleAndLightHighlightColor"), 255)
+    val color = Misc.interpolateColor(spec.governingAptitudeColor, light, 0.35f)
+    val icon = constructor.newInstance(spec, stats, color, false) as UIComponentAPI
+    if (thinBorder) icon.invoke("setThinBorder", true)   // read when the icon builds itself: set before its size
+    icon.position.setSize(width, height)
+    return icon
+}
+
+/** A person whose only skill is [skillId] at [level], for an icon that shows a level rather than someone's. */
+private fun skillLevelHolder(skillId: String, level: Float): MutableCharacterStatsAPI =
+    Global.getFactory().createPerson().stats.apply { setSkillLevel(skillId, level) }
+
+/**
+ * A component that shows vanilla's framed skill icon, as on the character screen and in vanilla's skill panels: the
+ * skill's art in its aptitude's cut-corner frame, with the elite frame for an elite skill and the art dimmed for one
+ * not learned. For a compact strip of skills; [SkillPanel] shows a person's whole panel, with names.
+ *
+ * This overload shows a level you give: [learned] and [elite]. The other one shows a person's own level, live.
+ *
+ * It has vanilla's look and no tooltip of its own (vanilla's skill tooltip is not in the API): add one with
+ * [Modifier.tooltip][org.starficz.starui.modifier.tooltip]. It is made again when its size or its arguments change.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * Row(spacing = 4f) {
+ *     for (id in listOf("helmsmanship", "target_analysis")) {
+ *         SkillIcon(id, elite = id == "helmsmanship", modifier = Modifier.tooltip(Global.getSettings().getSkillSpec(id).name))
+ *     }
+ * }
+ * ```
+ *
+ * @param skillId the skill's id (`"helmsmanship"`, `Skills.HELMSMANSHIP`)
+ * @param size the size of the icon: exact or fill, 40 x 40 (vanilla's skill panel) by default; the elite frame
+ *   follows it (vanilla has one for 64 and over, one for 48 and over, and one below)
+ * @param modifier the [Modifier] to be applied to this icon
+ * @param learned whether the skill is shown as learned; not learned dims its art and thins its frame
+ * @param elite whether the skill is shown as elite
+ * @param thinBorder whether to draw vanilla's thin frame (one line, no glow), for small icons
+ * @return the panel holding the vanilla icon
+ */
+fun UIPanelAPI.SkillIcon(
+    skillId: String,
+    size: BoundedSize = Size.exact(40f, 40f),
+    modifier: Modifier = Modifier,
+    learned: Boolean = true,
+    elite: Boolean = false,
+    thinBorder: Boolean = false
+): CustomPanelAPI {
+    val level = if (!learned) 0f else if (elite) 2f else 1f
+    return VanillaSizedComponent("SkillIcon", size, modifier, inputs = listOf(skillId, level, thinBorder)) { w, h ->
+        newSkillIcon(skillId, skillLevelHolder(skillId, level), thinBorder, w, h)
+    }
+}
+
+/**
+ * A component that shows vanilla's framed skill icon at [person]'s level of [skillId], read every frame: dimmed
+ * until they learn it, the elite frame once they make it elite. See the other overload for the look.
+ *
+ * @param skillId the skill's id
+ * @param person the person whose level is shown
+ * @param size the size of the icon: exact or fill, 40 x 40 by default
+ * @param modifier the [Modifier] to be applied to this icon
+ * @param thinBorder whether to draw vanilla's thin frame (one line, no glow), for small icons
+ * @return the panel holding the vanilla icon
+ */
+fun UIPanelAPI.SkillIcon(
+    skillId: String,
+    person: PersonAPI,
+    size: BoundedSize = Size.exact(40f, 40f),
+    modifier: Modifier = Modifier,
+    thinBorder: Boolean = false
+): CustomPanelAPI = VanillaSizedComponent("SkillIcon", size, modifier, inputs = listOf(skillId, person, thinBorder)) { w, h ->
+    newSkillIcon(skillId, person.stats, thinBorder, w, h)
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -252,6 +252,7 @@ object StarUITestSuite {
         registerVanillaElementTests()
         registerVanillaPortTests()
         registerTooltipMakerPanelTests()
+        registerSkillIconTests()
         registerHoloTests()
         registerLeakTests()
         registerLongListPerfTests()

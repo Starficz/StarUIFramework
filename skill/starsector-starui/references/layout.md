@@ -117,7 +117,8 @@ Every panel is built to this contract. A reviewer checks a panel against it line
 1. **Sizes from the panel, not from text.** Fixed widths (`Size.exact`) for what cannot shrink (number columns,
    buttons, icon rows), a fill (`Size.fillMaxWidth()`, `Axis.FillMax(weight)`) for the flexible part, so no
    element moves when a text changes. Wrapped text (a `Text` with an exact or fill width) is measured by StarUI and
-   what follows is placed below it. `CustomPanel` and anchors only where the design places things freely.
+   what follows is placed below it. Anchors (an `AnchorPanel`, or a `CustomPanel` as the escape hatch) only where
+   the design places things freely.
 2. **No overlap and no cut text for worst case data**: 40 character names, 9 digit credits, 300 day counters,
    14 skills, 30 colonies, 200 list entries, and the empty list.
    - One line text is cut to its box with `...`, the full text in a tooltip: `Text(..., overflow = TextOverflow.Ellipsis)`.

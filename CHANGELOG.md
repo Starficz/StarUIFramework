@@ -14,7 +14,8 @@ First release, an alpha: the API may still change before 1.0.0.
   ProgressBar, Table (optionally sortable), tooltips.
 - Vanilla parts as components: StatGrid, StatModGrid, LabelledValue, CostDisplay, FleetSummary, ShipList,
   CargoList, CommodityIcons, PlanetInfo, SectorMap, SkillPanel, RelationshipBar, ImportanceIndicator,
-  EventProgressBar, SurveyRequirements, PlaythroughData, CodexEntries; TooltipMakerPanel for any other
+  EventProgressBar, SurveyRequirements, PlaythroughData, CodexEntries, SkillIcon (vanilla's framed skill icon on
+  its own); TooltipMakerPanel for any other
   TooltipMakerAPI content, laid out and updated like the rest.
 - Reactive state: UIState / mutableStateOf. A builder that reads a state rebuilds when it changes; key() keeps
   list items' UI when they move.

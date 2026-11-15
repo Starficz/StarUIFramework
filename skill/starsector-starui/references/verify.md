@@ -168,7 +168,8 @@ Run it on captures, state by state. A reviewer subagent can run it too; give it 
 - [ ] Bars are vanilla's (`ProgressBar`), in the right settings colour.
 - [ ] Fonts: Insignia 15 for reading, Orbitron 12 for headings, tabs and buttons.
 - [ ] Status markers are outlined icons with no box behind them, one per picture; wants use the quest (!).
-- [ ] Skill icons have the vanilla aptitude frame; elite shows the stars.
+- [ ] Skill icons are vanilla's (`SkillIcon`, `SkillPanel`): the aptitude frame, the elite frame with its stars when elite, never a
+  frame drawn by hand.
 
 **Buttons and colour**
 

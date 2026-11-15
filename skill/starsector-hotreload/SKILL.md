@@ -1,12 +1,12 @@
 ---
 name: starsector-hotreload
-description: Live-test a Starsector mod in a game that stays open, isolated from the user's own mods and saves. The game runs on the JetBrains Runtime with enhanced class redefinition and a reload agent, so every rebuilt jar of the mod (or of a library mod developed with it) is swapped into the running game in under a second, with no restart. Includes background input and window captures that never touch the user's mouse, keyboard or window focus (hot.sh ctl, shot), getting into a campaign (newgame, continue), and notes for driving it during UI work. Use for UI and gameplay iteration: change code, rebuild the jar, reopen the screen, capture, look. Also when the user wants to see a mod's UI in the real game, try a change without restarting, or play a build with their own mods. Windows, Git Bash.
+description: Live-test a Starsector mod in a game that stays open, isolated from the user's own mods and saves. The game runs on the JetBrains Runtime with enhanced class redefinition and a reload agent, so every rebuilt jar of the mod (or of a library mod developed with it) is swapped into the running game in under a second, with no restart. Includes background input and window captures that never touch the user's mouse, keyboard or window focus (hot.sh ctl, shot), finding, clicking and scrolling UI by its text (hot.sh find, click, wheel; vanilla's and StarUI's), Console Commands for test state (hot.sh console), getting into a campaign (newgame, continue, campaign), and notes for driving it during UI work. Use for UI and gameplay iteration: change code, rebuild the jar, reopen the screen, capture, look. Also when the user wants to see a mod's UI in the real game, try a change without restarting, or play a build with their own mods. Windows, Git Bash.
 ---
 
 # Starsector hot reload
 
 Start one game, leave it running, and iterate: edit, rebuild the jar, the game picks it up. Version 2.0.0, used on
-Starsector 0.98.5a-RC4.
+Starsector 0.98.5a-RC4 and RC6.
 
 - The game runs **isolated**: its own mods folder (only the mod under test, its dependencies and the mods you add),
   saves, logs and screenshots in a work folder. The user's own install, mods, saves and settings are never changed.

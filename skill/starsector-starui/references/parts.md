@@ -134,18 +134,15 @@ Contents: [Title line](#title-line) · [Tabs](#tabs) · [Section heading](#secti
   the ship to 95%; `exactScale` for one sprite pixel per UI pixel); `ShipList(ships)`, `FleetSummary(ships)`;
   `SkillPanel(person)` for a person's skills; `CodexEntries` for codex links.
 - **Rule:** an icon row is at most two rows, then `+N` with the rest in its tooltip.
-- **Skills:** the API's only framed skill icons are vanilla's skill panel, `SkillPanel(person)`: an icon in its
-  aptitude frame with the skill's name beside it, two per line, about 43 px a line (five skills take 130 px), each
-  with vanilla's tooltip. `oneColumn = true` stacks them. There is no API call for a compact row of framed icons
-  without names (the mockup kit's `skill` helper draws one): use `SkillPanel`, and say so when a board shows a
-  compact row. A person for it: `Global.getFactory().createPerson()` and `stats.setSkillLevel(id, 1f)` (2 for elite).
-  It is big: plan its room before choosing it (a strip of learned skills next to other content will not fit), and
-  a user who asked for a compact strip will reject it on sight. For a compact strip, draw the frame yourself
-  ([design-rules.md](design-rules.md): skills keep the vanilla frame).
-- **A skill's effects have a scope each, not the skill:** a `.skill` file lists every effect with its own `type`, and
-  vanilla reuses one script for several scopes. Point Defense lists `PointDefense$Level1` once as `SHIP` and once
-  as `SHIP_FIGHTERS` (the skill's `scope` / `scope2`: the piloted ship and its fighters). A list of what a skill
-  does groups its effects by type and shows a shared script once, with every scope it applies to.
+- **Skills:**
+  - `SkillIcon(skillId, size, learned, elite, thinBorder)` / `SkillIcon(skillId, person)` (level read live):
+    vanilla's framed icon alone, 40 x 40 default. For strips and cells of your own. No tooltip: add
+    `Modifier.tooltip { }`. Mockup kit: `skill`.
+  - `SkillPanel(person)`: the whole panel with names, two per line, ~43 px a line (five skills 130 px). Big: a user
+    who wanted a strip rejects it. Test person: `Global.getFactory().createPerson()`, `stats.setSkillLevel(id, 1f)`
+    (2 elite).
+  - Scope is per effect, not per skill: Point Defense lists `PointDefense$Level1` as `SHIP` and as
+    `SHIP_FIGHTERS`. Group a skill's effects by type; show a shared script once.
 - **Storages:** a submarket's icon is its `icon` column in `data/campaign/submarkets.csv` (`graphics/factions/storage.png`
   for storage); the settings have no getter for it.
 - **Trap:** weapon icons have no single sprite (turret and barrel are separate files).

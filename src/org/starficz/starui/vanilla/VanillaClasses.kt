@@ -1,5 +1,7 @@
 package org.starficz.starui.vanilla
 
+import com.fs.starfarer.api.characters.MutableCharacterStatsAPI
+import com.fs.starfarer.api.characters.SkillSpecAPI
 import com.fs.starfarer.api.fleet.FleetMemberAPI
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.UIComponentAPI
@@ -9,6 +11,7 @@ import org.starficz.starui.vanilla.ReflectionUtils.invoke
 import patchlib.api.PatchLib
 import patchlib.api.query.ClassQuery
 import patchlib.api.query.MethodQuery
+import java.awt.Color
 
 /**
  * The vanilla classes StarUI constructs itself that have no API factory (ship previews, holo panels), found by their
@@ -40,8 +43,16 @@ internal object VanillaClasses {
     var holoConstructor: ReflectionUtils.ReflectedConstructor? = null
         private set
 
+    // ---- skill icon (SkillIcon) ----
+    var skillIconClass: Class<*>? = null
+        private set
+    /** (skill spec, character stats, frame colour, show the level bar) */
+    var skillIconConstructor: ReflectionUtils.ReflectedConstructor? = null
+        private set
+
     fun findAtApplicationLoad() {
         findHolo()
+        findSkillIcon()
         if (hasShipPreview) return
         // 0.98.5a-RC4 Windows: the ship preview the mission and refit screens use
         val query = ClassQuery.create()
@@ -71,6 +82,34 @@ internal object VanillaClasses {
         shipPreviewWithStyle = constructors.find { it.parameterTypes.size == 2 }
         shipPreviewStyles = shipPreviewWithStyle?.parameterTypes?.first()?.enumConstants
         shipPreviewClass = clazz
+    }
+
+    // 0.98.5a-RC4: com.fs.starfarer.coreui.Z, the framed skill icon of the skill panel and the character screen
+    private fun findSkillIcon() {
+        if (skillIconClass != null) return
+        val query = ClassQuery.create()
+            .subtype(UIPanelAPI::class.java)
+            .hasMethod(MethodQuery.create().methodName("getSkill").parameterCount(0))
+            .hasMethod(MethodQuery.create().methodName("getStats").parameterCount(0))
+            .hasMethod(MethodQuery.create().methodName("setThinBorder").parameterCount(1))
+            .hasMethod(MethodQuery.create().methodName("renderGlow").parameterCount(1))
+            .hasMethod(MethodQuery.create().methodName("renderLevel").parameterCount(1))
+            .build()
+        val found = PatchLib.scan(query).map { it.type }
+        if (found.size != 1) {
+            log.warn("StarUI: SkillIcon needs vanilla's skill icon class; found ${found.size} candidates (${found.joinToString { it.name }}). SkillIcon() will fail.")
+            return
+        }
+        val clazz = found.single()
+        skillIconConstructor = clazz.getConstructorsMatching().firstOrNull { constructor ->
+            val types = constructor.parameterTypes
+            types.size == 4 &&
+                SkillSpecAPI::class.java.isAssignableFrom(types[0]) &&
+                MutableCharacterStatsAPI::class.java.isAssignableFrom(types[1]) &&
+                types[2] == Color::class.java && types[3] == Boolean::class.javaPrimitiveType
+        }
+        skillIconClass = clazz
+        if (skillIconConstructor == null) log.warn("StarUI: vanilla's skill icon has no (skill, stats, Color, boolean) constructor. SkillIcon() will fail.")
     }
 
     // 0.98.5a-RC4 Windows: matches com.fs.starfarer.E.I

@@ -15,7 +15,7 @@ virtual tree. Layout, input, rendering and reactive updates are added to the nat
 
 ## Version
 
-This skill is **StarUI 1.0.0-alpha** (an alpha; the API can still change) for **Starsector 0.98.5a-RC4**. In the first
+This skill is **StarUI 1.0.0-alpha** (an alpha; the API can still change) for **Starsector 0.98.5a-RC6**. In the first
 reply of a conversation that uses this skill, say that you are working from it and name both versions. Check the
 user's install: the `version` in `mods/StarUIFramework/mod_info.json` (ask for the game folder if you do not have it;
 never search the disk). When it differs from 1.0.0-alpha, the install wins: say that this skill's `api/` copy may be stale
@@ -76,15 +76,15 @@ and what they switched off). Show it again when the user asks what you can do. A
 4. **Pick the parts** from [parts.md](references/parts.md) and the buttons from
    [buttons.md](references/buttons.md), vanilla's unless the user asked otherwise. Do not invent a widget when a
    listed part fits.
-5. **Mock up and get approval before writing code**, when the user chose mockups (the notice's question). When
-   they chose to build directly, skip the boards: build, capture the result in game, and get the approval on the
-   captures; the content list, host and parts above still apply. With mockups ([mockups.md](references/mockups.md)): boards from the bundled
+5. **Mock up and get approval before writing code**, if the user chose mockups; if they chose to build directly,
+   build and get approval on in-game captures. Mockups ([mockups.md](references/mockups.md)): boards from the bundled
    generator, no layout warnings, PNGs looked at, then shown; wait for the go. A change to existing UI is shown as
    before and after pairs; every invented text goes on a text board. Skip only when the user says so, or when the
    change keeps an approved layout (a label, a colour, a bug fix).
    **Boards or screenshots the user hands you** are the approved layout and content: build from them, no boards of
    your own. Read them for where they depart from vanilla (coloured button fills, left aligned headings with a count
-   at the right, two-line table rows, a compact row of skill icons, a part from [parts.md](references/parts.md#not-vanilla)).
+   at the right, two-line table rows, a part from [parts.md](references/parts.md#not-vanilla)). A compact row of
+   skill icons is vanilla's (`SkillIcon`), not a departure.
    Build those parts vanilla's way, and in your first reply list each departure in one line with what you built
    instead, offering the boards' look for any of them (rule 2). Do not copy them silently, and do not change them
    silently.
@@ -148,16 +148,11 @@ StarUI:
 15. **Builders build, handlers change state.** Adding a component from a click handler throws. Read `state.value`
     inside the builder of the container that shows it; a builder never writes a state it reads.
 16. **Key every list whose items can move**: `key(item.id) { ... }`, `LazyColumn(key = { it.id })`.
-17. **Sizes are the `size` argument**; clipping and scrolling the container's `overflow`; anchors only inside a
-    `CustomPanel`.
+17. **Sizes are the `size` argument**; clipping and scrolling the container's `overflow`; anchors only inside an
+    `AnchorPanel` or a `CustomPanel`.
 18. **No obfuscated names** in mod code: not in imports, casts, reflection strings or PatchLib matchers.
-19. **Build it in StarUI; `TooltipMakerPanel` is a last resort.** Nearly everything is doable with StarUI's own
-    components: text with highlights (`Text(highlightedText = ...)`), headings (`SectionHeading`), tables (`Table`),
-    buttons, images, the vanilla ports (`StatGrid`, `ShipList`, ...). Use `TooltipMakerPanel { width -> ... }` only
-    when it really is the simplest choice: vanilla content with no StarUI component and no simple StarUI build (a
-    mod's helper that fills a tooltip, a TooltipMakerAPI call StarUI has no port of). It cannot hold StarUI
-    components, loses its content's state when made again, and sits outside StarUI's reuse. Hover tooltips stay
-    `Modifier.tooltip { }`; never `createUIElement` / `addUIElement` by hand next to StarUI.
+19. **Build it in StarUI.** `TooltipMakerPanel` only when it is truly the simplest choice (a mod's helper that fills
+    a tooltip); hover tooltips are `Modifier.tooltip { }`; never `createUIElement` / `addUIElement` by hand.
 20. **Kotlin against LazyLib's Kotlin runtime** (LazyLib 3.1: Kotlin 2.4.21): a Kotlin compiler 2.3 or newer, and
     `-api-version` no higher than 2.4.
 21. **Seen in game, or not done.** Never write "tested" for code that only compiled.

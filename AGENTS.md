@@ -140,7 +140,10 @@ and last a click handler or builder where there is one.
 `SectionHeading(text, size, modifier, color, backgroundColor, textAlign)`, `Table(items, size, modifier, ...) { column(...) }`,
 `StatGrid { entry(label, value) }`, `StatModGrid(stat)`, `LabelledValue(label, value)`, `RelationshipBar(value)`,
 `ImportanceIndicator(importance)`, `CommodityIcons { icons(id, count) }`, `CostDisplay { cost(id, quantity) }`,
-`ShipList(ships)`, `FleetSummary(ships)`, `CodexEntries(title, ids)`, `Spacer(size, modifier)`,
+`ShipList(ships)`, `FleetSummary(ships)`, `CodexEntries(title, ids)`, `SkillIcon(skillId, size, learned, elite)` /
+`SkillIcon(skillId, person)` (vanilla's framed skill icon: the engine class with `getSkill` / `getStats` /
+`setThinBorder`, `VanillaClasses.findSkillIcon`, made at its final size since it builds its sprites on its first
+`sizeChanged`), `Spacer(size, modifier)`,
 `Divider(modifier, thickness, color)`, `FlexSpacer(weight)`.
 
 - Controls have a `contentPadding` (space between their edge and their content, from the theme); `Modifier.padding`

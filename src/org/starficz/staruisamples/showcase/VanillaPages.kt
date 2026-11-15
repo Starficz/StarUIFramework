@@ -111,6 +111,20 @@ private val stats = Page("Vanilla parts", "Stats and values",
         Button("Raise the hazard") { hazard.value = (hazard.value + 1) % 5 }
         // end snippet
     }
+
+    card("SkillIcon", "skill-icon",
+        "Vanilla's framed skill icon on its own: not learned, learned, elite, thin; any size.") {
+        // snippet: skill-icon
+        Row(spacing = 6f, verticalAlignment = Alignment.CenterVertically) {
+            SkillIcon("helmsmanship", learned = false)
+            SkillIcon("helmsmanship")
+            SkillIcon("helmsmanship", elite = true)
+            SkillIcon("target_analysis", Size.exact(28f, 28f), thinBorder = true)
+            SkillIcon("point_defense", Size.exact(64f, 64f), elite = true,
+                modifier = Modifier.tooltip("Point Defense, elite"))
+        }
+        // end snippet
+    }
 }
 
 private val fleetAndCargo = Page("Vanilla parts", "Fleet and cargo",

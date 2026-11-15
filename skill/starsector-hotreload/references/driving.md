@@ -1,8 +1,8 @@
 # Driving a hot game for UI work
 
 How to reach a screen, act on it and capture it without touching the user's mouse, keyboard or focus. Coordinates
-below are client pixels of the **1600x900 test window**, measured on 0.98.5a-RC4 with no mods that change these
-screens. Measure anything else on a capture.
+below are client pixels of the **1600x900 test window**, measured on 0.98.5a-RC4 and checked on RC6 with no mods
+that change these screens. Measure anything else on a capture.
 
 Contents: [The loop for a panel](#the-loop-for-a-panel) · [Seeing a UI change](#seeing-a-ui-change) ·
 [Reaching a screen](#reaching-a-screen) · [Making test state](#making-test-state) ·

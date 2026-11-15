@@ -45,6 +45,9 @@ Stock widgets (`Button`, `AreaCheckbox`, tooltips, `Holo`) bring their own motio
 
 ## A hover value per element
 
+For a plain on and off look (a colour, a border, a text), `Modifier.hoverState(hovered)` and a builder that reads
+`hovered.value` are enough. The value below is for a look that eases in and out.
+
 ```kotlin
 // 0 = folded, 1 = unfolded; duration 0 snaps. In Modifier.onAdvance { amount -> ... }
 val step = if (duration <= 0f) 1f else amount / duration

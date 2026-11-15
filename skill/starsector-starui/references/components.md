@@ -116,47 +116,29 @@ Table(ships, Size.fillMaxWidth(), rowTooltip = { ship -> addPara(ship.descriptio
 `StatGrid { entry(label, value) }`, `StatModGrid(stat)`, `LabelledValue(label, value)`, `RelationshipBar(value)`,
 `ImportanceIndicator(importance)`, `CommodityIcons { icons(id, count) }`, `CostDisplay { cost(id, quantity) }`,
 `ShipList(ships)`, `FleetSummary(ships)`, `CodexEntries(title, ids)`, `CargoList`, `PlanetInfo`, `SkillPanel`,
+`SkillIcon(skillId, size, learned, elite, thinBorder)` / `SkillIcon(skillId, person)`,
 `EventProgressBar`, `SurveyRequirements`, `SectorMap`, `PlaythroughData`.
 
 These are vanilla's own TooltipMakerAPI pieces, built on a temporary tooltip at the width they get and held in a
-StarUI panel. They are made again when that width changes or the call's arguments change. Those that read live game
+StarUI panel. `SkillIcon` is the engine's icon itself, remade on a size change; the `person` overload reads the
+level live. They are made again when that width changes or the call's arguments change. Those that read live game
 objects (`StatModGrid`, `ShipList`, `FleetSummary`, `SkillPanel`, a faction or person `RelationshipBar`,
 `CostDisplay(withAvailable = true)`, the planet, cargo, event and map ones) are made again on every call. `CostDisplay`,
 the faction or person `RelationshipBar` and the campaign ones need a campaign.
 
-### TooltipMakerPanel: a last resort
+### TooltipMakerPanel: last resort
 
-Use it only when it really is the simplest choice. Most things are doable in StarUI, and better there: text with
-highlights is `Text(highlightedText = ...)`, headings `SectionHeading`, tables `Table`, buttons `Button`, stat blocks
-`StatGrid`. A `TooltipMakerPanel` is for vanilla content with no StarUI component and no simple StarUI build: a mod's
-helper that fills a tooltip, a TooltipMakerAPI call StarUI has no port of. Its content cannot hold StarUI components,
-is thrown away and made again on every change, and takes no part in StarUI's reuse or theme.
+Only for vanilla content with no StarUI component and no simple StarUI build (a mod's helper that fills a tooltip).
+Highlights, headings, tables, buttons, stat blocks: `Text(highlightedText = )`, `SectionHeading`, `Table`, `Button`,
+`StatGrid`.
 
-`TooltipMakerPanel(size, modifier, inputs, onButtonClick) { width -> ... }` holds such content: the block fills a fresh `TooltipMakerAPI` `width` wide from the top (`addPara` with highlights,
-`addTitle`, `beginTable`, `addImageWithText`, a mod's helper that takes a tooltip), and the panel is as tall as what
-was added. It lays out like the ports above:
+`TooltipMakerPanel(size, modifier, inputs, onButtonClick) { width -> addPara(...) }`: the block fills a fresh tooltip
+`width` wide; the panel is as tall as the content. Wrap takes the room's width (300 unbounded).
 
-- wrap (the default) takes the width there is room for (300 when unbounded) and the content's height;
-- the content is made again (the block runs again on a new tooltip) when its width changes, when a `UIState` the
-  block read changes (only the content, not the builder around it), and when the builder around it runs again,
-  unless `inputs` is given and equal to the last call's;
-- anything living in the content (a caret, a scroll position) is lost when it is made again, and the block may run
-  more than once while the width settles: no side effects in it;
-- `addButton` buttons call `onButtonClick` with their data; `onClick { }` (from `vanilla`) works on a returned
-  button too;
-- StarUI components cannot be called inside the block (it throws): put them around the panel.
-
-```kotlin
-val hazard = UIState(2)
-Column(Size.fillMaxWidth(), spacing = 6f) {
-    TooltipMakerPanel(Size.fillMaxWidth(), onButtonClick = { if (it == "probe") sendProbe() }) { width ->
-        addTitle("Survey")
-        addPara("Hazard rating: %s", 10f, VanillaColors.highlight, "${100 + 25 * hazard.value}%")
-        addButton("Send probe", "probe", width / 2, 25f, 10f)
-    }
-    Button("Close") { close() }
-}
-```
+- Made again (block re-run, content state lost) on a width change, a change of a `UIState` the block read (only the
+  content), or a run of the builder around it unless `inputs` are equal. No side effects in the block.
+- `addButton` clicks call `onButtonClick(data)`; `onClick { }` works on returned buttons.
+- StarUI calls inside the block throw. Content is inset 5 px, as in vanilla tooltips.
 
 ## What a call returns
 
@@ -236,15 +218,9 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 - `a then b` joins two modifiers: a component of your own adds its look to the caller's `modifier`
   (`Modifier.border() then modifier`).
 - Modifiers are not order-sensitive (unlike Compose).
-- **Modifiers are applied again every time the call that makes the component runs.** A reused component drops the
-  handlers its last call set and takes the new call's, so a modifier built from a state follows it when the
-  builder that makes the component reads it:
-  `Box(size, Modifier.background(if (selected.value) VanillaColors.dark else Color.BLACK)) { ... }`. Read the state
-  in that builder, not inside the modifier's lambda: a read in a render callback never subscribes (it does see the
-  current value each frame, so `onRenderBelow { }` reading `peek()` is the way for a look that changes every frame
-  without a rebuild).
-- `.hoverState(hovered)` keeps a `UIState<Boolean>` true while the cursor is over the component: the
-  `onHoverEnter` / `onHoverExit` pair in one call. Read it in the builder for a hover look.
+- Modifiers are re-applied each time the call runs: `Modifier.background(if (selected.value) a else b)` follows the
+  state when the builder making the component reads it. Reads inside render callbacks never subscribe.
+- `.hoverState(hovered)`: a `UIState<Boolean>` true while hovered; read it in the builder for a hover look.
 - They work on every component, vanilla ones included, because they attach to the native object.
 - Input handlers receive the event (`{ event -> }`) and may ignore it.
 - The render and lifecycle handlers run on the component's `StarUIPanelPlugin`, whose `x`, `y`, `width`, `height`,
@@ -266,16 +242,8 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
   `Holo`.
 - **A border takes space**, like CSS: its depth is added to the padding on every side, so `padding` is the gap inside
   the border. A wrapping axis grows by it; an exact or fill axis keeps its size and the content gets less room.
-  Children's `align` and `margin` are measured from inside the border, so give the gap you want inside it:
-
-  ```kotlin
-  Box(Size.exact(300f, 80f), Modifier.border().padding(6f)) {
-      Text("Survey", modifier = Modifier.align(Alignment.TopLeft))      // 7 px from the outer edge: 1 border + 6
-      Button("Go", modifier = Modifier.align(Alignment.BottomRight)) { }
-  }
-  ```
-
-  A design measured from the outer edge (a mockup's 6 px) takes the border off: `padding(5f)` with a 1 px border.
+  Children's `align` / `margin` count from inside it: `Modifier.border().padding(5f)` puts content 6 px from the
+  outer edge.
 
 ## Anchors
 
