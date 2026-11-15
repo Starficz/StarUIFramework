@@ -22,6 +22,9 @@ import org.starficz.starui.vanilla.getChildrenNonCopy
  *   Spacer 100x20 at (0, 20) size=(exact 100, exact 20) [onRenderBelow]
  * ```
  *
+ * A Holo's content (a Dialog's window content too) is listed under its holo, though the holo holds it outside its
+ * children.
+ *
  * The sizes and positions are the current ones: call it after a frame has rendered, or the layout has not run yet.
  */
 fun UIComponentAPI.dumpLayout(): String {
@@ -99,6 +102,8 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
         }
         is UIPanelAPI -> for (child in node.getChildrenNonCopy()) dumpNode(child, root, plugin, depth + 1, out)
     }
+    // content the component draws itself, outside the tree: a Holo's (and so a Dialog's) content
+    plugin?.ownedOutsideTree?.forEach { dumpNode(it, root, plugin, depth + 1, out) }
 }
 
 private fun fallbackKind(node: UIComponentAPI): String = when (node) {

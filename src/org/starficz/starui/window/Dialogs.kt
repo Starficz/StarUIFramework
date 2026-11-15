@@ -125,6 +125,8 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
         const val BUTTON_WIDTH = 150f
         const val BUTTON_HEIGHT = 25f
         const val HOLO_INSET = 7f
+        /** The least space between a dialog's window and the screen's edge: a larger size shrinks to keep it. */
+        const val SCREEN_EDGE = 50f
     }
 }
 
@@ -150,6 +152,9 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * bottom right, the cancel button in the corner. Its inner size is ([width] + 20) x ([height] + 55), or
  * ([height] + 20) with no buttons; the frame adds 7 px on every side.
  *
+ * The window always fits the screen: a [width] or [height] that would bring it closer than 50 px to the screen's edge
+ * shrinks to fit, so `Float.MAX_VALUE` asks for as large as the screen allows. Content sized to fill its Box follows.
+ *
  * - The confirm button, Enter and Space call [onConfirm] (not while a text field in the content has the keyboard: it
  *   takes Space and letters first). The cancel button and Escape call [onCancel]. Both default to
  *   [onDismissRequest]: change the state that shows the dialog there.
@@ -160,8 +165,8 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  *
  * @param onDismissRequest called when the player closes it (the buttons and keys, unless [onConfirm] or [onCancel]
  *   are given): change the state that shows it
- * @param width the width of the content
- * @param height the height of the content
+ * @param width the width of the content, shrunk to fit the screen (`Float.MAX_VALUE`: as wide as fits)
+ * @param height the height of the content, shrunk to fit the screen (`Float.MAX_VALUE`: as tall as fits)
  * @param confirmText the confirm button's text (it also takes the G key), or `null` for none: then Enter and Space
  *   do nothing
  * @param cancelText the cancel button's text, or `null` for none (Escape still cancels)
@@ -171,8 +176,9 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * @param contentKey a key for the content: when it changes, the window's content (buttons included) is built again
  *   behind vanilla's static transition, for a dialog with pages
  * @param codexEntryId the codex entry F2 opens, or `null` for the codex as it was last left
- * @param background the window's dark background: vanilla's custom dialog keeps the holo's see-through default;
- *   [HoloBackground.Dialog] is the opaque one of vanilla's market pickers
+ * @param background the window's dark background: [HoloBackground.Dialog] (the default) is the opaque one of
+ *   vanilla's market pickers, so a busy screen under it (a core tab) does not show through;
+ *   [HoloBackground.Default] is the holo's see-through default that vanilla's custom dialog keeps
  * @param pause whether the campaign or battle pauses while it is open
  * @param builder the content, in its Box; the parameter confirms or cancels from the content
  * @return the dialog
@@ -189,7 +195,7 @@ fun UIPanelAPI.Dialog(
     static: DialogStatic = DialogStatic.Vanilla,
     contentKey: Any? = null,
     codexEntryId: String? = null,
-    background: HoloBackground = HoloBackground.Default,
+    background: HoloBackground = HoloBackground.Dialog,
     pause: Boolean = true,
     builder: (@StarUIDsl CustomPanelAPI).(dialog: StarUIDialog) -> Unit
 ): StarUIDialog {
@@ -228,7 +234,7 @@ fun showDialog(
     static: DialogStatic = DialogStatic.Vanilla,
     contentKey: Any? = null,
     codexEntryId: String? = null,
-    background: HoloBackground = HoloBackground.Default,
+    background: HoloBackground = HoloBackground.Dialog,
     pause: Boolean = true,
     builder: (@StarUIDsl CustomPanelAPI).(dialog: StarUIDialog) -> Unit
 ): StarUIDialog {
@@ -251,14 +257,21 @@ fun showDialog(
 
 /** The window of a dialog, in its layer's full-screen Box: vanilla's custom dialog, measure for measure. */
 private fun CustomPanelAPI.dialogWindow(
-    dialog: StarUIDialog, width: Float, height: Float, confirmText: String?, cancelText: String?, contentKey: Any?,
+    dialog: StarUIDialog, requestedWidth: Float, requestedHeight: Float, confirmText: String?, cancelText: String?, contentKey: Any?,
     background: HoloBackground, builder: CustomPanelAPI.(StarUIDialog) -> Unit
 ) {
     val margin = StarUIDialog.MARGIN
     val hasButtons = confirmText != null || cancelText != null
+    // never larger than the screen: what the window adds around the content, then the space left for it
+    val inset = StarUIDialog.HOLO_INSET
+    val chromeW = 2 * margin + 2 * inset
+    val chromeH = 2 * margin + 2 * inset + if (hasButtons) StarUIDialog.BUTTON_HEIGHT + margin else 0f
+    val screen = dialog.layer.host?.position
+    val edge = 2 * StarUIDialog.SCREEN_EDGE
+    val width = if (screen == null) requestedWidth else minOf(requestedWidth, screen.width - edge - chromeW).coerceAtLeast(1f)
+    val height = if (screen == null) requestedHeight else minOf(requestedHeight, screen.height - edge - chromeH).coerceAtLeast(1f)
     val innerW = width + 2 * margin
     val innerH = height + 2 * margin + if (hasButtons) StarUIDialog.BUTTON_HEIGHT + margin else 0f
-    val inset = StarUIDialog.HOLO_INSET
     val holo = Holo(Size.exact(innerW + 2 * inset, innerH + 2 * inset), Modifier.align(Alignment.Center),
         background = background, contentKey = contentKey, animateFirstOpen = false, contentInset = inset) {
         Box(Size.exact(width, height), Modifier.align(Alignment.TopLeft).margin(margin)) { builder(dialog) }

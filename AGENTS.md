@@ -15,8 +15,8 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
 
 - `mod_info.json` dependencies: `staruiframework`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
 - Compile against `jars/StarUIFramework.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
-  **2.1.x**, so compile with `-api-version 2.1`. Attach `jars/StarUIFramework-sources.jar` to the library for the
-  KDoc in the IDE.
+  (LazyLib 3.1: **2.4.21**), so compile with Kotlin 2.3 or newer and `-api-version` 2.4 at most. Attach
+  `jars/StarUIFramework-sources.jar` to the library for the KDoc in the IDE.
 - Imports live in five packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `TextOverflow`,
   `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`,
   `StarUIPlugin`, `inject`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`), `.components`
@@ -96,9 +96,10 @@ To attach to vanilla screens, use one of these:
   onCancel, static, contentKey, codexEntryId, background, pause) { dialog -> }` in a builder (a `Layer` underneath,
   same lifetime rules) and `showDialog(width, height, ...)` from handlers: vanilla's custom dialog window, measure for
   measure (Holo of (w + 34) x (h + 69), content 10 px in, 150 x 25 Orbitron 20 TL_BR buttons bottom right, the
-  confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1). Enter, Space, G and the
-  confirm button call `onConfirm`; Escape and the cancel button `onCancel`; F2 `showCodex(codexEntryId)`; a click
-  outside flickers the window. `DialogStatic` picks the static bursts (open, confirm, cancel). The builder's
+  confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1; opaque `HoloBackground.Dialog`
+  by default; never closer than 50 px to the screen's edge: a larger size shrinks, `Float.MAX_VALUE` fills). Enter,
+  Space, G and the confirm button call `onConfirm`; Escape and the cancel button `onCancel`; F2
+  `showCodex(codexEntryId)`; a click outside flickers the window. `DialogStatic` picks the static bursts (open, confirm, cancel). The builder's
   `StarUIDialog` has `confirm()`, `cancel()`, `isOpen`. `dialog.visualPanel.showStarUIPanel(w, h) { }` (`SidePanel.kt`) fills an
   interaction dialog's side panel, on black by default (vanilla draws nothing behind it).
 - **Toasts** (`window/Toasts.kt`): `showToast(text, duration, alignment, color)` and `showToast(duration, alignment)
@@ -397,7 +398,12 @@ Column {
   rebuilds every live scope after each reload (`runtime/HotReloadRefresh.kt`), so UI on screen shows changed code
   without reopening anything. Nothing runs without the agent's `starsector.hotreload.generation` property.
 - `component.dumpLayout()` returns the tree below a component as text: kind, text, size, position relative to it,
-  sizing, padding/margin, attached handlers and scope state. Log it, or assert on it in tests.
+  sizing, padding/margin, attached handlers and scope state (a Holo's or Dialog's content under its holo). Log it, or
+  assert on it in tests.
+- **Dump on request**: setting the system property `starui.dump` to a new value makes StarUI's next frame log every
+  StarUI panel on screen as `dumpLayout` text (`runtime/DebugDump.kt`), between `StarUI dump <id>: ...` and
+  `StarUI dump <id> end`. `hot.sh dump` sets it through the hot-reload agent and prints the block; a test inside the
+  game sets it itself. Without the property it costs one clock read per frame.
 - **Preview** a piece of UI in the real game renderer, without playing. From `StarUIFramework/`:
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\run-test-suite.ps1 -Preview example -OutDir <new empty dir>

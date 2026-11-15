@@ -12,7 +12,8 @@
     "dependencies": [
         {
             "id": "lw_lazylib",
-            "name": "LazyLib"
+            "name": "LazyLib",
+            "version": { "major": "3", "minor": "1", "patch": "0" }
         },
         {
             "id": "patchlib",

@@ -115,6 +115,36 @@ fun registerDialogTests() {
         }
     }
 
+    StarUITestSuite.group("dialog-fit-and-dump") {
+        withDialogsOnRoot {
+            val big = showDialog(Float.MAX_VALUE, Float.MAX_VALUE, confirmText = "Close") {
+                Column(Size.fillMaxSize()) { Text("Fills the screen") }
+            }
+            frame(30)
+            val hostW = big.layer.host!!.position.width
+            val hostH = big.layer.host!!.position.height
+            val holo = big.holo!!
+            near(holo.position.width, hostW - 100f, "a dialog asked for Float.MAX_VALUE wide is the screen less 50 px a side")
+            near(holo.position.height, hostH - 100f, "and as tall")
+            near(holo.cx, hostW / 2, "centred")
+            expect(holo.lastBackground == org.starficz.starui.vanilla.HoloBackground.Dialog,
+                "its background is the opaque Dialog one by default (${holo.lastBackground})")
+            val layout = big.layer.root!!.dumpLayout()
+            expect(layout.contains("\"Fills the screen\""), "dumpLayout lists the dialog's content under its holo")
+            val dump = org.starficz.starui.runtime.DebugDump.dump("t1", root)
+            expect(dump.startsWith("StarUI dump t1: ") && dump.endsWith("StarUI dump t1 end"), "the dump has its start and end lines")
+            expect(dump.contains("\"Fills the screen\"") && dump.contains("Close"), "and holds the dialog's content and buttons")
+            big.cancel()
+            frame()
+
+            val small = showDialog(300f, 60f) { }
+            frame(30)
+            near(small.holo!!.position.width, 334f, "a dialog that fits keeps its size")
+            small.cancel()
+            frame()
+        }
+    }
+
     StarUITestSuite.group("dialog-declarative") {
         withDialogsOnRoot {
             val show = UIState(false)

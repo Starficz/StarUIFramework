@@ -712,6 +712,7 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         // Before this node's children render and before any layout below runs: the safe point to replace children.
         if (Scope.hasPendingDetached) Scope.disposeDetachedPending()
         HotReloadRefresh.poll()
+        DebugDump.poll()
         if (dirtyScopeBelow) Scope.flush(this)
         runLayout()
 
