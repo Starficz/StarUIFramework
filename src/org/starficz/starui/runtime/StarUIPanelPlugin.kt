@@ -1,5 +1,6 @@
 package org.starficz.starui.runtime
 
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.input.InputEventAPI
@@ -206,6 +207,12 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
 
     /** Set on the container an [org.starficz.starui.inject] call made: its key in the host panel's injections. */
     internal var injectionKey: String? = null
+    /**
+     * A root that measures its wrapping axes in the screen's room, not its parent's: content that sizes a vanilla
+     * dialog around itself ([Modifier.fitVanillaDialog][org.starficz.starui.modifier.fitVanillaDialog]), whose panel
+     * starts at whatever size vanilla made it.
+     */
+    internal var measuresInScreenRoom = false
 
     // Used when a leaf component is placed inside a larger padded/aligned layout slot.
     internal var slotBounds: SlotBounds? = null
@@ -419,10 +426,13 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
             // A top-level root's room is its own size where that is exact; otherwise its parent's (a Holo's content
             // is drawn by the holo and has no real parent to measure)
             val p = component.parent
+            val screen = measuresInScreenRoom && isTopLevelNode
             val rootMaxWidth = (node.size.width as? Axis.Exact)?.pixels?.takeIf { isTopLevelNode }
-                ?: if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
+                ?: if (screen) Global.getSettings().screenWidth
+                else if (p != null && p.width > 0f) p.width else Float.MAX_VALUE
             val rootMaxHeight = (node.size.height as? Axis.Exact)?.pixels?.takeIf { isTopLevelNode }
-                ?: if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
+                ?: if (screen) Global.getSettings().screenHeight
+                else if (p != null && p.height > 0f) p.height else Float.MAX_VALUE
 
             // 1. Measure the children's intrinsic footprint
             val (contentW, contentH) = engine.measure(maxWidth = rootMaxWidth, maxHeight = rootMaxHeight)

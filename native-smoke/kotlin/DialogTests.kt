@@ -31,7 +31,7 @@ fun registerDialogTests() {
         withDialogsOnRoot {
             var confirmed = 0
             var cancelled = 0
-            val dialog = showDialog(400f, 120f, cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) {
+            val dialog = showDialog(Size.exact(400f, 120f), cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) {
                 Text("Dismiss the survey team?")
             }
             frame(30)
@@ -64,16 +64,16 @@ fun registerDialogTests() {
             dialog.confirm()
             expect(confirmed == 1, "a closed dialog confirms no more")
 
-            val second = showDialog(300f, 60f, cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
+            val second = showDialog(Size.exact(300f, 60f), cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
             frame()
             key(Keyboard.KEY_SPACE, ' ')
             expect(confirmed == 2 && !second.isOpen, "Space confirms")
-            val third = showDialog(300f, 60f, cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
+            val third = showDialog(Size.exact(300f, 60f), cancelText = "Cancel", onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
             frame()
             key(Keyboard.KEY_ESCAPE)
             expect(cancelled == 1 && !third.isOpen, "Escape cancels")
 
-            val noConfirm = showDialog(300f, 60f, confirmText = null, onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
+            val noConfirm = showDialog(Size.exact(300f, 60f), confirmText = null, onConfirm = { confirmed++ }, onCancel = { cancelled++ }) { }
             frame()
             near(noConfirm.holo!!.position.height, 60f + 20f + 14f, "with no buttons the window is (h + 20) high inside its frame")
             key(Keyboard.KEY_RETURN)
@@ -82,7 +82,7 @@ fun registerDialogTests() {
             expect(cancelled == 2 && !noConfirm.isOpen, "and Escape still cancels")
 
             var fromContent: StarUIDialog? = null
-            val selfConfirming = showDialog(300f, 60f, onConfirm = { confirmed++ }) { d ->
+            val selfConfirming = showDialog(Size.exact(300f, 60f), onConfirm = { confirmed++ }) { d ->
                 fromContent = d
                 Box(Size.exact(100f, 40f), Modifier.align(Alignment.Center).onClick { d.confirm() })
             }
@@ -96,7 +96,7 @@ fun registerDialogTests() {
             // a text field with the keyboard takes Space before the dialog does
             val typed = UIState("")
             lateinit var field: TextFieldAPI
-            val withField = showDialog(300f, 60f, onConfirm = { confirmed++ }) { field = TextField(typed, Size.exact(200f, 24f)) }
+            val withField = showDialog(Size.exact(300f, 60f), onConfirm = { confirmed++ }) { field = TextField(typed, Size.exact(200f, 24f)) }
             frame(30)
             Input.sendList(root, Input.down(field.cx, field.cy), Input.up(field.cx, field.cy))
             frame()
@@ -107,9 +107,9 @@ fun registerDialogTests() {
             withField.cancel()
             frame()
 
-            val inBuilder = thrown { root.Column { showDialog(10f, 10f) { } } }
+            val inBuilder = thrown { root.Column { showDialog(Size.exact(10f, 10f)) { } } }
             expect(inBuilder is IllegalStateException && inBuilder.message!!.contains("Dialog("), "showDialog in a builder throws and points to Dialog")
-            val outside = thrown { root.Dialog(onDismissRequest = {}, 10f, 10f) { } }
+            val outside = thrown { root.Dialog(onDismissRequest = {}, Size.exact(10f, 10f)) { } }
             expect(outside is IllegalStateException && outside.message!!.contains("showDialog"), "Dialog outside a builder throws and points to showDialog")
             frame()
         }
@@ -117,14 +117,14 @@ fun registerDialogTests() {
 
     StarUITestSuite.group("dialog-fit-and-dump") {
         withDialogsOnRoot {
-            val big = showDialog(Float.MAX_VALUE, Float.MAX_VALUE, confirmText = "Close") {
+            val big = showDialog(Size.fillMaxSize(), confirmText = "Close") {
                 Column(Size.fillMaxSize()) { Text("Fills the screen") }
             }
             frame(30)
             val hostW = big.layer.host!!.position.width
             val hostH = big.layer.host!!.position.height
             val holo = big.holo!!
-            near(holo.position.width, hostW - 100f, "a dialog asked for Float.MAX_VALUE wide is the screen less 50 px a side")
+            near(holo.position.width, hostW - 100f, "a fill dialog is the screen less 50 px a side")
             near(holo.position.height, hostH - 100f, "and as tall")
             near(holo.cx, hostW / 2, "centred")
             expect(holo.lastBackground == org.starficz.starui.vanilla.HoloBackground.Dialog,
@@ -137,10 +137,39 @@ fun registerDialogTests() {
             big.cancel()
             frame()
 
-            val small = showDialog(300f, 60f) { }
+            val small = showDialog(Size.exact(300f, 60f)) { }
             frame(30)
             near(small.holo!!.position.width, 334f, "a dialog that fits keeps its size")
             small.cancel()
+            frame()
+
+            // ---- wrap: the window is as large as its content, from the first frame, and follows it ----
+            val wrapped = showDialog { Spacer(Size.exact(222f, 77f)) }
+            frame(1)
+            near(wrapped.holo!!.position.width, 222f + 34f, "a wrap dialog is as wide as its content plus the window (${wrapped.holo!!.position.width})")
+            near(wrapped.holo!!.position.height, 77f + 69f, "and as tall, buttons included, on its first frame (${wrapped.holo!!.position.height})")
+            wrapped.cancel()
+            frame()
+            val larger = UIState(false)
+            val growing = showDialog {
+                if (larger.value) Spacer(Size.exact(300f, 200f)) else Spacer(Size.exact(100f, 50f))
+            }
+            frame(30)   // the holo draws (and so lays out) its content once it has folded open
+            near(growing.holo!!.position.width, 134f, "it starts around the small content (${growing.holo!!.position.width})")
+            larger.value = true
+            frame(30)
+            near(growing.holo!!.position.width, 334f, "and grows with it when the content changes (${growing.holo!!.position.width})")
+            near(growing.holo!!.position.height, 269f, "on both axes (${growing.holo!!.position.height})")
+            growing.cancel()
+            frame()
+            val paragraph = showDialog(Size.mixed(Axis.Exact(300f), Axis.WrapContent)) {
+                Text("A paragraph long enough to wrap onto several lines at three hundred pixels, which sets the height " +
+                    "of the window: the width is given, the height follows the text.", Size.fillMaxWidth())
+            }
+            frame(30)
+            near(paragraph.holo!!.position.width, 334f, "an exact width stays (${paragraph.holo!!.position.width})")
+            expect(paragraph.holo!!.position.height > 69f + 30f, "and a wrapping height grows with the wrapped text (${paragraph.holo!!.position.height})")
+            paragraph.cancel()
             frame()
         }
     }
@@ -153,10 +182,10 @@ fun registerDialogTests() {
             var outer: StarUIDialog? = null
             var inner: StarUIDialog? = null
             root.Box(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.topLeft.ofParent())) {
-                if (show.value) outer = Dialog(onDismissRequest = { show.value = false }, 500f, 300f, confirmText = "Return") {
+                if (show.value) outer = Dialog(onDismissRequest = { show.value = false }, Size.exact(500f, 300f), confirmText = "Return") {
                     Column {
                         Text("Plans")
-                        if (confirmInner.value) inner = Dialog(onDismissRequest = { confirmInner.value = false }, 380f, 40f,
+                        if (confirmInner.value) inner = Dialog(onDismissRequest = { confirmInner.value = false }, Size.exact(380f, 40f),
                             confirmText = "Delete", cancelText = "Cancel", onConfirm = { deleted++; confirmInner.value = false }) {
                             Text("Delete this plan?")
                         }

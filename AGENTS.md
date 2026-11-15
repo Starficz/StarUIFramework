@@ -95,12 +95,13 @@ To attach to vanilla screens, use one of these:
   full-screen `Box` (`Modifier.align`). The campaign's core rebuild takes layers off the screen panel; they go back
   on its next render (`Layers.afterCoreUICreated` from `CoreUIScreenPatch`, the render hook). Plan:
   `docs/overlay-plan.md`.
-- **Dialogs** (`window/Dialogs.kt`): `Dialog(onDismissRequest, width, height, confirmText, cancelText, onConfirm,
+- **Dialogs** (`window/Dialogs.kt`): `Dialog(onDismissRequest, size, confirmText, cancelText, onConfirm,
   onCancel, static, contentKey, codexEntryId, background, pause) { dialog -> }` in a builder (a `Layer` underneath,
-  same lifetime rules) and `showDialog(width, height, ...)` from handlers: vanilla's custom dialog window, measure for
+  same lifetime rules) and `showDialog(size, ...)` from handlers (`size` is the content's: wrap by default, the window
+  measured around the content before its first frame and after every content layout; exact; fill): vanilla's custom dialog window, measure for
   measure (Holo of (w + 34) x (h + 69), content 10 px in, 150 x 25 Orbitron 20 TL_BR buttons bottom right, the
   confirm one with the G shortcut, dim 0.85, fade 0.3 in / 0.2 out, fold 0.15 / 0.1; opaque `HoloBackground.Dialog`
-  by default; never closer than 50 px to the screen's edge: a larger size shrinks, `Float.MAX_VALUE` fills). Enter,
+  by default; never closer than 50 px to the screen's edge: a larger size shrinks). Enter,
   Space, G and the confirm button call `onConfirm`; Escape and the cancel button `onCancel`; F2
   `showCodex(codexEntryId)`; a click outside flickers the window. `DialogStatic` picks the static bursts (open, confirm, cancel). The builder's
   `StarUIDialog` has `confirm()`, `cancel()`, `isOpen`. `dialog.visualPanel.showStarUIPanel(w, h) { }` (`SidePanel.kt`) fills an
@@ -292,7 +293,10 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 `.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`,
 `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }` (on the plugin, like `onLayout`),
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
-`.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access).
+`.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access),
+`.fitVanillaDialog()` (after each layout, sets its parent panel to its size and grows or shrinks the vanilla dialog
+above, the nearest ancestor with `sizeToInner`, by the same amount through the dialog's own `setSize`; its wrapping
+axes measure in the screen's room).
 `a then b` joins two modifiers (a component of your own that adds its look to the caller's `modifier`).
 The render and lifecycle ones run on the component's `StarUIPanelPlugin`, so its members `x`, `y`, `width`, `height`,
 `left`, `top`, `right`, `bottom`, `centerX`, `centerY` are its current size and edges (no import needed):

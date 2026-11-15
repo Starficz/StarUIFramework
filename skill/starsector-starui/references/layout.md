@@ -53,9 +53,10 @@ Notes:
 
 ### Dialog window
 
-`Dialog(onDismissRequest, w, h, confirmText, cancelText) { dialog -> }` in a builder, `showDialog(w, h, ...)` from
+`Dialog(onDismissRequest, size, confirmText, cancelText) { dialog -> }` in a builder, `showDialog(size, ...)` from
 a click handler: vanilla's custom dialog window on a modal layer, over any screen and over other dialogs
-([setup.md](setup.md#a-dialog)).
+([setup.md](setup.md#a-dialog)). `size` is the content's: wrap by default (the window fits the content), exact, or
+fill (as large as the screen allows); it never comes closer than 50 px to the screen's edge.
 
 - (engine) The window is `(w + 20) x (h + 55)` inside a 7 px frame; your content is `w x h` 10 px in; the
   buttons are 150 x 25, `TL_BR`, Orbitron 20, bottom right, Cancel in the corner and Confirm left of it.

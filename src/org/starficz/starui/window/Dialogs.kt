@@ -7,9 +7,12 @@ import com.fs.starfarer.api.ui.CutStyle
 import com.fs.starfarer.api.ui.UIPanelAPI
 import org.lwjgl.input.Keyboard
 import org.starficz.starui.Alignment
+import org.starficz.starui.Axis
 import org.starficz.starui.Size
 import org.starficz.starui.StarUIDsl
 import org.starficz.starui.TextAlign
+import org.starficz.starui.requestLayout
+import org.starficz.starui.toNodeSize
 import org.starficz.starui.components.Box
 import org.starficz.starui.components.Button
 import org.starficz.starui.components.Holo
@@ -17,7 +20,11 @@ import org.starficz.starui.components.Row
 import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.modifier.align
 import org.starficz.starui.modifier.margin
+import org.starficz.starui.modifier.onLayout
+import org.starficz.starui.layout.NodeSize
 import org.starficz.starui.runtime.StarUIContext
+import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.runtime.nodeFor
 import org.starficz.starui.vanilla.BoxedUIHolo
 import org.starficz.starui.vanilla.ButtonFont
 import org.starficz.starui.vanilla.HoloBackground
@@ -53,6 +60,9 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
     internal var hasConfirm = true
     internal var holo: BoxedUIHolo? = null
     internal var opened = false
+    /** The content's measured size on a wrapping axis, kept so a rebuild opens the window at it again. */
+    internal var wrapWidth: Float? = null
+    internal var wrapHeight: Float? = null
     private var lastWasConfirm = false
 
     /** Whether the dialog is showing: false from the moment it starts closing. */
@@ -139,7 +149,7 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * val confirmDismiss = UIState(false)
  * Column {
  *     Button("Dismiss") { confirmDismiss.value = true }
- *     if (confirmDismiss.value) Dialog(onDismissRequest = { confirmDismiss.value = false }, 400f, 60f,
+ *     if (confirmDismiss.value) Dialog(onDismissRequest = { confirmDismiss.value = false },
  *         confirmText = "Dismiss", cancelText = "Cancel", onConfirm = { dismiss(team); confirmDismiss.value = false }) {
  *         Text("Dismiss ${team.name}? Its officers return to the pool.")
  *     }
@@ -147,13 +157,16 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  * ```
  *
  * Works on every screen (the title screen, the campaign and over its dialogs and core tabs, a battle) and stacks: a
- * confirmation over a dialog over a panel. The window is vanilla's custom dialog's: the content, a Box of exactly
- * [width] x [height], 10 px in from the window's inner edge; the buttons (150 x 25, Orbitron 20) 10 px from its
- * bottom right, the cancel button in the corner. Its inner size is ([width] + 20) x ([height] + 55), or
- * ([height] + 20) with no buttons; the frame adds 7 px on every side.
+ * confirmation over a dialog over a panel. The window is vanilla's custom dialog's: the content, a Box of [size], 10 px
+ * in from the window's inner edge; the buttons (150 x 25, Orbitron 20) 10 px from its bottom right, the cancel button
+ * in the corner. Its inner size is (width + 20) x (height + 55), or (height + 20) with no buttons; the frame adds 7 px
+ * on every side.
  *
- * The window always fits the screen: a [width] or [height] that would bring it closer than 50 px to the screen's edge
- * shrinks to fit, so `Float.MAX_VALUE` asks for as large as the screen allows. Content sized to fill its Box follows.
+ * [size] is the content's, per axis: wrap (the default) makes the window as large as the content, measured before it
+ * first shows and again whenever the content changes; exact is that size; fill is as large as the screen allows.
+ * The window never comes closer than 50 px to the screen's edge: a larger size shrinks to fit. On a wrapping axis the
+ * content needs a size of its own there (a Text that fills the width has nothing to fill): for a paragraph, give
+ * the width exactly and let the height wrap, `Size.mixed(Axis.Exact(400f), Axis.WrapContent)`.
  *
  * - The confirm button, Enter and Space call [onConfirm] (not while a text field in the content has the keyboard: it
  *   takes Space and letters first). The cancel button and Escape call [onCancel]. Both default to
@@ -165,8 +178,8 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  *
  * @param onDismissRequest called when the player closes it (the buttons and keys, unless [onConfirm] or [onCancel]
  *   are given): change the state that shows it
- * @param width the width of the content, shrunk to fit the screen (`Float.MAX_VALUE`: as wide as fits)
- * @param height the height of the content, shrunk to fit the screen (`Float.MAX_VALUE`: as tall as fits)
+ * @param size the content's size: wrap (the default), exact or fill on each axis, never closer than 50 px to the
+ *   screen's edge
  * @param confirmText the confirm button's text (it also takes the G key), or `null` for none: then Enter and Space
  *   do nothing
  * @param cancelText the cancel button's text, or `null` for none (Escape still cancels)
@@ -186,8 +199,7 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
  */
 fun UIPanelAPI.Dialog(
     onDismissRequest: () -> Unit,
-    width: Float,
-    height: Float,
+    size: Size = Size.wrapContent(),
     confirmText: String? = "Confirm",
     cancelText: String? = null,
     onConfirm: () -> Unit = onDismissRequest,
@@ -206,7 +218,7 @@ fun UIPanelAPI.Dialog(
             dialog = layer.dialog ?: StarUIDialog(layer).also { layer.dialog = it; it.attach() }
             dialog.update(onConfirm, onCancel, static, codexEntryId, confirmText != null)
         }
-    ) { layer -> dialogWindow(layer.dialog!!, width, height, confirmText, cancelText, contentKey, background, builder) }
+    ) { layer -> dialogWindow(layer.dialog!!, size, confirmText, cancelText, contentKey, background, builder) }
     return dialog
 }
 
@@ -216,7 +228,7 @@ fun UIPanelAPI.Dialog(
  * [onConfirm] and close it; the cancel button, Escape and [StarUIDialog.cancel] run [onCancel] and close it.
  *
  * ```kotlin
- * Button("Pets") { showDialog(1040f, 640f, confirmText = "Return") { PetsPanel() } }
+ * Button("Pets") { showDialog(Size.exact(1040f, 640f), confirmText = "Return") { PetsPanel() } }
  * ```
  *
  * In a builder use [Dialog] instead. The parameters are [Dialog]'s.
@@ -225,8 +237,7 @@ fun UIPanelAPI.Dialog(
  * @throws IllegalStateException when called while a builder runs (use [Dialog]), or before the game has a screen
  */
 fun showDialog(
-    width: Float,
-    height: Float,
+    size: Size = Size.wrapContent(),
     confirmText: String? = "Confirm",
     cancelText: String? = null,
     onConfirm: () -> Unit = {},
@@ -241,7 +252,7 @@ fun showDialog(
     if (StarUIContext.currentScope != null) throw IllegalStateException(
         "StarUI: showDialog(...) was called while a builder runs, so it would open another dialog every time that " +
         "builder runs again. In a builder use Dialog(...), which is shown for as long as the builder calls it: " +
-        "`if (confirm.value) Dialog(onDismissRequest = { confirm.value = false }, 400f, 60f) { ... }`."
+        "`if (confirm.value) Dialog(onDismissRequest = { confirm.value = false }) { ... }`."
     )
     lateinit var dialog: StarUIDialog
     Layers.openLayer(modal = true, dim = StarUIDialog.DIM, pause = pause, dismissOnEscape = true,
@@ -251,38 +262,70 @@ fun showDialog(
             dialog.update({ onConfirm(); layer.close() }, { onCancel(); layer.close() }, static, codexEntryId,
                 confirmText != null)
         }
-    ) { layer -> dialogWindow(layer.dialog!!, width, height, confirmText, cancelText, contentKey, background, builder) }
+    ) { layer -> dialogWindow(layer.dialog!!, size, confirmText, cancelText, contentKey, background, builder) }
     return dialog
 }
 
 /** The window of a dialog, in its layer's full-screen Box: vanilla's custom dialog, measure for measure. */
 private fun CustomPanelAPI.dialogWindow(
-    dialog: StarUIDialog, requestedWidth: Float, requestedHeight: Float, confirmText: String?, cancelText: String?, contentKey: Any?,
+    dialog: StarUIDialog, size: Size, confirmText: String?, cancelText: String?, contentKey: Any?,
     background: HoloBackground, builder: CustomPanelAPI.(StarUIDialog) -> Unit
 ) {
     val margin = StarUIDialog.MARGIN
     val hasButtons = confirmText != null || cancelText != null
-    // never larger than the screen: what the window adds around the content, then the space left for it
+    // what the window adds around the content, and the most room the screen leaves for it
     val inset = StarUIDialog.HOLO_INSET
     val chromeW = 2 * margin + 2 * inset
     val chromeH = 2 * margin + 2 * inset + if (hasButtons) StarUIDialog.BUTTON_HEIGHT + margin else 0f
     val screen = dialog.layer.host?.position
     val edge = 2 * StarUIDialog.SCREEN_EDGE
-    val width = if (screen == null) requestedWidth else minOf(requestedWidth, screen.width - edge - chromeW).coerceAtLeast(1f)
-    val height = if (screen == null) requestedHeight else minOf(requestedHeight, screen.height - edge - chromeH).coerceAtLeast(1f)
-    val innerW = width + 2 * margin
-    val innerH = height + 2 * margin + if (hasButtons) StarUIDialog.BUTTON_HEIGHT + margin else 0f
-    val holo = Holo(Size.exact(innerW + 2 * inset, innerH + 2 * inset), Modifier.align(Alignment.Center),
+    val maxW = if (screen == null) Float.MAX_VALUE else maxOf(1f, screen.width - edge - chromeW)
+    val maxH = if (screen == null) Float.MAX_VALUE else maxOf(1f, screen.height - edge - chromeH)
+    // exact (shrunk to fit) and fill (all the room) axes are known now; a wrapping one is measured once the content exists
+    val asked = size.toNodeSize()
+    fun known(axis: Axis, max: Float): Float? = when (axis) {
+        is Axis.Exact -> minOf(axis.pixels, max)
+        is Axis.FillMax -> max
+        else -> null
+    }
+    val knownW = known(asked.width, maxW)
+    val knownH = known(asked.height, maxH)
+    val width = knownW ?: dialog.wrapWidth ?: 1f
+    val height = knownH ?: dialog.wrapHeight ?: 1f
+    val contentSize = Size.mixed(if (knownW != null) Axis.Exact(knownW) else Axis.WrapContent,
+                                 if (knownH != null) Axis.Exact(knownH) else Axis.WrapContent)
+
+    lateinit var content: CustomPanelAPI
+    lateinit var holo: BoxedUIHolo
+    // a wrapping axis: the content's size in all the room the screen leaves, and the window sized around it
+    fun fit() {
+        if (knownW != null && knownH != null) return
+        val measured = (content.plugin as StarUIPanelPlugin).measure(knownW ?: maxW, knownH ?: maxH)
+        val w = knownW ?: minOf(maxW, maxOf(1f, measured.first))
+        val h = knownH ?: minOf(maxH, maxOf(1f, measured.second))
+        if (knownW == null) dialog.wrapWidth = w
+        if (knownH == null) dialog.wrapHeight = h
+        val holoSize = NodeSize(Axis.Exact(w + chromeW), Axis.Exact(h + chromeH))
+        val node = nodeFor(holo.vanillaComponent)
+        if (node.size != holoSize) {
+            node.size = holoSize
+            holo.vanillaComponent.requestLayout()
+        }
+    }
+    holo = Holo(Size.exact(width + chromeW, height + chromeH), Modifier.align(Alignment.Center),
         background = background, contentKey = contentKey, animateFirstOpen = false, contentInset = inset) {
-        Box(Size.exact(width, height), Modifier.align(Alignment.TopLeft).margin(margin)) { builder(dialog) }
+        // after every layout of the content (it changed): fit the window to it again
+        content = Box(contentSize, Modifier.align(Alignment.TopLeft).margin(margin).onLayout { fit() }) { builder(dialog) }
         if (hasButtons) Row(modifier = Modifier.align(Alignment.BottomRight).margin(margin), spacing = margin) {
-            val size = Size.exact(StarUIDialog.BUTTON_WIDTH, StarUIDialog.BUTTON_HEIGHT)
-            if (confirmText != null) Button(confirmText, size, font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Center,
+            val buttonSize = Size.exact(StarUIDialog.BUTTON_WIDTH, StarUIDialog.BUTTON_HEIGHT)
+            if (confirmText != null) Button(confirmText, buttonSize, font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Center,
                 cutStyle = CutStyle.TL_BR, shortcut = Keyboard.KEY_G) { dialog.confirm() }
-            if (cancelText != null) Button(cancelText, size, font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Center,
+            if (cancelText != null) Button(cancelText, buttonSize, font = ButtonFont.ORBITRON_20, textAlign = TextAlign.Center,
                 cutStyle = CutStyle.TL_BR) { dialog.cancel() }
         }
     }
+    // the content exists now: fit before the first layout, so the window opens at its size
+    fit()
     dialog.holo = holo
     if (!dialog.opened) {
         dialog.opened = true

@@ -5,7 +5,6 @@ import org.starficz.starui.*
 import org.starficz.starui.components.*
 import org.starficz.starui.modifier.*
 import org.starficz.starui.vanilla.Font
-import org.starficz.starui.vanilla.HoloBackground
 import org.starficz.starui.vanilla.VanillaColors
 import org.starficz.starui.window.*
 
@@ -82,10 +81,12 @@ private val dialogs = Page("Windows", "Dialogs",
     "Vanilla's custom dialog window, measure for measure: the holo frame, Confirm on G, Enter and Space, Cancel on " +
         "Escape, F2 for the codex, a flicker when the player clicks outside.", FILE) {
 
-    card("Confirm and cancel", "dialog-show", "showDialog from a click; onConfirm and onCancel run, then it closes.") {
+    card("Confirm and cancel", "dialog-show",
+        "showDialog from a click; onConfirm and onCancel run, then it closes. An exact width and a wrapping height: the " +
+            "window is as tall as the paragraph needs.") {
         // snippet: dialog-show
         Button("Scuttle the ship") {
-            showDialog(380f, 50f, confirmText = "Scuttle", cancelText = "Keep it",
+            showDialog(Size.mixed(Axis.Exact(380f), Axis.WrapContent), confirmText = "Scuttle", cancelText = "Keep it",
                 onConfirm = { showToast("Scuttled", color = VanillaColors.negative) }) {
                 Text("The ship and its cargo will be lost. Scuttle it?", Size.fillMaxWidth())
             }
@@ -100,9 +101,9 @@ private val dialogs = Page("Windows", "Dialogs",
             Button("Rename") { renameOpen.value = true }
             Text(shipName.value)
         }
-        if (renameOpen.value) Dialog(onDismissRequest = { renameOpen.value = false }, 320f, 60f,
-            confirmText = "Rename", cancelText = "Cancel") { dialog ->
-            Column(Size.fillMaxSize(), spacing = 6f) {
+        if (renameOpen.value) Dialog(onDismissRequest = { renameOpen.value = false },
+            Size.mixed(Axis.Exact(320f), Axis.WrapContent), confirmText = "Rename", cancelText = "Cancel") { dialog ->
+            Column(Size.fillMaxWidth(), spacing = 6f) {
                 Text("New name", color = VanillaColors.gray)
                 TextField(shipName, Size.fillMaxWidth(height = 26f))
             }
@@ -110,14 +111,16 @@ private val dialogs = Page("Windows", "Dialogs",
         // end snippet
     }
 
-    card("Pages", "dialog-pages", "contentKey: when it changes, the content is built again behind vanilla's static.") {
+    card("Pages", "dialog-pages",
+        "contentKey: when it changes, the content is built again behind vanilla's static. The size wraps, so the window " +
+            "fits each page.") {
         // snippet: dialog-pages
         Button("Start the survey") { wizardPage.value = 0; wizardOpen.value = true }
-        if (wizardOpen.value) Dialog(onDismissRequest = { wizardOpen.value = false }, 360f, 70f,
+        if (wizardOpen.value) Dialog(onDismissRequest = { wizardOpen.value = false },
             confirmText = if (wizardPage.value < 2) "Next" else "Done", cancelText = "Cancel",
             onConfirm = { if (wizardPage.value < 2) wizardPage.value++ else wizardOpen.value = false },
             contentKey = wizardPage.value) {
-            Column(Size.fillMaxSize(), spacing = 4f) {
+            Column(spacing = 4f) {
                 Text("Step ${wizardPage.value + 1} of 3", font = Font.ORBITRON_12, color = VanillaColors.base)
                 Text(listOf("Pick the planet.", "Pick the survey team.", "Confirm the cost.")[wizardPage.value])
             }
@@ -128,11 +131,11 @@ private val dialogs = Page("Windows", "Dialogs",
     card("A dialog over a dialog", "dialog-nested") {
         // snippet: dialog-nested
         Button("Open two") {
-            showDialog(380f, 60f, confirmText = "Close") {
-                Column(Size.fillMaxSize(), spacing = 6f) {
+            showDialog(confirmText = "Close") {
+                Column(spacing = 6f) {
                     Text("The first dialog.")
                     Button("Open another") {
-                        showDialog(300f, 30f, confirmText = "Close", background = HoloBackground.Dialog) { Text("On top of it.") }
+                        showDialog(confirmText = "Close") { Text("On top of it.") }
                     }
                 }
             }
@@ -144,7 +147,7 @@ private val dialogs = Page("Windows", "Dialogs",
         "static picks which opens and closes burst with static; codexEntryId is what F2 opens.") {
         // snippet: dialog-options
         Button("Quiet, with a codex entry") {
-            showDialog(380f, 40f, confirmText = "Close", static = DialogStatic.None,
+            showDialog(Size.mixed(Axis.Exact(380f), Axis.WrapContent), confirmText = "Close", static = DialogStatic.None,
                 codexEntryId = CodexDataV2.getShipEntryId("onslaught")) {
                 Text("No static. F2 opens the Onslaught's codex entry.", Size.fillMaxWidth())
             }

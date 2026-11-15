@@ -219,7 +219,7 @@ content is a `Box` of exactly the size you pass, 10 px in; the window is `(w + 2
 val confirmDismiss = UIState(false)
 Row {
     Button("Dismiss") { confirmDismiss.value = true }
-    if (confirmDismiss.value) Dialog(onDismissRequest = { confirmDismiss.value = false }, 500f, 130f,
+    if (confirmDismiss.value) Dialog(onDismissRequest = { confirmDismiss.value = false },
         confirmText = "Dismiss", cancelText = "Cancel", onConfirm = { dismiss(team); confirmDismiss.value = false }) {
         Text("Dismiss ${team.name}?", font = Font.INSIGNIA_21, highlightedText = listOf(team.name to VanillaColors.highlight))
     }
@@ -229,13 +229,17 @@ Row {
 From a click handler or a campaign script, `showDialog` opens one that closes itself when confirmed or cancelled:
 
 ```kotlin
-const val W = 1040f   // the window is (W + 20) x (H + 55) plus its 7 px frame: fits 1280 x 768
-const val H = 640f
-
 Button("Survey office", Size.exact(140f, 20f), cutStyle = CutStyle.ALL) {
-    showDialog(W, H, confirmText = "Return") { SurveyPanel() }
+    // the window is the content plus 20 x 55 and its 7 px frame; it never comes closer than 50 px to the screen's edge
+    showDialog(Size.exact(1040f, 640f), confirmText = "Return") { SurveyPanel() }
 }
 ```
+
+`size` is the content's size, per axis. Wrap (the default) sizes the window to the content, measured before it
+first shows and again whenever the content changes: no measuring by hand. On a wrapping width the content needs a
+width of its own (a Text that fills the width has nothing to fill), so a paragraph popup takes an exact width and a
+wrapping height: `showDialog(Size.mixed(Axis.Exact(400f), Axis.WrapContent)) { Text(body, Size.fillMaxWidth()) }`.
+Fill is as large as the screen allows.
 
 - The confirm button, Enter, Space and G call `onConfirm`; the cancel button and Escape call `onCancel` (Escape
   even with no cancel button). In `Dialog` both default to `onDismissRequest`, where the state changes. A text
@@ -293,6 +297,28 @@ dialog.visualPanel.showStarUIPanel(440f, 600f) { RequisitionsPanel() }   // blac
 ```
 
 Seen in game on 0.98.5a-RC4 ([layout.md](layout.md#hosts) has the hosts' sizes and limits).
+
+A vanilla dialog sized to StarUI content: vanilla's dialogs take their size before the content exists. Put
+`Modifier.fitVanillaDialog()` on the content (a wrapping container that is the whole of the panel): after each
+layout the panel becomes the content's size and the dialog grows or shrinks by the same amount, centred, buttons in
+their corner. The size passed to vanilla only matters for the first frame. No measuring by hand:
+
+```kotlin
+dialog.showCustomDialog(300f, 100f, object : CustomDialogDelegate {
+    override fun createCustomDialog(panel: CustomPanelAPI, callback: CustomDialogDelegate.CustomDialogCallback) {
+        panel.Column(modifier = Modifier.fitVanillaDialog(), spacing = 6f) {
+            Text("Recruit ${person.name.fullName}?", font = Font.INSIGNIA_21)
+            if (showTerms.value) Text(terms, Size.mixed(Axis.Exact(420f), Axis.WrapContent))
+            Button(if (showTerms.value) "Hide terms" else "Show terms") { showTerms.value = !showTerms.value }
+        }
+    }
+    // hasCancelButton, getConfirmText, customDialogConfirm, ... as usual
+})
+```
+
+It works on any vanilla dialog window (it finds the nearest ancestor with vanilla's readable `sizeToInner`), so also
+on content injected into a vanilla dialog's own panel when that content is the whole panel. Seen in game on
+0.98.5a-RC6 with the custom dialog: it opened at the content's size, grew with it and shrank back.
 
 ## inject into a vanilla panel
 

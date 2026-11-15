@@ -1,5 +1,6 @@
 package org.starficz.starui.modifier
 
+import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.Alignment
@@ -9,6 +10,7 @@ import org.starficz.starui.runtime.nodeFor
 import org.starficz.starui.runtime.nodeOf
 import org.starficz.starui.runtime.parentPluginOf
 import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.vanilla.ReflectionUtils
 import org.starficz.starui.vanilla.applyAnchor
 import org.starficz.starui.vanilla.getChildrenNonCopy
 
@@ -218,4 +220,66 @@ fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
     val bakedAnchor = anchor.copy(reference = reference, offsetX = offsetX, offsetY = offsetY)
     nodeFor(actual).anchor = bakedAnchor
     actual.applyAnchor(bakedAnchor)
+}
+
+/**
+ * Keeps the vanilla dialog this component sits in sized to it: after each layout, the component's parent panel (the
+ * panel `CustomDialogDelegate.createCustomDialog` hands you, or a vanilla dialog's own panel you inject into) is set to
+ * the component's size, and the dialog window grows or shrinks by the same amount, staying centred with its buttons in
+ * their corner. So a vanilla dialog fits StarUI content, measured, with nothing sized by hand:
+ *
+ * ```kotlin
+ * override fun createCustomDialog(panel: CustomPanelAPI, callback: CustomDialogDelegate.CustomDialogCallback) {
+ *     panel.Column(modifier = Modifier.fitVanillaDialog(), spacing = 6f) {
+ *         Text("Recruit ${person.name.fullName}?", font = Font.INSIGNIA_21)
+ *         StatGrid { entry("Salary", "${salary} per month") }
+ *     }
+ * }
+ * ```
+ *
+ * Give the component a wrapping size: its wrapping axes are measured in the screen's room (vanilla's panel starts at
+ * whatever size the dialog was opened with), and an exact axis sets the panel to that size. It should be the whole of
+ * the panel's content: the panel becomes exactly its size. The dialog is the nearest ancestor with vanilla's readable
+ * `sizeToInner` method (every vanilla dialog window); with none, nothing changes and a warning is logged once.
+ */
+fun Modifier.fitVanillaDialog() = this.then { component ->
+    component.applyToPlugin {
+        measuresInScreenRoom = true
+        onLayout { VanillaDialogFit.fit(this) }
+    }
+}
+
+internal object VanillaDialogFit {
+    private var warned = false
+
+    fun fit(plugin: StarUIPanelPlugin) {
+        val self = plugin.component
+        val panel = self.parent ?: return
+        val dw = self.position.width - panel.position.width
+        val dh = self.position.height - panel.position.height
+        if (kotlin.math.abs(dw) < 0.5f && kotlin.math.abs(dh) < 0.5f) return
+        val dialog = dialogAbove(panel)
+        if (dialog == null) {
+            if (!warned) {
+                warned = true
+                Global.getLogger(VanillaDialogFit::class.java).warn("StarUI: Modifier.fitVanillaDialog() on a component " +
+                    "with no vanilla dialog above it (no ancestor has sizeToInner): its panel and dialog stay as they are.")
+            }
+            return
+        }
+        panel.position.setSize(self.position.width, self.position.height)
+        // the dialog's own setSize: it also sizes its holo frame and background (its position's would not)
+        ReflectionUtils.invoke(dialog, "setSize", dialog.position.width + dw, dialog.position.height + dh)
+    }
+
+    private fun dialogAbove(start: UIComponentAPI): UIComponentAPI? {
+        var c: UIComponentAPI? = start
+        var depth = 0
+        while (c != null && depth < 16) {
+            if (ReflectionUtils.getMethodsMatching(c.javaClass, name = "sizeToInner").isNotEmpty()) return c
+            c = c.parent
+            depth++
+        }
+        return null
+    }
 }

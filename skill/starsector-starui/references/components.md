@@ -196,6 +196,7 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`, `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`,
 `.hitBoxPadding(...)`, `.onAdvance { amount -> }`, `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`,
 `.onLayout { }` (after every layout pass), `.onFirstLayout { }`, `.onPositionChanged { position -> }`,
+`.fitVanillaDialog()` (sizes the vanilla dialog it sits in to it: [setup.md](setup.md#panels-vanilla-hands-you)),
 `.plugin { }` (the component's `StarUIPanelPlugin`).
 
 - `a then b` joins two modifiers: a component of your own adds its look to the caller's `modifier`
@@ -272,7 +273,7 @@ where the other belongs.
 | In a builder | From a handler or script | What |
 |---|---|---|
 | `Layer(onDismissRequest, modal, dim, pause, dismissOnEscape) { }` | `showLayer(modal, dim, pause, closeOnEscape, onClose) { layer -> }` returns `StarUILayer` (`close()`, `isOpen`, `panel`) | a full-screen `Box` over the screen; modal: dims (theme `layer.dim`), takes all input, pauses, Escape dismisses |
-| `Dialog(onDismissRequest, width, height, confirmText, cancelText, onConfirm, onCancel, static, contentKey, codexEntryId, background, pause) { dialog -> }` | `showDialog(width, height, ...) { dialog -> }` (closes itself on confirm or cancel) | vanilla's custom dialog window on a modal layer; `dialog.confirm()`, `dialog.cancel()`, `isOpen`; `static = DialogStatic.Vanilla` / `CancelOnly` / `None` |
+| `Dialog(onDismissRequest, size, confirmText, cancelText, onConfirm, onCancel, static, contentKey, codexEntryId, background, pause) { dialog -> }` | `showDialog(size, ...) { dialog -> }` (closes itself on confirm or cancel) | vanilla's custom dialog window on a modal layer, as large as its content by default (`size` wraps; exact or fill per axis); `dialog.confirm()`, `dialog.cancel()`, `isOpen`; `static = DialogStatic.Vanilla` / `CancelOnly` / `None` |
 | | `showToast(text, duration, alignment, color)`, `showToast(duration, alignment) { }` returns `StarUIToast` (`close()`, `isOpen`) | a notice that slides in and goes away by itself; at most three per place, the rest counted by "+N more" |
 
 ## The vanilla toolkit
