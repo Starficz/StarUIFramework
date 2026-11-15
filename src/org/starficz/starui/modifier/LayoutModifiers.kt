@@ -4,6 +4,7 @@ import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.starficz.starui.Alignment
 import org.starficz.starui.Anchor
+import org.starficz.starui.layout.childrenPlaceThemselves
 import org.starficz.starui.runtime.nodeFor
 import org.starficz.starui.runtime.nodeOf
 import org.starficz.starui.runtime.parentPluginOf
@@ -174,7 +175,7 @@ fun Modifier.align(alignment: Alignment) = this.then { component ->
 fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
     val actual = component.actual
     val parentPlugin = parentPluginOf(actual)
-    if (parentPlugin?.layoutEngine != null) {
+    if (parentPlugin != null && !childrenPlaceThemselves(parentPlugin.layoutEngine)) {
         throw IllegalStateException(
             "StarUI: Modifier.anchor() is only for children of a CustomPanel. This component's container " +
             "(${parentPlugin.kind ?: "a StarUI layout"}) places its children itself, so the anchor would be overwritten. " +
@@ -209,7 +210,11 @@ fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
         if (anchor.refAnchorY == 1f) offsetY -= myMargin.top
     }
 
-    val bakedAnchor = anchor.copy(offsetX = offsetX, offsetY = offsetY)
+    // "previous" is the component before this one now: kept as that sibling, so applying it again later (a layout
+    // pass) still means it, whatever was added since
+    val reference = if (anchor.reference is Anchor.AnchorReference.Previous && targetComponent != null)
+        Anchor.AnchorReference.Sibling(targetComponent) else anchor.reference
+    val bakedAnchor = anchor.copy(reference = reference, offsetX = offsetX, offsetY = offsetY)
     nodeFor(actual).anchor = bakedAnchor
     actual.applyAnchor(bakedAnchor)
 }

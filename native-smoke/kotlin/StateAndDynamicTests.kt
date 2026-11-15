@@ -5,10 +5,7 @@ import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.*
 import org.starficz.starui.*
 import org.starficz.starui.components.*
-import org.starficz.starui.modifier.anchor
-import org.starficz.starui.modifier.background
-import org.starficz.starui.modifier.Modifier
-import org.starficz.starui.modifier.onAdvance
+import org.starficz.starui.modifier.*
 import org.starficz.starui.runtime.StarUIPanelPlugin
 import org.starficz.starui.vanilla.children
 import java.awt.Color
@@ -128,6 +125,59 @@ fun registerDynamicTests() {
         near(added.relTop(col), 50f, "the new child flows after the old ones")
         expect(plugin.layoutPassCount == 2, "one pass for the first frame, one for the added child (${plugin.layoutPassCount})")
         screenshot("final")
+    }
+
+    StarUITestSuite.group("injection-fill") {
+        // feedback: inject(key, Size.fillMaxSize()) into a vanilla dialog's panel came out 0x0 at its bottom left
+        fun vanillaPanel(w: Float, h: Float, left: Float, top: Float): CustomPanelAPI =
+            Global.getSettings().createCustom(w, h, null).also { root.addComponent(it).inTL(left, top) }
+        val text = "Current skills: a line long enough to wrap if the injection is given a sensible width at all"
+
+        // ---- the panel's size is known when inject runs ----
+        val known = vanillaPanel(400f, 300f, 40f, 40f)
+        lateinit var label: LabelAPI
+        val a = known.inject("test:fill-known", Size.fillMaxSize()) {
+            Column(Size.fillMaxSize()) { label = Text(text, Size.fillMaxWidth()) }
+        }
+        frame(3)
+        near(a.position.width, 400f, "a fill injection is as wide as the vanilla panel (${a.position.width})")
+        near(a.position.height, 300f, "and as tall (${a.position.height})")
+        near(a.relLeft(known), 0f, "at its left edge")
+        near(a.relTop(known), 0f, "and its top edge, not its bottom (${a.relTop(known)})")
+        expect(label.position.height < 40f, "the text wraps to a line or two, not a letter a line (${label.position.height} high)")
+
+        // ---- vanilla sizes the panel after the hook injected (a constructor hook, a dialog sized later) ----
+        val late = vanillaPanel(0f, 0f, 460f, 40f)
+        val b = late.inject("test:fill-late", Size.fillMaxSize()) {
+            Column(Size.fillMaxSize(), Modifier.padding(3f)) { Text(text, Size.fillMaxWidth()) }
+        }
+        frame(2)
+        expect(b.position.width <= 1f && b.position.height <= 1f,
+            "before the panel has a size, the fill injection waits instead of laying out (${b.position.width}x${b.position.height})")
+        late.position.setSize(300f, 200f)
+        frame(3)
+        near(b.position.width, 300f, "sized after the inject: the injection follows to the panel's width (${b.position.width})")
+        near(b.position.height, 200f, "and height (${b.position.height})")
+        near(b.relTop(late), 0f, "still at the top (${b.relTop(late)})")
+
+        // ---- and again when vanilla resizes it later ----
+        late.position.setSize(350f, 120f)
+        frame(3)
+        near(b.position.width, 350f, "a later resize is followed too (${b.position.width})")
+        near(b.position.height, 120f, "in both directions (${b.position.height})")
+
+        // ---- no anchor: top left, as a layout reads, not vanilla's bottom left ----
+        val plain = vanillaPanel(300f, 200f, 40f, 380f)
+        val c = plain.inject("test:wrap-unanchored") { Spacer(Size.exact(50f, 20f)) }
+        frame(3)
+        near(c.relLeft(plain), 0f, "an injection without an anchor sits at the left edge")
+        near(c.relTop(plain), 0f, "and the top edge (${c.relTop(plain)})")
+        val anchored = plain.inject("test:wrap-anchored", modifier = Modifier.anchor(Anchor.inside.bottomRight.ofParent(5f, 5f))) {
+            Spacer(Size.exact(40f, 10f))
+        }
+        frame(3)
+        near(anchored.relLeft(plain), 300f - 40f - 5f, "an anchor of its own still wins")
+        screenshot("injection-fill")
     }
 
     StarUITestSuite.group("injection") {

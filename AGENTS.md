@@ -78,6 +78,8 @@ To attach to vanilla screens, use one of these:
     build is enough. `removeInjection(key)`, `dispose()` on the container, or removing it yourself ends it for good.
   - Since the builder can run again, read what it needs from the panel inside it (`this.parent`, getters,
     siblings) instead of capturing objects a vanilla rebuild replaces.
+  - `size` is against the vanilla panel: `Size.fillMaxSize()` covers it and follows a later resize (top-level fill
+    nodes check their parent's size each frame). Without an anchor it sits at the panel's top left.
   - `placement = InjectPlacement.Bottom` puts it under the panel's own children. Not for StarUI's own reactive
     containers (it throws): put the components in their builder.
   - Example: Combat AI Tweaks' `ui/RefitButton.kt`.
@@ -435,7 +437,8 @@ src/org/starficz/starui/
                         LazyLists.kt (LazyColumn, LazyRow), Content.kt (Text, Image, ShipDisplay), Controls.kt
                         (Button, TextField, checkboxes, sliders), ButtonGroup.kt (FilterGroup, RadioGroup), Spacers.kt, Sections.kt, Tables.kt,
                         Holo.kt, VanillaElements.kt (the TooltipMakerAPI ports)
-  layout/               LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, ViewportLayoutEngine.kt
+  layout/               LayoutEngine.kt, StackLayoutEngine.kt (Column/Row), BoxLayoutEngine.kt, AnchorLayoutEngine.kt
+                        (CustomPanel), ViewportLayoutEngine.kt
                         (scrolling containers), VanillaElementEngine.kt (tooltip-built vanilla ports), NodeSize.kt
   modifier/             Modifier.kt, LayoutModifiers.kt, EventModifiers.kt, VisualModifiers.kt
   runtime/              StarUIPanelPlugin.kt (handlers, layout, scopes), UINode.kt (each component's record: size
@@ -479,7 +482,8 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   the leaves that have a plugin. The one loss: a label taken out of a panel and
   added elsewhere only after that panel was thrown away comes back without its node (and handlers). Tests:
   `leaks-*`.
-- **Layout.** Containers have a `LayoutEngine`. The top-level StarUI node runs measure and layout lazily in
+- **Layout.** Containers have a `LayoutEngine` (a CustomPanel's `AnchorLayoutEngine` sizes its children and itself;
+  the children place themselves by anchor, and StarUI children without one sit top left). The top-level StarUI node runs measure and layout lazily in
   `renderBelow` when `requestLayout()` has marked it; the request marks the path up from the changed node, so
   measures of unchanged nodes are reused and they are not laid out again (`StarUIPanelPlugin.measure`,
   `commitChildLayout`). Stack children are placed relative to the container at their running offset (chaining them

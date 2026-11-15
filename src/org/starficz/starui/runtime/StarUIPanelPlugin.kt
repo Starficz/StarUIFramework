@@ -363,6 +363,13 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
         // with the parent's whole size gave a Column in a Row the Row's width, not its share). A request reaches the
         // top-level node or a layout boundary, which lays this one out on the next frame.
         if (!isTopLevelNode && (layoutEngine as? ViewportLayoutEngine)?.isLayoutBoundary != true) return
+        if (isTopLevelNode) {
+            followParentSize()
+            // an injection filling a vanilla panel that has no size yet (sized after the hook ran): nothing to fill, and
+            // a layout now would measure the content in a 0 room (warnings, a throw). It waits for the size. Any other
+            // root filling a sizeless parent is a mistake, and still throws
+            if (waitsForParentSize()) return
+        }
         if (!hasLayoutRun) {
             // Resolved before anything runs: a requestLayout() made by a layout callback (a label that changes its
             // own text in onLayout, say) must survive this pass and schedule the next one.
@@ -406,12 +413,13 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
                 val finalW = when (val wDim = node.size.width) {
                     is Axis.Exact -> wDim.pixels
                     is Axis.WrapContent -> contentW
-                    else -> if (component.width > 1f) component.width else rootMaxWidth
+                    // fill: the parent's size where it has one (a vanilla panel sized after the UI was added)
+                    else -> if (p != null && p.width > 0f) p.width else if (component.width > 1f) component.width else rootMaxWidth
                 }
                 val finalH = when (val hDim = node.size.height) {
                     is Axis.Exact -> hDim.pixels
                     is Axis.WrapContent -> contentH
-                    else -> if (component.height > 1f) component.height else rootMaxHeight
+                    else -> if (p != null && p.height > 0f) p.height else if (component.height > 1f) component.height else rootMaxHeight
                 }
                 component.setSize(finalW, finalH)
                 node.anchor?.let { component.applyAnchor(it) }
@@ -420,6 +428,30 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
             // 3. Layout the children within our finalized boundaries
             engine.layout(component.width, component.height)
         }
+    }
+
+    private fun waitsForParentSize(): Boolean {
+        if (injectionKey == null) return false
+        val p = component.parent ?: return false
+        return (node.size.width is Axis.FillMax && p.width <= 0f) || (node.size.height is Axis.FillMax && p.height <= 0f)
+    }
+
+    private var parentW = Float.NaN
+    private var parentH = Float.NaN
+
+    /**
+     * A top-level node that fills its parent lays out again when the parent's size changes: a vanilla panel sized or
+     * resized after StarUI's UI was added to it (an injection from a constructor hook). One size read per frame.
+     */
+    private fun followParentSize() {
+        val p = component.parent ?: return
+        val w = p.width
+        val h = p.height
+        if (w == parentW && h == parentH) return
+        val first = parentW.isNaN()
+        parentW = w
+        parentH = h
+        if (!first && (node.size.width is Axis.FillMax || node.size.height is Axis.FillMax)) hasLayoutRun = false
     }
 
     private var measuredPass = -1L

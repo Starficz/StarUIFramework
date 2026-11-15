@@ -302,6 +302,11 @@ method or constructor that builds it, with the hook's `self` (or a panel reached
 the hook is PatchLib's (its own `patchlib` skill, from the PatchLib wiki, when installed); the vanilla class and
 method come from the game's sources (`starsector-knowledge`, when installed), never from memory.
 
+Size and place: `size` is measured against the vanilla panel. `inject(key, Size.fillMaxSize()) { ... }` covers the
+whole panel, and follows it when vanilla sizes or resizes it after the hook ran. Without an anchor in `modifier`, the
+container sits at the panel's top left (vanilla's own default is the bottom left); anchor it to a vanilla sibling
+or a corner (`Modifier.anchor(Anchor.inside.bottomRight.ofParent(10f, 10f))`) to place it elsewhere.
+
 ```kotlin
 // 0.98.5a-RC4: the refit's hullmod list widget, matched by its readable class name; it never clears its children
 @Patch(target = ClassMatch(typeName = "com.fs.starfarer.coreui.refit.ModWidget"))

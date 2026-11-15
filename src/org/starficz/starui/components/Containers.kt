@@ -333,7 +333,9 @@ internal fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modi
  * [Column], [Row] and [Box].
  *
  * By default a [CustomPanel] wraps its children: it is as large as needed to reach the far edge of each anchored
- * child. To change the size of the [CustomPanel], pass a different [size].
+ * child (a child anchored to its centre or far edge needs its own size plus its offset). To change the size of the
+ * [CustomPanel], pass a different [size]. A child that fills an axis takes the [CustomPanel]'s size on it; a child
+ * without an anchor sits at the top left.
  *
  * Children that reach outside the [CustomPanel] are drawn and take input by default. [overflow] can clip them, or
  * make the [CustomPanel] scroll; the content of a scrolling [CustomPanel] reaches as far right and down as its
@@ -364,6 +366,8 @@ fun UIPanelAPI.CustomPanel(
     checkDslTarget()
     val slot = childSlot("CustomPanel", overflow)
     val parts = containerParts(slot, size, overflow)
+    // sizes its children and itself; the children place themselves by anchor
+    if (parts.plugin.layoutEngine !is AnchorLayoutEngine) parts.plugin.layoutEngine = AnchorLayoutEngine(parts.plugin)
     parts.register(slot, size, modifier)
     parts.plugin.attachScope("CustomPanel", builder) { parts.panel.builder() }
     return parts.panel

@@ -237,6 +237,10 @@ For `inside` anchors the spacing moves inward from the named edges (for `center`
 top-level node that wraps its content re-applies its anchor after every layout, so a bottom-right panel stays pinned
 while it grows.
 
+A wrapping `CustomPanel` is as large as its anchored children reach (one anchored to its centre or far edge needs its
+own size plus its offset). A child that fills an axis takes the panel's size on it; a StarUI child without an anchor
+sits at the top left. Vanilla components added by hand keep the size and place they were given.
+
 ## Theme
 
 `StarUITheme` holds the defaults every component takes its optional arguments from, one class per component

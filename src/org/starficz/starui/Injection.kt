@@ -10,6 +10,8 @@ import org.starficz.starui.runtime.NodeStore
 import org.starficz.starui.runtime.Scope
 import org.starficz.starui.runtime.StarUIContext
 import org.starficz.starui.runtime.StarUIPanelPlugin
+import org.starficz.starui.runtime.nodeFor
+import org.starficz.starui.vanilla.applyAnchor
 import java.lang.ref.WeakReference
 import java.util.WeakHashMap
 
@@ -51,11 +53,15 @@ enum class InjectPlacement {
  * Because [builder] can run again after a clear, read what it needs from the panel inside it (`this.parent`,
  * getters, its siblings), rather than capturing objects that a vanilla rebuild replaces.
  *
+ * - **Size and place**: [size] is measured against the vanilla panel. `Size.fillMaxSize()` takes the panel's whole
+ *   size, and follows it when vanilla sizes or resizes the panel later (a constructor hook runs before that). Without
+ *   an anchor in [modifier], the container sits at the panel's top left (vanilla's own default is the bottom left).
+ *
  * Not for StarUI's own containers: there, put the components in the container's builder.
  *
  * @param key the injection's name, unique per panel. Prefix it with your mod's id (`"mymod:refit-button"`)
- * @param size the size of the container
- * @param modifier the [Modifier] to be applied to the container, usually its anchor
+ * @param size the size of the container, against the vanilla panel: wrap (the default), exact, or fill
+ * @param modifier the [Modifier] to be applied to the container, usually its anchor (the top left without one)
  * @param placement where the container goes among the panel's children
  * @param builder the content of the container. It runs again after a clear, and when a [UIState] it read changes
  * @return the container: the new one, or the live one already under [key]
@@ -161,6 +167,12 @@ internal object Injections {
             StarUIContext.untracked { host.CustomPanel(entry.size, entry.modifier) { (entry.builder)() } }
         }
         (container.plugin as StarUIPanelPlugin).injectionKey = entry.key
+        // no anchor of its own: the panel's top left, as a layout reads (vanilla puts a new component bottom left)
+        val node = nodeFor(container)
+        if (node.anchor == null) {
+            node.anchor = Anchor.inside.topLeft.ofParent()
+            container.applyAnchor(node.anchor!!)
+        }
         if (entry.placement == InjectPlacement.Bottom) host.sendToBottom(container)
         entry.container = WeakReference(container)
         return container
