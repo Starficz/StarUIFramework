@@ -159,7 +159,8 @@ fun Modifier.align(alignment: Alignment) = this.then { component ->
 
 /**
  * Places the component relative to its parent or to a sibling, as described by [anchor]. Only for children of a
- * [CustomPanel][org.starficz.starui.components.CustomPanel] or of a panel StarUI does not lay out: a Column, Row, Box
+ * [CustomPanel][org.starficz.starui.components.CustomPanel], an [AnchorPanel][org.starficz.starui.components.AnchorPanel]
+ * or a panel StarUI does not lay out: a Column, Row, Box
  * or lazy list places its children itself, so an anchor there throws.
  *
  * Margins are kept: the component's own margin moves it away from the edge it is anchored by, and a sibling's
@@ -177,7 +178,7 @@ fun Modifier.anchor(anchor: Anchor.AnchorData) = this.then { component ->
     val parentPlugin = parentPluginOf(actual)
     if (parentPlugin != null && !childrenPlaceThemselves(parentPlugin.layoutEngine)) {
         throw IllegalStateException(
-            "StarUI: Modifier.anchor() is only for children of a CustomPanel. This component's container " +
+            "StarUI: Modifier.anchor() is only for children of a CustomPanel or AnchorPanel. This component's container " +
             "(${parentPlugin.kind ?: "a StarUI layout"}) places its children itself, so the anchor would be overwritten. " +
             "Use Modifier.align in a Box, the container's alignment and spacing in a Column or Row, or margin."
         )

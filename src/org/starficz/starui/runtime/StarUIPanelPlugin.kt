@@ -393,6 +393,26 @@ class StarUIPanelPlugin internal constructor() : BaseCustomUIPanelPlugin() {
             viewport.layout(component.width, component.height)
             return
         }
+        if (layoutEngine == null && isTopLevelNode && scope != null) {
+            // a container that leaves its children alone (CustomPanel) as a root: it still sizes and places itself,
+            // exact or filling its parent (its size never comes from its children); they lay themselves out against it
+            layoutPassCount++
+            layoutPass++
+            val p = component.parent
+            val w = when (val d = node.size.width) {
+                is Axis.Exact -> d.pixels
+                is Axis.FillMax -> if (p != null && p.width > 0f) p.width else component.width
+                else -> component.width
+            }
+            val h = when (val d = node.size.height) {
+                is Axis.Exact -> d.pixels
+                is Axis.FillMax -> if (p != null && p.height > 0f) p.height else component.height
+                else -> component.height
+            }
+            if (w != component.width || h != component.height) component.setSize(w, h)
+            node.anchor?.let { component.applyAnchor(it) }
+            return
+        }
         layoutEngine?.let { engine ->
             layoutPassCount++
             layoutPass++

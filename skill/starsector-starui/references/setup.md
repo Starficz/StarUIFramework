@@ -296,7 +296,7 @@ Seen in game on 0.98.5a-RC4 ([layout.md](layout.md#hosts) has the hosts' sizes a
 
 ## inject into a vanilla panel
 
-For one vanilla sub-panel that no screen covers. It adds one StarUI `CustomPanel` (its own reactive scope) to the
+For one vanilla sub-panel that no screen covers. It adds one StarUI `AnchorPanel` (its own reactive scope) to the
 panel and builds your components in it. Call it at the moment vanilla builds the panel: a PatchLib `@After` on the
 method or constructor that builds it, with the hook's `self` (or a panel reached from it) as the receiver. Writing
 the hook is PatchLib's (its own `patchlib` skill, from the PatchLib wiki, when installed); the vanilla class and

@@ -21,7 +21,8 @@ right-to-left layouts), and vanilla's where the component is a vanilla object (`
 | `Column(size, modifier, grow, horizontalAlignment, spacing, overflow) { }` | top to bottom, `spacing` apart (`grow = VGrow.Upwards` reverses) | wrap |
 | `Row(size, modifier, grow, verticalAlignment, spacing, overflow) { }` | left to right (`HGrow.Leftwards` reverses) | wrap |
 | `Box(size, modifier, overflow) { }` | on top of each other; place children with `Modifier.align(Alignment.X)` | wrap |
-| `CustomPanel(size, modifier, overflow) { }` | nowhere: you place children with `Modifier.anchor(...)` | wrap |
+| `AnchorPanel(size, modifier, overflow) { }` | where their `Modifier.anchor(...)` puts them (top left without one); sizes them, wraps around them | wrap |
+| `CustomPanel(size, modifier, overflow) { }` | where their `Modifier.anchor(...)` puts them; StarUI neither places nor sizes them (the escape hatch) | fill; exact or fill only |
 | `LazyColumn(items, size, modifier, itemHeight, key, spacing) { item -> }` / `LazyRow(..., itemWidth, ...)` | one row per item; only those near the view exist; scrolls | exact or fill only |
 | `Section(title, size, modifier, contentPadding, spacing, backgroundColor, borderColor) { }` | vanilla-style block: a `SectionHeading` on top (none for `title = null`), the content in a padded column below, inside a thin dark border | fill width, wrap height |
 | `Holo(size, modifier, open, background, contentKey, foldDuration, animateFirstOpen, contentInset) { }` | vanilla's own holo panel (the framed window of its dialogs and title menu) around a Box; `open` folds it with vanilla's static; a `contentKey` change swaps the content through vanilla's static transition | exact or fill only |
@@ -149,7 +150,7 @@ Layout rules, each of which throws a clear exception when broken:
 
 - a fill child on a Column's or Row's main axis needs that container to have a known size on that axis (not wrap);
 - a fill child along a scrolling axis gets what is left of the visible size (0 once the content overflows);
-- `Modifier.anchor` is only for children of a `CustomPanel`.
+- `Modifier.anchor` is only for children of a `CustomPanel` or an `AnchorPanel`.
 
 ## Overflow, scrolling and long lists
 
@@ -190,7 +191,7 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 
 ## Modifiers
 
-`.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel), `.background(color)`,
+`.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel or AnchorPanel), `.background(color)`,
 `.border(...)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`, `.onClickRelease`, `.onClickOutside`,
 `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`, `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`,
 `.hitBoxPadding(...)`, `.onAdvance { amount -> }`, `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`,
@@ -224,7 +225,7 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 
 ## Anchors
 
-Inside a `CustomPanel` only:
+Inside a `CustomPanel` or an `AnchorPanel` only:
 
 ```kotlin
 Anchor.inside.topLeft.ofParent(xSpacing, ySpacing)       // also topCenter, center, bottomRight, ...
@@ -237,9 +238,15 @@ For `inside` anchors the spacing moves inward from the named edges (for `center`
 top-level node that wraps its content re-applies its anchor after every layout, so a bottom-right panel stays pinned
 while it grows.
 
-A wrapping `CustomPanel` is as large as its anchored children reach (one anchored to its centre or far edge needs its
-own size plus its offset). A child that fills an axis takes the panel's size on it; a StarUI child without an anchor
-sits at the top left. Vanilla components added by hand keep the size and place they were given.
+The two anchored containers differ in who sizes what:
+
+- `AnchorPanel` (like Android's `RelativeLayout`) sizes its children and itself: wrapping, it is as large as its
+  anchored children reach (one anchored to its centre or far edge needs its own size plus its offset); a child that
+  fills an axis takes the panel's size on it; a StarUI child without an anchor sits at the top left. `inject` builds
+  one.
+- `CustomPanel` leaves its children alone: each sizes itself against the panel and places itself by its anchor, and
+  vanilla components added by hand stay as they were put. Its own size never comes from its children, so it is exact
+  or fill (a wrap size does not compile); straight in a vanilla panel, it fills that panel and follows its resizes.
 
 ## Theme
 

@@ -156,6 +156,19 @@ private val boxes = Page("Layout", "Box and anchors",
         }
         // end snippet
     }
+
+    card("Wrapping anchored children", "anchor-panel",
+        "AnchorPanel sizes itself around its anchored children, placed from each other's places. A CustomPanel never does: " +
+            "it is exact or fill, and leaves its children to size and place themselves. inject builds an AnchorPanel.") {
+        // snippet: anchor-panel
+        AnchorPanel(modifier = Modifier.background(INSET)) {
+            val name = Text("ISS Hammerhead", font = Font.INSIGNIA_21, modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(8f, 8f)))
+            Text("Destroyer, 10 deployment points", color = VanillaColors.gray,
+                modifier = Modifier.anchor(Anchor.below.sibling(name).matchingLeftEdge(2f)))
+            Button("Refit", modifier = Modifier.anchor(Anchor.rightOf.sibling(name).matchingCenter(16f))) { }
+        }
+        // end snippet
+    }
 }
 
 private val sizes = Page("Layout", "Sizes",

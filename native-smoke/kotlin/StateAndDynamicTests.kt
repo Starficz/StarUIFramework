@@ -180,6 +180,52 @@ fun registerDynamicTests() {
         screenshot("injection-fill")
     }
 
+    StarUITestSuite.group("anchor-panel") {
+        fun vanillaPanel(w: Float, h: Float, left: Float, top: Float): CustomPanelAPI =
+            Global.getSettings().createCustom(w, h, null).also { root.addComponent(it).inTL(left, top) }
+
+        // ---- AnchorPanel wraps its anchored children ----
+        val wrap = root.AnchorPanel(modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f)).background(Color(40, 60, 90))) {
+            Spacer(Size.exact(50f, 20f), Modifier.anchor(Anchor.inside.topLeft.ofParent(10f, 10f)))
+            Spacer(Size.exact(40f, 10f), Modifier.anchor(Anchor.inside.bottomRight.ofParent(5f, 5f)))
+        }
+        frame(3)
+        near(wrap.position.width, 60f, "an AnchorPanel is as wide as its top-left child reaches (10 + 50) (${wrap.position.width})")
+        near(wrap.position.height, 30f, "and as tall (10 + 20); the bottom-right one needs only 10 + 5 (${wrap.position.height})")
+        val loose = root.AnchorPanel(modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(200f, 40f))) {
+            Spacer(Size.exact(30f, 30f))
+        }
+        frame(3)
+        val child = loose.children.first()
+        near(child.relTop(loose), 0f, "a child without an anchor sits at the top, not vanilla's bottom")
+        near(loose.position.width, 30f, "and the panel wraps it (${loose.position.width})")
+        // a chain of siblings from the top left: placed from each other's places, no frame needed to find them
+        val chain = root.AnchorPanel(modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent(300f, 40f)).background(Color(40, 60, 90))) {
+            val a = Spacer(Size.exact(50f, 20f), Modifier.anchor(Anchor.inside.topLeft.ofParent(8f, 8f)))
+            Spacer(Size.exact(80f, 10f), Modifier.anchor(Anchor.below.sibling(a).matchingLeftEdge(4f)))
+            Spacer(Size.exact(30f, 30f), Modifier.anchor(Anchor.rightOf.sibling(a).matchingTopEdge(6f)))
+        }
+        frame(1)
+        near(chain.position.width, 94f, "chained siblings: as wide as the one right of the first reaches (8 + 50 + 6 + 30) (${chain.position.width})")
+        near(chain.position.height, 42f, "as tall as the one below it (8 + 20 + 4 + 10), after one frame (${chain.position.height})")
+        val anchored = thrown { root.AnchorPanel { Spacer(Size.exact(10f, 10f), Modifier.anchor(Anchor.inside.center.ofParent())) } }
+        expect(anchored == null, "Modifier.anchor inside an AnchorPanel is fine (got $anchored)")
+
+        // ---- CustomPanel added straight to a vanilla panel: fills it and follows it; its children lay themselves out ----
+        val host = vanillaPanel(300f, 150f, 40f, 200f)
+        lateinit var column: CustomPanelAPI
+        val free = host.CustomPanel(Size.fillMaxSize()) { column = Column(Size.fillMaxSize()) { Text("free") } }
+        frame(3)
+        near(free.position.width, 300f, "a fill CustomPanel in a vanilla panel takes its width (${free.position.width})")
+        near(free.position.height, 150f, "and height (${free.position.height})")
+        near(column.position.width, 300f, "its fill child fills it (${column.position.width})")
+        host.position.setSize(360f, 180f)
+        frame(3)
+        near(free.position.width, 360f, "and both follow the vanilla panel's resize (${free.position.width}, ${column.position.width})")
+        near(column.position.height, 180f, "on both axes (${column.position.height})")
+        screenshot("anchor-panel")
+    }
+
     StarUITestSuite.group("injection") {
         /** A plain vanilla panel (no StarUI plugin) in the group's root: what inject is for. */
         fun vanillaPanel(w: Float, h: Float, left: Float, top: Float, into: UIPanelAPI = root): CustomPanelAPI =

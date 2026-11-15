@@ -328,14 +328,14 @@ internal fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modi
 }
 
 /**
- * A layout component that does not place its children: each child is positioned with `Modifier.anchor(...)`,
- * against the [CustomPanel] or against a sibling. For layout components that place their children themselves, see
- * [Column], [Row] and [Box].
+ * A panel that leaves its children to themselves: StarUI neither places nor sizes them. Each child positions itself
+ * with `Modifier.anchor(...)`, against the [CustomPanel] or against a sibling, and sizes itself against the panel (a
+ * fill child takes the panel's size). The escape hatch for free placement, and for vanilla components added by hand.
+ * For a panel of anchored children that wraps around them, see [AnchorPanel]; for layouts that place their
+ * children, [Column], [Row] and [Box].
  *
- * By default a [CustomPanel] wraps its children: it is as large as needed to reach the far edge of each anchored
- * child (a child anchored to its centre or far edge needs its own size plus its offset). To change the size of the
- * [CustomPanel], pass a different [size]. A child that fills an axis takes the [CustomPanel]'s size on it; a child
- * without an anchor sits at the top left.
+ * Its own size never comes from its children, so it is exact or fill ([BoundedSize]; fill by default). Added straight
+ * to a vanilla panel, it fills that panel and follows it when vanilla resizes it.
  *
  * Children that reach outside the [CustomPanel] are drawn and take input by default. [overflow] can clip them, or
  * make the [CustomPanel] scroll; the content of a scrolling [CustomPanel] reaches as far right and down as its
@@ -350,15 +350,16 @@ internal fun ContainerParts.register(slot: ChildSlot, size: Size, modifier: Modi
  * }
  * ```
  *
- * @param size the size of the [CustomPanel]. By default it wraps its children
+ * @param size the size of the [CustomPanel], exact or fill (it never wraps: nothing measures its children)
  * @param modifier the [Modifier] to be applied to this panel
  * @param overflow what happens to children that reach outside the [CustomPanel], per axis. See [Overflow]
  * @param builder the content of the [CustomPanel]. It runs again when a [UIState] it read changes
  * @return the [CustomPanel]'s panel
  * @see Anchor
+ * @see AnchorPanel
  */
 fun UIPanelAPI.CustomPanel(
-    size: Size = Size.wrapContent(),
+    size: BoundedSize = Size.fillMaxSize(),
     modifier: Modifier = Modifier,
     overflow: Overflow = Overflow.Visible,
     builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
@@ -366,10 +367,51 @@ fun UIPanelAPI.CustomPanel(
     checkDslTarget()
     val slot = childSlot("CustomPanel", overflow)
     val parts = containerParts(slot, size, overflow)
+    parts.register(slot, size, modifier)
+    parts.plugin.attachScope("CustomPanel", builder) { parts.panel.builder() }
+    return parts.panel
+}
+
+/**
+ * A panel of anchored children that sizes them and itself, like Android's `RelativeLayout`. Each child positions
+ * itself with `Modifier.anchor(...)`, against the [AnchorPanel] or a sibling; a StarUI child without an anchor sits at
+ * the top left. A child that fills an axis takes the panel's size on it.
+ *
+ * By default it wraps its children: it is as large as needed for each to reach its far edge. A child anchored to the
+ * panel's left (or top) edge needs its offset plus its size; one anchored to the centre or the far edge needs its
+ * size plus its offset, since it moves with the panel's size. Vanilla components added by hand keep the size and
+ * place they were given, and count where they are.
+ *
+ * `inject` builds its container as an [AnchorPanel].
+ *
+ * ```kotlin
+ * AnchorPanel {   // as large as the label and the button need
+ *     Text("Fuel", modifier = Modifier.anchor(Anchor.inside.topLeft.ofParent()))
+ *     Button("Refuel", modifier = Modifier.anchor(Anchor.below.previousComponent.matchingLeftEdge(6f))) { }
+ * }
+ * ```
+ *
+ * @param size the size of the [AnchorPanel]. By default it wraps its children
+ * @param modifier the [Modifier] to be applied to this panel
+ * @param overflow what happens to children that reach outside the [AnchorPanel], per axis. See [Overflow]
+ * @param builder the content of the [AnchorPanel]. It runs again when a [UIState] it read changes
+ * @return the [AnchorPanel]'s panel
+ * @see Anchor
+ * @see CustomPanel
+ */
+fun UIPanelAPI.AnchorPanel(
+    size: Size = Size.wrapContent(),
+    modifier: Modifier = Modifier,
+    overflow: Overflow = Overflow.Visible,
+    builder: (@StarUIDsl CustomPanelAPI).() -> Unit = {}
+): CustomPanelAPI {
+    checkDslTarget()
+    val slot = childSlot("AnchorPanel", overflow)
+    val parts = containerParts(slot, size, overflow)
     // sizes its children and itself; the children place themselves by anchor
     if (parts.plugin.layoutEngine !is AnchorLayoutEngine) parts.plugin.layoutEngine = AnchorLayoutEngine(parts.plugin)
     parts.register(slot, size, modifier)
-    parts.plugin.attachScope("CustomPanel", builder) { parts.panel.builder() }
+    parts.plugin.attachScope("AnchorPanel", builder) { parts.panel.builder() }
     return parts.panel
 }
 

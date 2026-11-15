@@ -4,7 +4,7 @@ import com.fs.starfarer.api.ui.CustomPanelAPI
 import com.fs.starfarer.api.ui.ScrollPanelAPI
 import com.fs.starfarer.api.ui.UIComponentAPI
 import com.fs.starfarer.api.ui.UIPanelAPI
-import org.starficz.starui.components.CustomPanel
+import org.starficz.starui.components.AnchorPanel
 import org.starficz.starui.modifier.Modifier
 import org.starficz.starui.runtime.NodeStore
 import org.starficz.starui.runtime.Scope
@@ -24,7 +24,7 @@ enum class InjectPlacement {
 }
 
 /**
- * Adds StarUI to a vanilla panel: one [CustomPanel][org.starficz.starui.components.CustomPanel] of [size] with
+ * Adds StarUI to a vanilla panel: one [AnchorPanel][org.starficz.starui.components.AnchorPanel] of [size] with
  * [modifier] (usually an anchor to a vanilla sibling), holding the content [builder] makes. It is reactive like any
  * StarUI container.
  *
@@ -164,7 +164,7 @@ internal object Injections {
     fun build(host: UIPanelAPI, entry: Entry): CustomPanelAPI {
         // isolated from any builder that happens to be running: no outer key position, no outer reads
         val container = StarUIContext.withKey(null) {
-            StarUIContext.untracked { host.CustomPanel(entry.size, entry.modifier) { (entry.builder)() } }
+            StarUIContext.untracked { host.AnchorPanel(entry.size, entry.modifier) { (entry.builder)() } }
         }
         (container.plugin as StarUIPanelPlugin).injectionKey = entry.key
         // no anchor of its own: the panel's top left, as a layout reads (vanilla puts a new component bottom left)

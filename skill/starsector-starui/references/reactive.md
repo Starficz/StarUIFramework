@@ -98,7 +98,7 @@ rebuild. Containers that read no state stay non-reactive. In a normal game none 
   per-frame work.
 - Sizes are a typed `size` argument instead of sizing modifiers; `margin` exists; modifiers are not
   order-sensitive.
-- Absolute positioning is anchors in a `CustomPanel`, not `offset`.
+- Absolute positioning is anchors in a `CustomPanel` or `AnchorPanel`, not `offset`.
 - Clipping and scrolling are the container's `overflow` argument, not `clipToBounds` / `verticalScroll`: a scrolling
   container is a different native object, chosen when it is made.
 - Coordinates in raw Starsector APIs (render callbacks, `PositionAPI`) are bottom-left based, y up; StarUI layouts and

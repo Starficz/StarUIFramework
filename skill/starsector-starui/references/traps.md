@@ -27,7 +27,7 @@ Contents: [Reactive](#reactive) · [Layout and sizes](#layout-and-sizes) · [Tex
 | Symptom | Cause | Fix |
 |---|---|---|
 | An exception about a fill child in a wrapping container | A fill child (`fillMaxWidth`, `FlexSpacer`, `Axis.FillMax`) on the main axis of a Column or Row that wraps | Give the container a known size on that axis (`Size.fillMaxWidth()`, `exact`) |
-| An exception about an anchor | `Modifier.anchor` on a child of a Column, Row, Box or lazy list | Anchors only in a `CustomPanel`; elsewhere `align`, `spacing`, `padding` |
+| An exception about an anchor | `Modifier.anchor` on a child of a Column, Row, Box or lazy list | Anchors only in a `CustomPanel` or `AnchorPanel`; elsewhere `align`, `spacing`, `padding` |
 | `Size.wrapContent()` does not compile | The component takes a `BoundedSize` (Spacer, ShipDisplay, lazy lists, sliders, Holo) | `exact` or `fill` |
 | `Overflow(Visible, Scroll)` throws | A scroll axis clips both axes | `Overflow.ScrollVertical` (Clip, Scroll) |
 | The game stops with "Fatal: StarUI Layout Exception: a child fills the height of a Box that has no bounded height" when a table shows | A table's `custom { }` cell holds content that fills its height (`Size.fillMaxSize()`); the table measures cells to size its rows | Wrap or exact sizes in custom cells, placed with `Modifier.align(Alignment.CenterLeft)` |
