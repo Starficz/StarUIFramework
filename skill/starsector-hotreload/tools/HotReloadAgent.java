@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,6 +50,7 @@ import java.util.zip.ZipFile;
  * panel on screen (hot.sh dump). The agent only passes it on; a mod without StarUI ignores it.
  * A file named "console" (a request id, a newline, a Console Commands command) sets hotreload.console to its text:
  * the helper mod runs it on the game's thread (hot.sh console). Mods may not read files, so the agent passes it on.
+ * A file named set.NAME sets the system property NAME to its text (StarUI's starui.find: hot.sh find and click).
  * Each reload that changed something raises the system property starsector.hotreload.generation by one, so a mod may
  * rebuild its open UI when it changes (System.getProperty is allowed to mods).
  */
@@ -133,6 +135,24 @@ public final class HotReloadAgent {
 
     private static boolean auto() { return !Files.exists(control.resolve("no-auto")); }
 
+    /**
+     * A file named set.NAME sets the system property NAME to its text, then goes: the general request channel into
+     * the game (mods may read system properties but not files). StarUI's find (starui.find) comes this way; a mod
+     * without a reader for the property ignores it. Written as NAME.tmp and renamed, so a half-written file is never
+     * read.
+     */
+    private static void setProperties() throws IOException {
+        try (DirectoryStream<Path> files = Files.newDirectoryStream(control, "set.*")) {
+            for (Path file : files) {
+                String name = file.getFileName().toString().substring(4);
+                if (name.isEmpty() || name.endsWith(".tmp")) continue;
+                String text = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+                Files.deleteIfExists(file);
+                System.setProperty(name, text);
+            }
+        }
+    }
+
     private static void loop() {
         while (true) {
             try {
@@ -149,6 +169,7 @@ public final class HotReloadAgent {
                     Files.deleteIfExists(console);
                     System.setProperty("hotreload.console", text);
                 }
+                setProperties();
                 Path request = control.resolve("request");
                 if (Files.exists(request)) {
                     String id = new String(Files.readAllBytes(request), StandardCharsets.UTF_8).trim();

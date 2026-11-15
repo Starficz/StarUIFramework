@@ -7,7 +7,8 @@
 #                                   start a game that stays open, with the mod's jars hot; returns at the title screen
 #   hot.sh reload [PROJECT_DIR] [--timeout S]   swap the current build in now and print what changed
 #   hot.sh ctl [PROJECT_DIR] CMD [ARG...]       background input to the game: bmove X Y, bclick X Y, brclick X Y,
-#                                   bkey NAME [N], btype TEXT (gamectl; coordinates are capture pixels). Only these:
+#                                   bkey NAME [N], bcombo MOD... KEY, bwheel X Y N [MOD...], btype TEXT
+#                                   (gamectl; coordinates are capture pixels). Only these:
 #                                   gamectl's foreground commands (click, move, key...) are refused (FOREGROUND_INPUT)
 #   hot.sh shot [PROJECT_DIR] [NAME]            capture the game window to WORK/captures/NAME.png, print the path
 #   hot.sh wait [PROJECT_DIR] [PATTERN] [S]     wait until the game log matches PATTERN, or goes quiet without one
@@ -17,6 +18,15 @@
 #   hot.sh campaign [PROJECT_DIR]               continue when there is a save, else newgame
 #   hot.sh dump [PROJECT_DIR] [--timeout S]     print every StarUI panel on screen (StarUI's dumpLayout text, dialog
 #                                   content included): StarUI writes it to the game log on request, this prints it
+#   hot.sh find [PROJECT_DIR] TEXT [--kind K] [--contains]  list every component on screen (StarUI's and vanilla's)
+#                                   whose text or StarUI key is TEXT (--contains: a case-insensitive part of it), of
+#                                   kind K (Button, Text, Label, ...): size, position, shown or hidden, the capture
+#                                   pixel a click lands on, path. Needs StarUI UI on screen
+#   hot.sh click [PROJECT_DIR] TEXT [--kind K] [--contains] [--right]  find, then a background click at the one shown
+#                                   match (AMBIGUOUS / NOT_SHOWN / NOT_FOUND otherwise): real input, so what covers it
+#                                   takes the click as it would the player's
+#   hot.sh wheel [PROJECT_DIR] TEXT NOTCHES [--kind K] [--contains] [--shift]  find, then turn the wheel over it
+#                                   (NOTCHES > 0 down, < 0 up; --shift holds Shift: vanilla's horizontal wheel)
 #   hot.sh console [PROJECT_DIR] "COMMAND" [--timeout S]  run a Console Commands command in the campaign or a battle
 #                                   (needs Console Commands installed and the game started --with lw_console); prints
 #                                   its output. Any text works: it goes through a file, not typed keys
@@ -248,7 +258,7 @@ cmd_ctl() {
     # work. A self-test never needs them, so ctl does not pass them on.
     case $1 in
         b*|info) ;;
-        *) echo "FOREGROUND_INPUT: ctl $1 would bring the game to the front and move the user's mouse; use the background command (bmove, bclick, brclick, bkey, bcombo, btype; captures: hot.sh shot)" >&2
+        *) echo "FOREGROUND_INPUT: ctl $1 would bring the game to the front and move the user's mouse; use the background command (bmove, bclick, brclick, bwheel, bkey, bcombo, btype; by name: hot.sh click, wheel; captures: hot.sh shot)" >&2
            exit 2 ;;
     esac
     need_game
@@ -347,6 +357,99 @@ cmd_dump() {
         on { print } index($0, "StarUI dump " id " end") { exit }' "$log"
 }
 
+# find_request PROJECT KIND MODE TEXT TIMEOUT: asks StarUI in the game (starui.find, through the agent's set.NAME
+# channel) and leaves the answer block in FOUND (one line per match)
+find_request() {
+    local project=$1 kind=$2 mode=$3 text=$4 timeout=$5
+    pick "$project"; need_game
+    local id="f$(date +%s)-$$-$RANDOM" hot="$WORK/hot" log="$WORK/logs/starsector.log"
+    printf '%s\t%s\t%s\t%s' "$id" "$kind" "$mode" "$text" > "$hot/set.starui.find.tmp" &&
+        mv -f -- "$hot/set.starui.find.tmp" "$hot/set.starui.find"
+    local t0=$SECONDS
+    until grep -q -F "StarUI find $id end" "$log" 2>/dev/null; do
+        alive "$WORK" || { echo "NO_GAME: the game exited before the answer" >&2; exit 1; }
+        if (( SECONDS - t0 > timeout )); then
+            [[ -e $hot/set.starui.find ]] && { echo "TIMEOUT: the agent did not take the request in ${timeout}s: a game started before hot.sh had find needs a restart (hot.sh stop, start)" >&2; exit 1; }
+            echo "NO_ANSWER: no StarUI panel rendered in ${timeout}s: no StarUI UI is on screen, or the StarUI jar is older than find" >&2
+            exit 1
+        fi
+        sleep 0.2
+    done
+    FOUND=$(awk -v id="$id" 'index($0, "StarUI find " id ":") { on = 1; sub(/^.*StarUI find /, "StarUI find ") }
+        on { print } index($0, "StarUI find " id " end") { exit }' "$log")
+}
+
+# parse_find ARGS...: TEXT, then --kind K, --contains, --timeout S and what the caller allows (EXTRA_FLAGS); sets
+# F_PROJECT F_TEXT F_KIND F_MODE F_TIMEOUT F_REST (other words, in order) F_FLAGS (the extra flags seen)
+parse_find() {
+    F_PROJECT= F_TEXT= F_KIND= F_MODE=exact F_TIMEOUT=15 F_REST=() F_FLAGS=()
+    local first=1
+    while (( $# )); do
+        case $1 in
+            --kind) F_KIND=${2:-}; shift 2 || shift ;;
+            --contains) F_MODE=contains; shift ;;
+            --timeout) F_TIMEOUT=${2:-15}; shift 2 || shift ;;
+            --right|--shift) F_FLAGS+=("$1"); shift ;;
+            *) if (( first )) && [[ -d $1 && -r $1/mod_info.json ]]; then F_PROJECT=$1
+               elif [[ -z $F_TEXT ]]; then F_TEXT=$1
+               else F_REST+=("$1"); fi
+               first=0; shift ;;
+        esac
+    done
+}
+
+cmd_find() {
+    parse_find "$@"
+    [[ -n $F_TEXT ]] || { echo "Usage: hot.sh find [PROJECT_DIR] TEXT [--kind K] [--contains]" >&2; exit 2; }
+    find_request "$F_PROJECT" "$F_KIND" "$F_MODE" "$F_TEXT" "$F_TIMEOUT"
+    printf '%s\n' "$FOUND"
+}
+
+# the one shown match's click point, as "X Y" in TARGET (and its line in TARGET_LINE), or exit with why not
+one_target() {
+    local shown hidden
+    shown=$(grep -E ' shown click=\(' <<< "$FOUND" || true)
+    hidden=$(grep -E ' hidden path=' <<< "$FOUND" || true)
+    if [[ -z $shown ]]; then
+        printf '%s\n' "$FOUND" >&2
+        if [[ -n $hidden ]]; then echo "NOT_SHOWN: \"$F_TEXT\" is there but not shown (scrolled away, clipped, off screen or transparent)" >&2
+        else echo "NOT_FOUND: nothing on screen has the text or key \"$F_TEXT\"${F_KIND:+ and kind $F_KIND} (--contains matches a part)" >&2; fi
+        exit 1
+    fi
+    if (( $(grep -c . <<< "$shown") > 1 )); then
+        printf '%s\n' "$shown" >&2
+        echo "AMBIGUOUS: $(grep -c . <<< "$shown") shown matches for \"$F_TEXT\"; narrow it (--kind, the exact text, a key)" >&2
+        exit 1
+    fi
+    TARGET_LINE=$shown
+    TARGET=$(sed -E 's/.* click=\(([0-9-]+), ([0-9-]+)\).*/\1 \2/' <<< "$shown")
+}
+
+cmd_click() {
+    parse_find "$@"
+    [[ -n $F_TEXT ]] || { echo "Usage: hot.sh click [PROJECT_DIR] TEXT [--kind K] [--contains] [--right]" >&2; exit 2; }
+    find_request "$F_PROJECT" "$F_KIND" "$F_MODE" "$F_TEXT" "$F_TIMEOUT"
+    one_target
+    local x=${TARGET% *} y=${TARGET#* } button=bclick
+    [[ " ${F_FLAGS[*]} " == *" --right "* ]] && button=brclick
+    gamectl bmove "$x" "$y" >/dev/null; sleep 0.2
+    gamectl "$button" "$x" "$y" >/dev/null
+    echo "CLICKED: ${TARGET_LINE%% path=*} (at $x, $y)"
+}
+
+cmd_wheel() {
+    parse_find "$@"
+    local notches=${F_REST[0]:-}
+    [[ -n $F_TEXT && $notches =~ ^-?[0-9]+$ ]] ||
+        { echo "Usage: hot.sh wheel [PROJECT_DIR] TEXT NOTCHES [--kind K] [--contains] [--shift]" >&2; exit 2; }
+    find_request "$F_PROJECT" "$F_KIND" "$F_MODE" "$F_TEXT" "$F_TIMEOUT"
+    one_target
+    local x=${TARGET% *} y=${TARGET#* } mods=()
+    [[ " ${F_FLAGS[*]} " == *" --shift "* ]] && mods=(SHIFT)
+    gamectl bwheel "$x" "$y" "$notches" "${mods[@]}" >/dev/null
+    echo "WHEELED: $notches notch(es) over ${TARGET_LINE%% path=*} (at $x, $y)"
+}
+
 cmd_console() {
     local project= timeout=30 command=
     while (( $# )); do
@@ -407,6 +510,9 @@ case $cmd in
     campaign) cmd_campaign "$@" ;;
     dump) cmd_dump "$@" ;;
     console) cmd_console "$@" ;;
+    find) cmd_find "$@" ;;
+    click) cmd_click "$@" ;;
+    wheel) cmd_wheel "$@" ;;
     status) cmd_status "$@" ;;
     log) cmd_log "$@" ;;
     dir) pick "${1:-}"; echo "$WORK" ;;

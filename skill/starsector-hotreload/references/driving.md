@@ -5,7 +5,7 @@ below are client pixels of the **1600x900 test window**, measured on 0.98.5a-RC4
 screens. Measure anything else on a capture.
 
 Contents: [The loop for a panel](#the-loop-for-a-panel) · [Seeing a UI change](#seeing-a-ui-change) ·
-[Reaching a screen](#reaching-a-screen) ·
+[Reaching a screen](#reaching-a-screen) · [Making test state](#making-test-state) ·
 [Input](#input) · [Captures](#captures) · [Finding where to click](#finding-where-to-click) ·
 [Waiting](#waiting) · [Checking a layout](#checking-a-layout) · [Limits](#limits)
 
@@ -15,7 +15,8 @@ Contents: [The loop for a panel](#the-loop-for-a-panel) · [Seeing a UI change](
 HOT=<skill>/scripts/hot.sh
 bash "$HOT" start "<mod folder>"               # once; READY at the title screen
 bash "$HOT" continue || bash "$HOT" newgame    # into the campaign (newgame the first time)
-bash "$HOT" ctl bkey R                         # open the screen the panel lives on (here: refit)
+bash "$HOT" click Refit --kind Button          # open the screen the panel lives on (or ctl bkey R)
+bash "$HOT" find "Apply" --contains            # is it there, shown, where: read before clicking
 bash "$HOT" ctl bmove 5 5                      # park the cursor, so no tooltip covers the shot
 bash "$HOT" shot refit-before                  # open the PNG it prints
 # edit, rebuild the jar: the game reloads it by itself (hot.sh reload prints what changed)
@@ -105,22 +106,52 @@ bash "$HOT" console 'runcode Console.showMessage("" + Global.getSector().getPlay
 
 ## Input
 
-`ctl` posts window messages to the game window only:
+**Click by name.** `hot.sh click TEXT` finds the component on screen and clicks the centre of its shown part, so no
+coordinates are measured and a moved button is still hit:
+
+```bash
+bash "$HOT" find "Bounties" --contains            # every match: kind, size, position, shown or hidden, click point
+bash "$HOT" click "Bounties (11)"                 # the one shown match, or NOT_FOUND / NOT_SHOWN / AMBIGUOUS
+bash "$HOT" click "Confirm" --contains --kind Button   # vanilla adds the shortcut to the text: "Confirm [G]"
+bash "$HOT" wheel "Personal Bounty - Ra Han" 5    # turn the wheel 5 notches down over that row's list
+```
+
+- TEXT matches a label's, button's or text field's text, or a StarUI key (`key(id) { }`), exactly; `--contains`
+  matches a case-insensitive part. `--kind` narrows by kind: StarUI's component names (`Button`, `Text`, `Column`),
+  vanilla's `Button`, `Label`, `TextField`, `Panel`, `ScrollPanel`. A panel-drawn vanilla button (intel rows, filter
+  chips) has no text of its own: its labels are found, and clicking one clicks the button.
+- It searches the whole screen the way StarUI's `findAll` does: vanilla panels and scroll panels, StarUI containers,
+  holo and dialog content (vanilla's title menu and dialogs too), and the content of panel-drawn buttons.
+- `hidden` means scrolled out of view, cut by a clipping container, off screen or transparent (a closed holo, a
+  faded panel). It says nothing about what is drawn over a component: the click is real input, so a modal window
+  over it takes the click, as it would the player's. Capture to check what happened.
+- It needs StarUI in the game, which answers the request: StarUI mods have it; for another mod start with
+  `--with staruiframework`. `NO_ANSWER` means no StarUI panel rendered (the game is still loading).
+- Positions in the list are screen units from the top left, y down; `click=(x, y)` is capture pixels (the UI scale
+  applied).
+
+`ctl` posts window messages to the game window only, by coordinates:
 
 | Command | Does |
 |---|---|
 | `ctl bmove X Y` | Move the game's mouse (hover) |
 | `ctl bclick X Y` / `ctl brclick X Y` | Left / right click |
+| `ctl bwheel X Y N [MOD]...` | Turn the wheel N notches over X, Y (N > 0 down, < 0 up) |
 | `ctl bkey NAME [N]` | A key press: `ESCAPE`, `ENTER`, `SPACE`, `TAB`, `BACK`, `F1`-`F12`, `A`-`Z`, `0`-`9`, `UP`, ... |
+| `ctl bcombo MOD... KEY` | A key with modifiers held (`bcombo CTRL SHIFT U`): only works while the window is active, see below |
 | `ctl btype TEXT` | Type lowercase letters, digits, space, `-`, `.`, `/` |
 
 - **Move before you click.** The first click on a control sometimes only updates hover. `bmove` a few pixels away,
   wait half a second, then `bclick`.
-- **No modifier keys.** Ctrl, Shift and Alt cannot be held: Shift+click and Ctrl+click are out of reach, and typed
-  text has no capitals or Shift characters. If the person at the PC holds Shift while you type, letters can come out
-  as capitals.
-- **No drags and no mouse wheel** in the background. Test scrolling with code (set a scroll position, read it back)
-  or ask the user to scroll.
+- **No modifier keys in the background.** The game clears its own Ctrl, Shift and Alt flags on every frame its
+  window is not the active one (`Display.isActive()`, in its input code), so a chord sent to a background window
+  arrives without them, whatever is sent; LWJGL also drops a Shift the physical keyboard does not hold. Shift+click,
+  Ctrl+click and shortcuts such as Ctrl + Shift + U are out of reach behind other windows, and typed text has no
+  capitals or Shift characters. Reach those states another way (a console command, a debug key without a modifier),
+  or ask the user to press the chord in a `--front` game. If the person at the PC holds Shift while you type,
+  letters can come out as capitals.
+- **No drags** in the background. The wheel works (`hot.sh wheel`, `ctl bwheel`); the plain wheel only, since Shift
+  is out of reach.
 - Number keys pick options in an interaction dialog (`bkey 2`).
 
 ## Captures
@@ -143,12 +174,11 @@ bash "$HOT" console 'runcode Console.showMessage("" + Global.getSector().getPlay
 
 ## Finding where to click
 
-- Measure on a capture: capture pixels are client pixels.
-- A StarUI panel can tell you exactly: `panel.dumpLayout()` lists every component's size and position relative to the
-  panel's top left, y down. Dumped from a `StarUIPlugin` screen panel (full screen, at 0, 0) at UI scale 100%, the
-  positions are capture pixels: click at `x + width / 2, y + height / 2`. Log the dump
-  (`Global.getLogger(MyClass::class.java).info(panel.dumpLayout())`, for example from a debug key handler or
-  `Modifier.onFirstLayout { }`) and read it in the work folder's `logs/starsector.log`.
+- By name: `hot.sh find TEXT` gives the click point; `hot.sh click TEXT` clicks it ([Input](#input)).
+- Something without text (an icon, an empty slot): find a labelled neighbour or its row by key, and measure from
+  its position, or measure on a capture (capture pixels are client pixels).
+- In code inside the game, StarUI's `findAll { }` on any panel gives the same results as objects (`isShown`,
+  `visibleCenterX`, `path`).
 
 ## Waiting
 
@@ -172,7 +202,7 @@ Set states from code where clicks cannot reach them (a debug key that fills a li
 
 ## Limits
 
-- One click target at a time: no drag, wheel or modifier keys (above).
+- One click target at a time: no drag, and no modifier keys behind other windows (above).
 - `newgame` and `continue` click fixed positions of the 1600x900 window with no mods that change the title or new
   game screens. With such mods, measure on a capture and use `ctl`.
 - The game's F12 screenshot key does not save a file from a background key press. Use `shot`.

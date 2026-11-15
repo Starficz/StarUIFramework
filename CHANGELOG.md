@@ -21,6 +21,9 @@ First release, an alpha: the API may still change before 1.0.0.
   and showToast. Modifier.fitVanillaDialog() sizes vanilla's own dialogs to StarUI content.
 - Screens through StarUIPlugin: title screen, campaign, combat, and the refit, fleet, cargo, character, intel,
   map and outposts tabs. inject() adds UI to any other vanilla panel from a PatchLib hook.
+- Testing and debugging: dumpLayout() and findAll() read any panel's tree (vanilla's too, holo and dialog content
+  included) with positions and whether each component is shown; StarUITesting turns animations off for scripted
+  tests.
 - KDoc on the whole public API, shipped as jars/StarUIFramework-sources.jar for your IDE.
 - A showcase in game: Ctrl + Shift + U on the title screen, in the campaign or in combat opens a page for every
   feature, each demo next to its code.

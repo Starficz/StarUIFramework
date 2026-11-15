@@ -98,7 +98,8 @@ class StarUIDialog internal constructor(internal val layer: StarUILayer) {
         layer.fadeIn = 0.3f
         layer.fadeOut = 0.2f
         layer.onClosing = {
-            holo?.close(FOLD_SHUT_SECONDS, flicker = if (lastWasConfirm) static.onConfirm else static.onCancel)
+            if (Layers.fadeScale <= 0f) holo?.forceClose()
+            else holo?.close(FOLD_SHUT_SECONDS, flicker = if (lastWasConfirm) static.onConfirm else static.onCancel)
         }
         layer.onKey = { event -> key(event) }
         layer.onClickOutsideContent = { event ->
@@ -352,7 +353,11 @@ private fun CustomPanelAPI.dialogWindow(
     dialog.holo = holo
     if (!dialog.opened) {
         dialog.opened = true
-        holo.forceClose()
-        holo.open(StarUIDialog.FOLD_OPEN_SECONDS, flicker = dialog.static.onOpen)
+        if (Layers.fadeScale <= 0f) {
+            holo.forceOpen()
+        } else {
+            holo.forceClose()
+            holo.open(StarUIDialog.FOLD_OPEN_SECONDS, flicker = dialog.static.onOpen)
+        }
     }
 }

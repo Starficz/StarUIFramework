@@ -3,7 +3,8 @@
 A panel is done when it was seen in the game in every state and passed the review checklist. Code that compiles
 proves nothing about alignment.
 
-Contents: [The layout as text](#the-layout-as-text) · [In the game](#in-the-game) · [States to see](#states-to-see) ·
+Contents: [The layout as text](#the-layout-as-text) · [Finding and driving](#finding-and-driving) ·
+[In the game](#in-the-game) · [States to see](#states-to-see) ·
 [Asking for screenshots](#asking-for-screenshots) · [Review checklist](#review-checklist) ·
 [2x pixel comparison](#2x-pixel-comparison) · [Reporting](#reporting)
 
@@ -38,6 +39,34 @@ Read it for:
 
 The dump is cheap evidence, not the result: the look still needs a capture.
 
+## Finding and driving
+
+One way to find things and one way to press them, for vanilla UI and StarUI alike: find the component by its text or
+key, then send real input at the part of it that is shown.
+
+- **In a hot game** (no code): `hot.sh find TEXT` lists every component on screen with that text or key, shown or
+  hidden, with the pixel to click; `hot.sh click TEXT` clicks the one shown match, `hot.sh wheel TEXT N` scrolls over
+  it (starsector-hotreload's `references/driving.md`). Holo and dialog content, vanilla's title menu and dialogs, and
+  vanilla's panel-drawn buttons (intel rows, filter chips) are all reached.
+- **In code inside the game** (a test, a debug key): `findAll { }` and `find { }` on any panel give the same results
+  as `FoundComponent`s: `kind`, `text`, `key`, `left`/`top`/`width`/`height` on the screen (y down), `isShown`,
+  `visibleCenterX`/`visibleCenterY` (where a click lands), `path`, `parent`, and `findAll` again inside one:
+
+  ```kotlin
+  val screen = Global.getSettings().screenPanel
+  val row = screen.find { it.key == ship.id }                    // a keyed row
+  val learn = row?.find { it.kind == "Button" && it.text == "Learn" }
+  check(learn != null && learn.isShown) { "Learn is not on screen" }
+  ```
+
+  `isShown` covers clipping and scrolling containers, the screen's edge and opacity (a closed holo, a faded layer);
+  not what is drawn over the component. Press it with real input at `visibleCenterX`, `visibleCenterY`, so a window
+  over it takes the click as it would the player's.
+- **Windows in a scripted test**: `StarUITesting.instantAnimations = true` makes layers, dialogs and toasts open and
+  close at once (no fades, folds or slides to wait out); `StarUITesting.windowHost = panel` opens them on a panel of
+  the test's own (before any screen exists, or to keep them inside it; windows then never pause the game).
+  `StarUITesting.reset()` when the test ends. Not for release code.
+
 ## In the game
 
 The `starsector-hotreload` skill ships with StarUI: a game that stays open, swaps every rebuilt jar in, and is driven
@@ -60,8 +89,10 @@ exception stops the game with a "Fatal" box: `hot.sh stop`, fix, `hot.sh start`,
 itself next to the mod:
 `start ... --dep "<StarUIFramework folder>" --dep-jar <fresh build>`.
 
-Your own checks run behind the user's windows: start with no option and drive only with `ctl`'s background
-commands (`bclick`, `bmove`, `bkey`, `btype`); they never focus the game or move the user's mouse. `hot.sh stop`
+Your own checks run behind the user's windows: start with no option and drive with `hot.sh click`, `wheel` and
+`ctl`'s background commands (`bclick`, `bmove`, `bwheel`, `bkey`, `btype`); they never focus the game or move the
+user's mouse. Chords (Ctrl, Shift, Alt) do not reach a game behind other windows: the game drops modifiers while its
+window is inactive. `hot.sh stop`
 once the captures are read. Start with `--front` only for a live review the user watches, and leave the game open
 only when you hand it to them.
 

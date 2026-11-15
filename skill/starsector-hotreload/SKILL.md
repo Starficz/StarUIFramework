@@ -103,7 +103,10 @@ fixed per project (`hot.sh dir`): game log in `logs/`, captures in `captures/`, 
 
 | Command | Does |
 |---|---|
-| `hot.sh ctl CMD ARGS` | Background input, and only that: `bmove X Y`, `bclick X Y`, `brclick X Y`, `bkey NAME [N]`, `btype TEXT` |
+| `hot.sh find TEXT [--kind K] [--contains]` | List every component on screen, vanilla's and StarUI's, whose text or StarUI key is TEXT: kind, size, position, `shown` or `hidden` (scrolled away, clipped, off screen, transparent), the capture pixel a click lands on, its path. Reaches holo and dialog content and panel-drawn buttons (intel rows, filter chips). Needs StarUI in the game (`--with staruiframework` for a mod without it) |
+| `hot.sh click TEXT [--kind K] [--contains] [--right]` | `find`, then a background click on the one shown match: real input, so whatever covers it takes the click, as for the player. `NOT_FOUND`, `NOT_SHOWN` or `AMBIGUOUS` (with the matches) instead of guessing |
+| `hot.sh wheel TEXT NOTCHES [--kind K] [--contains]` | `find`, then turn the mouse wheel over the match (NOTCHES > 0 down, < 0 up) |
+| `hot.sh ctl CMD ARGS` | Background input by coordinates, and only that: `bmove X Y`, `bclick X Y`, `brclick X Y`, `bwheel X Y N`, `bkey NAME [N]`, `btype TEXT`, `bcombo MOD... KEY` (see [driving.md](references/driving.md#input) for why chords do nothing in the background) |
 | `hot.sh shot [NAME]` | Capture the game window to `captures/NAME.png` and print the path |
 | `hot.sh wait [PATTERN] [S]` | Wait until the game log matches a pattern, or goes quiet |
 | `hot.sh newgame` | From the title screen: a new small-sector game (mercenary start, no tutorial); ends `IN_CAMPAIGN` once saved |
@@ -165,7 +168,7 @@ absent.
 
 | Path | Purpose |
 |---|---|
-| `scripts/hot.sh` | Entry point: `setup`, `start`, `reload`, `ctl`, `shot`, `wait`, `newgame`, `continue`, `campaign`, `console`, `dump`, `status`, `log`, `dir`, `stop` |
+| `scripts/hot.sh` | Entry point: `setup`, `start`, `reload`, `ctl`, `shot`, `wait`, `newgame`, `continue`, `campaign`, `console`, `dump`, `find`, `click`, `wheel`, `status`, `log`, `dir`, `stop` |
 | `scripts/hot-game.sh` | The session `start` runs: stages the mods, builds the mod set, launches, waits for the game to exit |
 | `scripts/launch-game.sh` | Starts the game against the work folder: classpath, Fast Rendering, prefs from memory, cursor guard |
 | `scripts/stage-mod.sh`, `make-modset.sh`, `find-mod.sh` | Copies of the mod's jars (the game never locks a build), the isolated mods folder, installed mods by id |

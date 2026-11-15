@@ -9,6 +9,8 @@
 //   gamectl bclick <x> <y>            send a left click
 //   gamectl brclick <x> <y>           send a right click
 //   gamectl bkey <name> [count]       send a key press (ESC, ENTER, SPACE, TAB, BACK, F1-F12, A-Z, 0-9, UP, ...)
+//   gamectl bcombo <mod>... <name>    press a key while holding one or more of CTRL, SHIFT, ALT (bcombo CTRL SHIFT U)
+//   gamectl bwheel <x> <y> <n> [mod]...  turn the wheel n notches over x, y (n > 0 down, < 0 up), mods held
 //   gamectl btype <text>              type lowercase letters, digits, space, '-', '.', '/' (no Shift characters)
 //   gamectl hide [seconds]            for the given time, push any window of the GAMECTL_PID game (a crash box
 //                                     included) behind other windows whenever it comes to the front, and give
@@ -188,6 +190,8 @@ static class GameCtl
 
     const uint WM_KEYDOWN = 0x100, WM_KEYUP = 0x101, WM_CHAR = 0x102, WM_MOUSEMOVE = 0x200;
     const uint WM_LBUTTONDOWN = 0x201, WM_LBUTTONUP = 0x202, WM_RBUTTONDOWN = 0x204, WM_RBUTTONUP = 0x205;
+    const uint WM_MOUSEWHEEL = 0x20A;
+    const int WHEEL_DELTA = 120;
 
     static IntPtr XY(int x, int y) { return (IntPtr)((y << 16) | (x & 0xFFFF)); }
 
@@ -261,15 +265,40 @@ static class GameCtl
             }
             case "bcombo":
             {
-                ushort mod = Vk(a[1]), vk = Vk(a[2]);
-                BgKey(h, mod, false);
-                Thread.Sleep(60);
+                // every name but the last is held (CTRL SHIFT U: Ctrl + Shift + U), released in reverse order
+                if (a.Length < 3) throw new Exception("bcombo needs at least one modifier and a key: bcombo CTRL SHIFT U");
+                var held = new ushort[a.Length - 2];
+                for (int i = 0; i < held.Length; i++) held[i] = Vk(a[i + 1]);
+                ushort vk = Vk(a[a.Length - 1]);
+                foreach (ushort m in held) { BgKey(h, m, false); Thread.Sleep(60); }
                 BgKey(h, vk, false);
                 Thread.Sleep(60);
                 BgKey(h, vk, true);
                 Thread.Sleep(60);
-                BgKey(h, mod, true);
-                Thread.Sleep(90);
+                for (int i = held.Length - 1; i >= 0; i--) { BgKey(h, held[i], true); Thread.Sleep(60); }
+                Thread.Sleep(30);
+                return 0;
+            }
+            case "bwheel":
+            {
+                // bwheel X Y NOTCHES [MOD...]: NOTCHES > 0 scrolls down (towards a list's end), < 0 up; MODs are held
+                // while it turns (SHIFT: vanilla's horizontal wheel). The mouse moves there first: the game takes the
+                // wheel's position from its last mouse move
+                int x = int.Parse(a[1]), y = int.Parse(a[2]), notches = int.Parse(a[3]);
+                var held = new ushort[Math.Max(0, a.Length - 4)];
+                for (int i = 0; i < held.Length; i++) held[i] = Vk(a[i + 4]);
+                Post(h, WM_MOUSEMOVE, 0, XY(x, y));
+                Thread.Sleep(80);
+                foreach (ushort m in held) { BgKey(h, m, false); Thread.Sleep(60); }
+                var screen = ToScreen(h, x, y);
+                int step = notches > 0 ? -WHEEL_DELTA : WHEEL_DELTA;
+                for (int i = 0; i < Math.Abs(notches); i++)
+                {
+                    Post(h, WM_MOUSEWHEEL, step << 16, XY(screen.X, screen.Y));
+                    Thread.Sleep(60);
+                }
+                for (int i = held.Length - 1; i >= 0; i--) { BgKey(h, held[i], true); Thread.Sleep(60); }
+                Thread.Sleep(60);
                 return 0;
             }
             case "btype":

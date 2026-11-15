@@ -7,7 +7,6 @@ import org.starficz.starui.modifier.PaddingValues
 import org.starficz.starui.runtime.childNode
 import org.starficz.starui.runtime.nodeOf
 import org.starficz.starui.runtime.StarUIPanelPlugin
-import org.starficz.starui.vanilla.getChildrenNonCopy
 
 /**
  * Returns the UI tree below this component as indented text, one line per component: what it is, its text, its
@@ -88,39 +87,8 @@ private fun dumpNode(node: UIComponentAPI, root: UIComponentAPI, parentPlugin: S
     }
     out.append('\n')
 
-    when (node) {
-        // native widgets: their inner parts are engine details, not layout
-        is LabelAPI, is ButtonAPI, is TextFieldAPI -> return
-        is ScrollPanelAPI -> {
-            if (inner != null) {
-                for (child in inner.panel.getChildrenNonCopy()) dumpNode(child, root, inner, depth + 1, out)
-                return
-            }
-            val content = node.contentContainer ?: return
-            val contentPlugin = StarUIPanelPlugin.getAttached(content)
-            for (child in content.getChildrenNonCopy()) dumpNode(child, root, contentPlugin, depth + 1, out)
-        }
-        is UIPanelAPI -> for (child in node.getChildrenNonCopy()) dumpNode(child, root, plugin, depth + 1, out)
-    }
-    // content the component draws itself, outside the tree: a Holo's (and so a Dialog's) content
-    plugin?.ownedOutsideTree?.forEach { dumpNode(it, root, plugin, depth + 1, out) }
-}
-
-private fun fallbackKind(node: UIComponentAPI): String = when (node) {
-    is LabelAPI -> "Label"
-    is TextFieldAPI -> "TextField"
-    is ButtonAPI -> "Button"
-    is ScrollPanelAPI -> "ScrollPanel"
-    is CustomPanelAPI -> "CustomPanel"
-    is UIPanelAPI -> "Panel"
-    else -> "Component"
-}
-
-private fun textOf(node: UIComponentAPI): String? = when (node) {
-    is LabelAPI -> node.text
-    is TextFieldAPI -> node.text
-    is ButtonAPI -> node.text
-    else -> null
+    // the same children findAll walks: panels, scroll content, a Holo's content held outside the tree
+    walkChildrenOf(node, plugin) { child, childPlugin -> dumpNode(child, root, childPlugin, depth + 1, out) }
 }
 
 private fun describe(size: NodeSize): String = "(" + describe(size.width) + ", " + describe(size.height) + ")"

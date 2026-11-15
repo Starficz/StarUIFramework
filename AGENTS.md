@@ -19,7 +19,8 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
   `jars/StarUIFramework-sources.jar` to the library for the KDoc in the IDE.
 - Imports live in five packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `TextOverflow`,
   `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `Anchor`, `UIState`, `mutableStateOf`, `StarUITheme`, `StarUIManager`,
-  `StarUIPlugin`, `inject`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`), `.components`
+  `StarUIPlugin`, `inject`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`, `findAll`,
+  `find`, `FoundComponent`, `StarUITesting`), `.components`
   (Column, Text, ..., `FilterGroup`, `RadioGroup`, `key`), `.window` (windows over a screen: `Layer`, `showLayer`,
   `StarUILayer`, `Dialog`, `showDialog`, `StarUIDialog`, `DialogStatic`, `showToast`, `StarUIToast`), `.modifier` (Modifier and its extensions,
   `PaddingValues`) and `.vanilla` (Font, ButtonFont, VanillaColors, HoloBackground, the `Boxed*` types, and the
@@ -415,6 +416,15 @@ Column {
   StarUI panel on screen as `dumpLayout` text (`runtime/DebugDump.kt`), between `StarUI dump <id>: ...` and
   `StarUI dump <id> end`. `hot.sh dump` sets it through the hot-reload agent and prints the block; a test inside the
   game sets it itself. Without the property it costs one clock read per frame.
+- **Finding** (`Find.kt`): `panel.findAll { }` / `find { }` walk the tree the way `dumpLayout` does
+  (`walkChildrenOf`: panels, scroll content, StarUI's `ownedOutsideTree`, any vanilla holo's `getCurr()` / `getNext()`
+  content, a panel-drawn button's `getButtonPanel()`; a visited set guards against loops) and return
+  `FoundComponent`s: kind, text, key, screen position (top left, y down), `isShown` (clipping and scrolling
+  ancestors, the screen, opacity times fader brightness, a holo's fold), `visibleCenterX/Y`, `path`. The property
+  `starui.find` = `<id>\t<kind>\t<exact|contains>\t<text>` logs the matches with click pixels (`DebugDump.find`):
+  `hot.sh find`, `click` and `wheel` drive the game by name with it. Tests: `find-*`.
+- **Testing switches** (`Testing.kt`): `StarUITesting.instantAnimations` (layer and dialog fades, dialog folds,
+  toast slides at once; `Layers.fadeScale`) and `windowHost` (`Layers.testHost`), `reset()`.
 - **Preview** a piece of UI in the real game renderer, without playing. From `StarUIFramework/`:
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\run-test-suite.ps1 -Preview example -OutDir <new empty dir>

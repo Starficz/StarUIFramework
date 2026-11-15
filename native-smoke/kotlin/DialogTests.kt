@@ -13,14 +13,12 @@ import org.starficz.starui.vanilla.children
 import org.starficz.starui.window.*
 
 private fun TestContext.withDialogsOnRoot(body: () -> Unit) {
-    val oldScale = Layers.fadeScale
-    Layers.testHost = root
-    Layers.fadeScale = 0f
+    StarUITesting.windowHost = root
+    StarUITesting.instantAnimations = true
     try {
         body()
     } finally {
-        Layers.testHost = null
-        Layers.fadeScale = oldScale
+        StarUITesting.reset()
     }
 }
 

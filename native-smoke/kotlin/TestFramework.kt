@@ -243,6 +243,7 @@ object StarUITestSuite {
         registerLayerTests()
         registerDialogTests()
         registerToastTests()
+        registerFindTests()
         registerToastRecipeTests()
         registerHotReloadTests()
         registerImageSizeTests()
