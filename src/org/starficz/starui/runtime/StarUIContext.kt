@@ -57,6 +57,9 @@ internal object StarUIContext {
         return Pair(frame.id, frame.emitted++)
     }
 
+    /** Above 0 while a TooltipMakerPanel's content runs: StarUI components cannot be made there. */
+    var tooltipContentDepth = 0
+
     /** Runs [block] with read tracking off: UIState reads inside it do not subscribe the scope being built. */
     inline fun <R> untracked(block: () -> R): R = withScope(null, block)
 

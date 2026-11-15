@@ -98,8 +98,24 @@ internal class Scope(
         layerSlots?.afterBuild()   // layers this run left out close
     }
 
+    /**
+     * When set, a change to a state this scope read calls this instead of queueing a rebuild: for content that is not
+     * a builder's children (a TooltipMakerPanel's block, run at layout time), which knows itself how to be made again.
+     */
+    var onDirty: (() -> Unit)? = null
+
+    /**
+     * Runs [block] recording its state reads in place of the ones recorded before: for a scope with [onDirty], whose
+     * block runs outside [build].
+     */
+    fun <R> trackReads(block: () -> R): R {
+        unsubscribe()
+        return StarUIContext.withScope(this, block)
+    }
+
     fun markDirty() {
         if (disposed) return
+        onDirty?.let { it(); return }
         if (!dirty) {
             dirty = true
             dirtyScopes.add(selfRef)

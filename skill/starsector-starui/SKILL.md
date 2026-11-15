@@ -47,10 +47,12 @@ passes. A panel that is rich but has one clipped label does not.
 ## Tell the user what you can do
 
 The first time you work on UI in a conversation, end your first message about it with this list. Leave out a line
-the session cannot do. Do not wait for an answer: work with the defaults.
+the session cannot do. Its first line is a question: wait for that answer before drawing boards or writing UI code
+(read the project's notes first: a recorded answer counts). The other lines are defaults: do not wait for them.
 
 > What I can do on this UI. Say the word for any of it:
-> - **Mockup first** (on): boards at game pixel size, for your go before any code.
+> - **Mock up first, or build directly?** Boards at game pixel size for your go before any code, or straight to
+>   code with the result shown in game for your go. Which do you want?
 > - **Before and after** (on): every change to existing UI as a pair, side by side.
 > - **Text list** (on): every text I wrote for the player, for your approval.
 > - **Experiment** (on when you are unhappy with something and name no fix): three different solutions for one
@@ -74,7 +76,9 @@ and what they switched off). Show it again when the user asks what you can do. A
 4. **Pick the parts** from [parts.md](references/parts.md) and the buttons from
    [buttons.md](references/buttons.md), vanilla's unless the user asked otherwise. Do not invent a widget when a
    listed part fits.
-5. **Mock up and get approval before writing code** ([mockups.md](references/mockups.md)): boards from the bundled
+5. **Mock up and get approval before writing code**, when the user chose mockups (the notice's question). When
+   they chose to build directly, skip the boards: build, capture the result in game, and get the approval on the
+   captures; the content list, host and parts above still apply. With mockups ([mockups.md](references/mockups.md)): boards from the bundled
    generator, no layout warnings, PNGs looked at, then shown; wait for the go. A change to existing UI is shown as
    before and after pairs; every invented text goes on a text board. Skip only when the user says so, or when the
    change keeps an approved layout (a label, a colour, a bug fix).
@@ -147,8 +151,13 @@ StarUI:
 17. **Sizes are the `size` argument**; clipping and scrolling the container's `overflow`; anchors only inside a
     `CustomPanel`.
 18. **No obfuscated names** in mod code: not in imports, casts, reflection strings or PatchLib matchers.
-19. **No TooltipMakerAPI content in the DSL.** StarUI wraps the vanilla pieces it supports as components;
-    `TooltipMakerAPI` belongs inside `Modifier.tooltip { }` (and the confirm popup's text) only.
+19. **Build it in StarUI; `TooltipMakerPanel` is a last resort.** Nearly everything is doable with StarUI's own
+    components: text with highlights (`Text(highlightedText = ...)`), headings (`SectionHeading`), tables (`Table`),
+    buttons, images, the vanilla ports (`StatGrid`, `ShipList`, ...). Use `TooltipMakerPanel { width -> ... }` only
+    when it really is the simplest choice: vanilla content with no StarUI component and no simple StarUI build (a
+    mod's helper that fills a tooltip, a TooltipMakerAPI call StarUI has no port of). It cannot hold StarUI
+    components, loses its content's state when made again, and sits outside StarUI's reuse. Hover tooltips stay
+    `Modifier.tooltip { }`; never `createUIElement` / `addUIElement` by hand next to StarUI.
 20. **Kotlin against LazyLib's Kotlin runtime** (LazyLib 3.1: Kotlin 2.4.21): a Kotlin compiler 2.3 or newer, and
     `-api-version` no higher than 2.4.
 21. **Seen in game, or not done.** Never write "tested" for code that only compiled.

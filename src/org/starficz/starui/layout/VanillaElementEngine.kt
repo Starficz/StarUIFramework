@@ -16,7 +16,7 @@ import org.starficz.starui.runtime.StarUIPanelPlugin
  * laid out once at a fixed size: a sector map, a planet), and made again when either side changes. Such a container
  * has a bounded size, so measuring it makes nothing.
  */
-internal class VanillaElementEngine(private val plugin: StarUIPanelPlugin) : LayoutEngine {
+internal class VanillaElementEngine(internal val plugin: StarUIPanelPlugin) : LayoutEngine {
     /** A fixed width to build at, or null to build at the width the container is given. */
     var fixedWidth: Float? = null
     /** The width to build at when the room is unbounded and there is no fixed width. */

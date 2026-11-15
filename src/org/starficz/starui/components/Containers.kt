@@ -49,6 +49,11 @@ internal fun getInitialBounds(
  * panel) would silently disappear on the next rebuild. Fail at the call instead, and say what to do.
  */
 internal fun UIPanelAPI.checkDslTarget() {
+    if (StarUIContext.tooltipContentDepth > 0) throw IllegalStateException(
+        "StarUI: a StarUI component was called inside a TooltipMakerPanel's content. That block fills a vanilla " +
+        "tooltip with TooltipMakerAPI calls (addPara, addButton, ...); StarUI components there would not take part " +
+        "in its layout. Put them around the TooltipMakerPanel, in the builder that calls it."
+    )
     val target: UIPanelAPI = (this as? ScrollPanelAPI)?.contentContainer ?: this
     val plugin = StarUIPanelPlugin.getAttached(target) ?: return
     val scope = plugin.scope ?: return

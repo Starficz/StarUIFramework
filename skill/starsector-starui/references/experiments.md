@@ -19,6 +19,7 @@ Sort every change request on existing UI (a board or a built panel) before you t
 | A concrete instruction: "move Recall into the ship strip", "make it 120 px", "drop the bar" | Do it as asked, show the pair, and offer once in one line: `Say "experiment" and I draw three other ways to do this.` Offer only for changes of place, structure or picture, not for a label or a colour. |
 | A complaint without a solution: "looks lost", "muddled", "not legible", "too much", "doesn't work", "meh" | Run a round. Do not ask first. |
 | An invitation: "ideas?", "experiment", "try things", "be radical", "what else could this be?" | Run a round. For "be radical" drop the safe slot and draw two bold ones. |
+| "Make it more vanilla", "doesn't look vanilla", "feels like mod UI" | Run a round, on the structure, not a tweak pass of fonts, buttons and sizes: each variant takes a different vanilla screen as its model ([gallery.md](gallery.md)) and rebuilds the block the way that screen lays out the same content. Bigger icons or vanilla's fonts on the same layout is not a variant. |
 | The same element rejected a second time | Run a round. Stop adjusting. |
 | A note that can be read two ways | Draw both readings and ask. This is not a round. |
 

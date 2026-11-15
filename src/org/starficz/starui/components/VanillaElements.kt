@@ -1,5 +1,6 @@
 package org.starficz.starui.components
 
+import com.fs.starfarer.api.campaign.BaseCustomUIPanelPlugin
 import com.fs.starfarer.api.campaign.CargoAPI
 import com.fs.starfarer.api.campaign.econ.CommoditySpecAPI
 import com.fs.starfarer.api.campaign.FactionAPI
@@ -16,8 +17,11 @@ import com.fs.starfarer.api.ui.TooltipMakerAPI.TooltipLocation
 import org.starficz.starui.BoundedSize
 import org.starficz.starui.layout.VanillaElementEngine
 import org.starficz.starui.modifier.Modifier
+import org.starficz.starui.runtime.Scope
+import org.starficz.starui.runtime.StarUIContext
 import org.starficz.starui.Size
 import org.starficz.starui.StarUIDsl
+import org.starficz.starui.UIState
 import org.starficz.starui.vanilla.*
 import java.awt.Color
 
@@ -92,6 +96,84 @@ private inline fun UIPanelAPI.VanillaHolder(
     modifier.operations.forEach { it(panel) }
     engine.update(inputs)
     return panel
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Any tooltip content
+// ---------------------------------------------------------------------------------------------------------------
+
+/** What a TooltipMakerPanel's latest call asked for, read by content made by an earlier call. */
+private class TooltipMakerPanelState(var onButtonClick: ((data: Any?) -> Unit)?)
+
+/**
+ * A component whose content is made with vanilla's [TooltipMakerAPI]: a last resort, for when it really is the
+ * simplest choice. Most things are doable with StarUI's own components, and better there (text with highlights is
+ * [Text] with `highlightedText`, headings [SectionHeading], tables [Table], stat blocks [StatGrid]); use this for
+ * vanilla content with no StarUI component and no simple StarUI build, such as a mod's helper that fills a tooltip or
+ * a TooltipMakerAPI call StarUI has no port of. [content] gets a fresh tooltip [width][content] wide (the width the panel has room for) and
+ * fills it from the top as vanilla does; the panel is as tall as what was added (`heightSoFar`).
+ *
+ * Vanilla lays tooltip content out once, at one width, so the content is made again (with [content] run again on a
+ * new tooltip) whenever:
+ * - the width it gets changes;
+ * - a [UIState] that [content] read changes: the reads are tracked as in a builder, but only this content is made
+ *   again, not the builder around it;
+ * - the builder around it runs again, unless [inputs] is given and equals the last call's (pass what the content
+ *   shows, as a fresh snapshot: a list, a data class).
+ *
+ * Anything that lives in the content (a text field's caret, a scroll position) is lost when it is made again, and
+ * [content] may run more than once per layout while the panel's width settles: keep it free of side effects.
+ *
+ * Buttons made with `addButton` call [onButtonClick] with their data; `onClick { }` from the vanilla toolkit works
+ * on a returned [ButtonAPI] too. StarUI components cannot be called inside [content]: build those around the panel.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * val danger = UIState(2)
+ * TooltipMakerPanel(Size.fillMaxWidth()) { width ->
+ *     addTitle("Survey")
+ *     addPara("Hazard rating: %s", 10f, VanillaColors.highlight, "${100 + 25 * danger.value}%")
+ *     addButton("Send probe", "probe", width / 2, 25f, 10f)
+ * }
+ * ```
+ *
+ * @param size the size of the [TooltipMakerPanel]: wrap (the default) takes the width there is room for (300 when
+ *   unbounded) and the content's height
+ * @param modifier the [Modifier] to be applied to this panel
+ * @param inputs what the content shows, to keep it when the builder runs again with equal inputs; `null` (the
+ *   default) makes it again on every run of the builder
+ * @param onButtonClick called with a button's data when a button made by `addButton` in [content] is clicked
+ * @param content fills the tooltip; gets the width it is made at
+ * @return the panel holding the tooltip
+ */
+fun UIPanelAPI.TooltipMakerPanel(
+    size: Size = Size.wrapContent(),
+    modifier: Modifier = Modifier,
+    inputs: Any? = null,
+    onButtonClick: ((data: Any?) -> Unit)? = null,
+    content: TooltipMakerAPI.(width: Float) -> Unit
+): CustomPanelAPI = VanillaHolder("TooltipMakerPanel", size, modifier, inputs) { engine ->
+    val plugin = engine.plugin
+    val state = (engine.callerState as? TooltipMakerPanelState)?.also { it.onButtonClick = onButtonClick }
+        ?: TooltipMakerPanelState(onButtonClick).also { engine.callerState = it }
+    // the content's state reads make it again, without running the builder around it (which would throw it away)
+    val reads = plugin.scope?.takeIf { !it.disposed && it.onDirty != null }
+        ?: Scope(plugin, StarUIContext.currentTheme, "TooltipMakerPanel", content.javaClass.name.substringBefore("$$"), builder = {})
+            .also { it.onDirty = { engine.invalidate() }; plugin.scope = it }
+    val buttons = object : BaseCustomUIPanelPlugin() {
+        override fun buttonPressed(buttonId: Any?) { state.onButtonClick?.invoke(buttonId) }
+    }
+    engine.build = { width ->
+        reads.trackReads {
+            StarUIContext.tooltipContentDepth++
+            try {
+                buildTooltipBlock(width, buttons) { content(width) }
+            } finally {
+                StarUIContext.tooltipContentDepth--
+            }
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------------

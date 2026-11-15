@@ -124,6 +124,40 @@ objects (`StatModGrid`, `ShipList`, `FleetSummary`, `SkillPanel`, a faction or p
 `CostDisplay(withAvailable = true)`, the planet, cargo, event and map ones) are made again on every call. `CostDisplay`,
 the faction or person `RelationshipBar` and the campaign ones need a campaign.
 
+### TooltipMakerPanel: a last resort
+
+Use it only when it really is the simplest choice. Most things are doable in StarUI, and better there: text with
+highlights is `Text(highlightedText = ...)`, headings `SectionHeading`, tables `Table`, buttons `Button`, stat blocks
+`StatGrid`. A `TooltipMakerPanel` is for vanilla content with no StarUI component and no simple StarUI build: a mod's
+helper that fills a tooltip, a TooltipMakerAPI call StarUI has no port of. Its content cannot hold StarUI components,
+is thrown away and made again on every change, and takes no part in StarUI's reuse or theme.
+
+`TooltipMakerPanel(size, modifier, inputs, onButtonClick) { width -> ... }` holds such content: the block fills a fresh `TooltipMakerAPI` `width` wide from the top (`addPara` with highlights,
+`addTitle`, `beginTable`, `addImageWithText`, a mod's helper that takes a tooltip), and the panel is as tall as what
+was added. It lays out like the ports above:
+
+- wrap (the default) takes the width there is room for (300 when unbounded) and the content's height;
+- the content is made again (the block runs again on a new tooltip) when its width changes, when a `UIState` the
+  block read changes (only the content, not the builder around it), and when the builder around it runs again,
+  unless `inputs` is given and equal to the last call's;
+- anything living in the content (a caret, a scroll position) is lost when it is made again, and the block may run
+  more than once while the width settles: no side effects in it;
+- `addButton` buttons call `onButtonClick` with their data; `onClick { }` (from `vanilla`) works on a returned
+  button too;
+- StarUI components cannot be called inside the block (it throws): put them around the panel.
+
+```kotlin
+val hazard = UIState(2)
+Column(Size.fillMaxWidth(), spacing = 6f) {
+    TooltipMakerPanel(Size.fillMaxWidth(), onButtonClick = { if (it == "probe") sendProbe() }) { width ->
+        addTitle("Survey")
+        addPara("Hazard rating: %s", 10f, VanillaColors.highlight, "${100 + 25 * hazard.value}%")
+        addButton("Send probe", "probe", width / 2, 25f, 10f)
+    }
+    Button("Close") { close() }
+}
+```
+
 ## What a call returns
 
 The vanilla object itself where the API has a type for it: `Text` a `LabelAPI`, `Button` a `ButtonAPI`, containers
@@ -193,7 +227,7 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 
 `.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel or AnchorPanel), `.background(color)`,
 `.border(...)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`, `.onClickRelease`, `.onClickOutside`,
-`.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`, `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`,
+`.onHover`, `.onHoverEnter`, `.onHoverExit`, `.hoverState(state)`, `.onMouseHeld`, `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`,
 `.hitBoxPadding(...)`, `.onAdvance { amount -> }`, `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`,
 `.onLayout { }` (after every layout pass), `.onFirstLayout { }`, `.onPositionChanged { position -> }`,
 `.fitVanillaDialog()` (sizes the vanilla dialog it sits in to it: [setup.md](setup.md#panels-vanilla-hands-you)),
@@ -202,6 +236,15 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
 - `a then b` joins two modifiers: a component of your own adds its look to the caller's `modifier`
   (`Modifier.border() then modifier`).
 - Modifiers are not order-sensitive (unlike Compose).
+- **Modifiers are applied again every time the call that makes the component runs.** A reused component drops the
+  handlers its last call set and takes the new call's, so a modifier built from a state follows it when the
+  builder that makes the component reads it:
+  `Box(size, Modifier.background(if (selected.value) VanillaColors.dark else Color.BLACK)) { ... }`. Read the state
+  in that builder, not inside the modifier's lambda: a read in a render callback never subscribes (it does see the
+  current value each frame, so `onRenderBelow { }` reading `peek()` is the way for a look that changes every frame
+  without a rebuild).
+- `.hoverState(hovered)` keeps a `UIState<Boolean>` true while the cursor is over the component: the
+  `onHoverEnter` / `onHoverExit` pair in one call. Read it in the builder for a hover look.
 - They work on every component, vanilla ones included, because they attach to the native object.
 - Input handlers receive the event (`{ event -> }`) and may ignore it.
 - The render and lifecycle handlers run on the component's `StarUIPanelPlugin`, whose `x`, `y`, `width`, `height`,
@@ -223,6 +266,16 @@ mouse input) takes the same shapes. `PaddingValues` holds padding as a value (`P
   `Holo`.
 - **A border takes space**, like CSS: its depth is added to the padding on every side, so `padding` is the gap inside
   the border. A wrapping axis grows by it; an exact or fill axis keeps its size and the content gets less room.
+  Children's `align` and `margin` are measured from inside the border, so give the gap you want inside it:
+
+  ```kotlin
+  Box(Size.exact(300f, 80f), Modifier.border().padding(6f)) {
+      Text("Survey", modifier = Modifier.align(Alignment.TopLeft))      // 7 px from the outer edge: 1 border + 6
+      Button("Go", modifier = Modifier.align(Alignment.BottomRight)) { }
+  }
+  ```
+
+  A design measured from the outer edge (a mockup's 6 px) takes the border off: `padding(5f)` with a 1 px border.
 
 ## Anchors
 

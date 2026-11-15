@@ -1,5 +1,6 @@
 package org.starficz.starui.vanilla
 
+import com.fs.starfarer.api.campaign.CustomUIPanelPlugin
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.ui.LabelAPI
 import com.fs.starfarer.api.ui.TooltipMakerAPI
@@ -71,8 +72,8 @@ internal fun LabelAPI.measure(text: String): Pair<Float, Float> =
  * Builds [block] on a temporary tooltip [width] wide and returns the tooltip itself, detached and sized to what was
  * added: for vanilla content made of several components placed against each other (a bar and its markers).
  */
-internal fun buildTooltipBlock(width: Float, block: TooltipMakerAPI.() -> Unit): UIComponentAPI {
-    val tempPanel = Global.getSettings().createCustom(width, 4000f, null)
+internal fun buildTooltipBlock(width: Float, panelPlugin: CustomUIPanelPlugin? = null, block: TooltipMakerAPI.() -> Unit): UIComponentAPI {
+    val tempPanel = Global.getSettings().createCustom(width, 4000f, panelPlugin)
     val tooltip = tempPanel.createUIElement(width, 4000f, false)
     tempPanel.addUIElement(tooltip)
     tooltip.block()

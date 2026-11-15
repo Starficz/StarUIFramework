@@ -142,6 +142,10 @@ Contents: [Title line](#title-line) · [Tabs](#tabs) · [Section heading](#secti
   It is big: plan its room before choosing it (a strip of learned skills next to other content will not fit), and
   a user who asked for a compact strip will reject it on sight. For a compact strip, draw the frame yourself
   ([design-rules.md](design-rules.md): skills keep the vanilla frame).
+- **A skill's effects have a scope each, not the skill:** a `.skill` file lists every effect with its own `type`, and
+  vanilla reuses one script for several scopes. Point Defense lists `PointDefense$Level1` once as `SHIP` and once
+  as `SHIP_FIGHTERS` (the skill's `scope` / `scope2`: the piloted ship and its fighters). A list of what a skill
+  does groups its effects by type and shows a shared script once, with every scope it applies to.
 - **Storages:** a submarket's icon is its `icon` column in `data/campaign/submarkets.csv` (`graphics/factions/storage.png`
   for storage); the settings have no getter for it.
 - **Trap:** weapon icons have no single sprite (turret and barrel are separate files).

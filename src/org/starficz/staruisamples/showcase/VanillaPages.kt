@@ -24,6 +24,11 @@ private val cargo = Global.getFactory().createCargo(true).apply {
 private val cargoVersion = UIState(0)
 // end snippet
 
+// snippet: tooltip-maker
+private val hazard = UIState(2)
+private val probes = UIState(0)
+// end snippet
+
 private fun ships(vararg variants: String) =
     variants.map { Global.getSettings().createFleetMember(FleetMemberType.SHIP, it) }
 
@@ -91,6 +96,19 @@ private val stats = Page("Vanilla parts", "Stats and values",
     card("CodexEntries", "codex", "Links into the codex, as at the bottom of vanilla's tooltips.") {
         // snippet: codex
         CodexEntries("Related entries", setOf(CodexDataV2.getShipEntryId("onslaught"), CodexDataV2.getShipEntryId("eagle")))
+        // end snippet
+    }
+
+    card("TooltipMakerPanel", "tooltip-maker",
+        "A last resort for TooltipMakerAPI content StarUI has no component for; most things are better built in StarUI.") {
+        // snippet: tooltip-maker
+        TooltipMakerPanel(Size.fillMaxWidth(), onButtonClick = { if (it == "probe") probes.value++ }) { width ->
+            addTitle("Survey")
+            addPara("Hazard rating: %s. Probes sent: %s.", 10f, VanillaColors.highlight,
+                "${100 + 25 * hazard.value}%", "${probes.value}")
+            addButton("Send probe", "probe", width / 2, 25f, 10f)
+        }
+        Button("Raise the hazard") { hazard.value = (hazard.value + 1) % 5 }
         // end snippet
     }
 }

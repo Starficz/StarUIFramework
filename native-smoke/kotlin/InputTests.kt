@@ -4,7 +4,9 @@
 import com.fs.starfarer.api.ui.UIComponentAPI
 import org.lwjgl.input.Keyboard
 import org.starficz.starui.Anchor
+import org.starficz.starui.components.Box
 import org.starficz.starui.components.Button
+import org.starficz.starui.components.Column
 import org.starficz.starui.components.CustomPanel
 import org.starficz.starui.components.Text
 import org.starficz.starui.modifier.*
@@ -121,5 +123,35 @@ fun registerInputTests() {
         log("button modifier counts: $bc, vanilla onClick callbacks: $pressed")
         frame()
         screenshot("final")
+    }
+}
+
+fun registerHoverStateTests() {
+    StarUITestSuite.group("input-hover-state") {
+        // Modifier.hoverState: the onHoverEnter / onHoverExit pair into a state, read by the builder for the look
+        val hovered = org.starficz.starui.UIState(false)
+        var builds = 0
+        lateinit var box: com.fs.starfarer.api.ui.CustomPanelAPI
+        root.Column(Size.wrapContent(), Modifier.anchor(Anchor.inside.topLeft.ofParent(40f, 40f))) {
+            builds++
+            val on = hovered.value
+            box = Box(Size.exact(200f, 40f),
+                Modifier.hoverState(hovered).background(if (on) java.awt.Color(40, 80, 100) else java.awt.Color.BLACK)) {
+                Text(if (on) "hovered" else "not hovered")
+            }
+        }
+        frame()
+        val first = box
+        Input.sendList(root, Input.move(box.cx, box.cy))
+        frame()
+        expect(hovered.peek(), "moving onto the component sets the state true")
+        expect(builds == 2 && box === first, "the builder reading it runs again and keeps the component (builds $builds)")
+        screenshot("hovered")
+        Input.sendList(root, Input.move(box.cx + 5f, box.cy))
+        frame()
+        expect(hovered.peek() && builds == 2, "moving inside it changes nothing (builds $builds)")
+        Input.sendList(root, Input.move(box.position.x - 50f, box.cy))
+        frame()
+        expect(!hovered.peek() && builds == 3, "leaving sets it false and the builder runs again (builds $builds)")
     }
 }

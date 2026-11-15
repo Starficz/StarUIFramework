@@ -55,7 +55,9 @@ internal fun TextAlign.toVanilla(): com.fs.starfarer.api.ui.Alignment = when (th
  * @param color the colour of the text. `null` is vanilla's text colour
  * @param textAlign the alignment of the text within the lines of the paragraph
  * @param highlightedText parts of [text] drawn in another colour, each one a piece of the text and its colour, in
- *   the order they appear in [text]. A highlight that a cut leaves out is not drawn
+ *   the order they appear in [text]. Vanilla's label does the matching, as for `addPara` with highlights: each piece
+ *   is found after the previous one, as a whole word (bounded by spaces or punctuation), so `"1"` colours the 1 of
+ *   "Costs 1 point" and never the 1 of "10". A highlight that a cut leaves out is not drawn
  * @param overflow what happens to text wider than its room: [TextOverflow.Wrap] onto more lines, or
  *   [TextOverflow.Ellipsis], one line cut short with "..."
  * @return the vanilla label

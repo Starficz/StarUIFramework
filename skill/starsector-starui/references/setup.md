@@ -90,11 +90,39 @@ tasks.jar {
 (`"version": {"major": "3", "minor": "1", "patch": "0"}`), so a player on an older LazyLib, with an older Kotlin runtime, is told to
 update.
 
+### A Java mod
+
+StarUI is a Kotlin DSL: extension functions, builder lambdas with receivers, default arguments. From Java it is
+unusable in practice, so write the UI in Kotlin and keep the rest of the mod in Java. Both compile into the same jar
+and call each other directly.
+
+- **Java 17.** Starsector 0.98 runs on Java 17; a mod still built for Java 8 (`--release 8`, `targetCompatibility
+  1.8`) moves to 17 first. Kotlin's `jvmTarget` and Java's target must be the same (Gradle stops with
+  "Inconsistent JVM-target compatibility" otherwise).
+- **Gradle:** add the Kotlin plugin to the existing build, with the `gradle.properties` line and the `kotlin { }`
+  block above. Keep `repositories { mavenCentral() }`: the plugin resolves its build tools from it and fails
+  without. Kotlin files can sit next to the Java ones; when the sources are not in `src/main/java`, point both at
+  the same folder:
+
+  ```kotlin
+  sourceSets.main {
+      java.setSrcDirs(listOf("src"))
+      kotlin.setSrcDirs(listOf("src"))   // Kotlin and Java side by side; each sees the other's classes
+  }
+  ```
+- **IntelliJ without Gradle:** add a `.kt` file and accept "Configure Kotlin" for the module, but do not let it add
+  its own Kotlin stdlib: add LazyLib's `Kotlin-Runtime.jar` as a compile-only library instead, and set the Kotlin
+  compiler's API version as above.
+- **From Java into the UI:** a Kotlin `object` is reached through `INSTANCE`:
+  `StarUIManager.INSTANCE.registerPlugin(new MyUIPlugin());` in the Java `ModPlugin`, with `MyUIPlugin` written in
+  Kotlin. Pass game objects in through constructors or plain functions; keep `UIState` and the builders on the
+  Kotlin side.
+
 ## Imports
 
 | Package | Holds |
 |---|---|
-| `org.starficz.starui` | `Size`, `BoundedSize`, `ImageSize`, `Axis`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `AxisOverflow`, `Anchor`, `UIState`, `mutableStateOf`, `TextOverflow`, `StarUITheme` and its `*Theme` classes, `StarUIManager`, `StarUIPlugin`, `StarUIBuilder`, `inject`, `injection`, `removeInjection`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout` |
+| `org.starficz.starui` | `Size`, `BoundedSize`, `ImageSize`, `Axis`, `Alignment`, `TextAlign`, `VGrow`/`HGrow`, `ContentScale`, `Overflow`, `AxisOverflow`, `Anchor`, `UIState`, `mutableStateOf`, `TextOverflow`, `StarUITheme` and its `*Theme` classes, `StarUIManager`, `StarUIPlugin`, `StarUIBuilder`, `inject`, `injection`, `removeInjection`, `InjectPlacement`, `showStarUIPanel`, `requestLayout`, `dumpLayout`, `findAll`, `find`, `FoundComponent`, `StarUITesting` |
 | `org.starficz.starui.components` | every component (`Column`, `Text`, `Button`, `Table`, ...), `Theme`, `key`, `FilterGroup`, `RadioGroup`, `TableSort`, `.scrollPanel`, `.sectorMap` |
 | `org.starficz.starui.window` | windows over a screen: `Layer`, `showLayer`, `StarUILayer`, `Dialog`, `showDialog`, `StarUIDialog`, `DialogStatic`, `showToast`, `StarUIToast` |
 | `org.starficz.starui.modifier` | `Modifier` and its extensions, `PaddingValues`, `VanillaFrame` |

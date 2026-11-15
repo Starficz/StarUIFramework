@@ -1,6 +1,7 @@
 package org.starficz.starui.modifier
 
 import com.fs.starfarer.api.input.InputEventAPI
+import org.starficz.starui.UIState
 
 /**
  * Extends the area that takes mouse input by [all] pixels beyond the component, on every side, without changing its
@@ -81,6 +82,26 @@ fun Modifier.onHoverEnter(action: (InputEventAPI) -> Unit) = this.then { it.appl
  * @see onHoverEnter
  */
 fun Modifier.onHoverExit(action: (InputEventAPI) -> Unit) = this.then { it.applyToPlugin { onHoverExit(action) } }
+/**
+ * Keeps [hovered] true while the cursor is over the component and false once it leaves: the usual [onHoverEnter] /
+ * [onHoverExit] pair. Read the state in a builder for a look that follows the hover; the component is reused when
+ * that builder runs again, so it keeps its hover.
+ *
+ * Example usage:
+ *
+ * ```kotlin
+ * val hovered = UIState(false)
+ * Box(Size.exact(200f, 40f), Modifier.hoverState(hovered).background(if (hovered.value) VanillaColors.dark else Color.BLACK)) {
+ *     Text("Hover me", modifier = Modifier.align(Alignment.Center))
+ * }
+ * ```
+ *
+ * The state changes with the mouse events over the component, so a component removed while the cursor is over it
+ * leaves the state true: set it back yourself when that matters.
+ *
+ * @param hovered set to true when the cursor moves onto the component, to false when it leaves
+ */
+fun Modifier.hoverState(hovered: UIState<Boolean>) = onHoverEnter { hovered.value = true }.onHoverExit { hovered.value = false }
 /**
  * [action] will be called on every mouse event over the component while the left mouse button is held down: for
  * dragging.

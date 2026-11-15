@@ -174,6 +174,15 @@ and last a click handler or builder where there is one.
   `RelationshipBar`, `CostDisplay(withAvailable = true)`, the planet, cargo, event and map ones) are made again on
   every call, since those objects change without any argument changing. `CostDisplay` and the faction or person
   `RelationshipBar` need a campaign.
+- `TooltipMakerPanel(size, modifier, inputs, onButtonClick) { width -> }` is a last resort, for when it really is
+  the simplest choice: most things are doable with StarUI's own components (Text with `highlightedText`,
+  SectionHeading, Table, StatGrid) and should be built there. It holds any other TooltipMakerAPI content:
+  the block fills a fresh tooltip at the width the panel gets, and the panel is as tall as `heightSoFar`. It is the
+  ports' machinery (`VanillaElementEngine`) with a block of the caller's: made again on a width change, on a change of
+  a `UIState` the block read (its own read-tracking `Scope` with `onDirty` set: it invalidates the engine instead of
+  queueing a rebuild, which would throw the content away), and when the builder around it runs again unless `inputs`
+  are equal. `addButton` buttons reach `onButtonClick` through the temporary panel's plugin. A StarUI call inside the
+  block throws (`StarUIContext.tooltipContentDepth`, checked in `checkDslTarget`). Tests: `tooltipmaker-panel*`.
 - Vanilla's `bringComponentToTop` also raises the panel in its parent, and so on up: inside a Column or Row it
   reorders them. To move a child above its siblings, remove it and add it again.
 - For vanilla's colours use `VanillaColors` (from `vanilla`): the player faction's `base`, `dark` and `bright`, `text`,
@@ -197,7 +206,7 @@ and last a click handler or builder where there is one.
   `playSound`, `Color.withAlpha`. StarUI's components need none of them. Every one is called in the `toolkit-*`
   suite groups, so a game update that renames a vanilla method fails there first. Add a check there with each new
   helper. TooltipMakerAPI content is not part of it: StarUI wraps the pieces it supports as components
-  (`VanillaElements.kt`) and does not offer a general TooltipMakerAPI escape hatch.
+  (`VanillaElements.kt`), and anything else goes in a `TooltipMakerPanel` (below).
 
 Each call returns the vanilla object itself where the game API covers it: `Text` returns a `LabelAPI`, `Button` a
 `ButtonAPI`; containers return their `CustomPanelAPI` (a scrolling one too: `.scrollPanel`, from `components`, gives
@@ -291,7 +300,8 @@ value (`PaddingValues.all(4f)`, `PaddingValues.symmetric(horizontal = 10f)`, `Pa
 
 `.padding`, `.margin`, `.align(Alignment)` (in a Box), `.anchor(AnchorData)` (in a CustomPanel or AnchorPanel),
 `.background(color)`, `.border(color, width)` / `.border(VanillaFrame)`, `.tooltip(text)` / `.tooltip { builder }`, `.onClick { }`,
-`.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.onMouseHeld`,
+`.onClickRelease`, `.onClickOutside`, `.onHover`, `.onHoverEnter`, `.onHoverExit`, `.hoverState(state)` (a
+`UIState<Boolean>` kept true while hovered), `.onMouseHeld`,
 `.onKeyDown` / `.onKeyUp` / `.onKeyHeld`, `.hitBoxPadding(...)`, `.onAdvance { amount -> }` (on the plugin, like `onLayout`),
 `.onRender { alpha -> }`, `.onRenderBelow { alpha -> }`, `.onLayout { }` (after every layout pass),
 `.onFirstLayout { }` (once), `.onPositionChanged { position -> }`, `.plugin { }` (raw `StarUIPanelPlugin` access),
