@@ -1,13 +1,13 @@
 {
-    "directDownloadURL": "https://github.com/Starficz/temp/releases/latest/download/temp.zip",
-    "changelogURL": "https://raw.githubusercontent.com/Starficz/temp/main/CHANGELOGS.md",
-    "masterVersionFile": "https://raw.githubusercontent.com/Starficz/temp/main/staruiframework.version",
+    "directDownloadURL": "https://github.com/Starficz/StarUIFramework/releases/latest/download/StarUIFramework.zip",
+    "changelogURL": "https://raw.githubusercontent.com/Starficz/StarUIFramework/master/CHANGELOG.md",
+    "masterVersionFile": "https://raw.githubusercontent.com/Starficz/StarUIFramework/master/staruiframework.version",
     "modName": "StarUIFramework",
     "modVersion":
         {
-            "major": "0",
-            "minor": "1",
-            "patch": "0"
+            "major": "1",
+            "minor": "0",
+            "patch": "0-alpha"
         },
     "modThreadId": 0
 }
