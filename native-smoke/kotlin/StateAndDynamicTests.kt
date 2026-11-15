@@ -172,6 +172,21 @@ fun registerDynamicTests() {
         frame(3)
         near(c.relLeft(plain), 0f, "an injection without an anchor sits at the left edge")
         near(c.relTop(plain), 0f, "and the top edge (${c.relTop(plain)})")
+        // feedback (Refit Filters): an unanchored injection placed by hand afterwards was put back at the top left on
+        // every layout. The top left is only where it starts.
+        val grows = UIState(20f)
+        val placed = plain.inject("test:wrap-placed-by-hand") { Spacer(Size.exact(30f, grows.value)) }
+        placed.position.belowLeft(c, 7f)
+        frame(3)
+        near(placed.relLeft(plain), 0f, "placed by hand under the first: left edge kept (${placed.relLeft(plain)})")
+        near(placed.relTop(plain), 27f, "and 7 under it (20 + 7), not back at the top (${placed.relTop(plain)})")
+        grows.value = 35f
+        plain.position.setSize(320f, 220f)
+        frame(3)
+        near(placed.position.height, 35f, "after a rebuild that resizes it (${placed.position.height})")
+        near(placed.relTop(plain), 27f, "and a resize of the vanilla panel, it stays where it was put (${placed.relTop(plain)})")
+        plain.position.setSize(300f, 200f)
+        frame(2)
         val anchored = plain.inject("test:wrap-anchored", modifier = Modifier.anchor(Anchor.inside.bottomRight.ofParent(5f, 5f))) {
             Spacer(Size.exact(40f, 10f))
         }

@@ -55,7 +55,9 @@ enum class InjectPlacement {
  *
  * - **Size and place**: [size] is measured against the vanilla panel. `Size.fillMaxSize()` takes the panel's whole
  *   size, and follows it when vanilla sizes or resizes the panel later (a constructor hook runs before that). Without
- *   an anchor in [modifier], the container sits at the panel's top left (vanilla's own default is the bottom left).
+ *   an anchor in [modifier], the container is put at the panel's top left once (vanilla's own default is the bottom
+ *   left), and placing it yourself afterwards (`position.belowLeft(...)`) sticks. An anchor is applied again on every
+ *   layout, so it also follows siblings that move; prefer it.
  *
  * Not for StarUI's own containers: there, put the components in the container's builder.
  *
@@ -167,12 +169,10 @@ internal object Injections {
             StarUIContext.untracked { host.AnchorPanel(entry.size, entry.modifier) { (entry.builder)() } }
         }
         (container.plugin as StarUIPanelPlugin).injectionKey = entry.key
-        // no anchor of its own: the panel's top left, as a layout reads (vanilla puts a new component bottom left)
-        val node = nodeFor(container)
-        if (node.anchor == null) {
-            node.anchor = Anchor.inside.topLeft.ofParent()
-            container.applyAnchor(node.anchor!!)
-        }
+        // no anchor of its own: placed at the panel's top left once, as a layout reads (vanilla puts a new component
+        // bottom left). Not stored as its anchor, so the caller's own placement afterwards (position.belowLeft...)
+        // stays: layouts re-apply only anchors that were asked for.
+        if (nodeFor(container).anchor == null) container.applyAnchor(Anchor.inside.topLeft.ofParent())
         if (entry.placement == InjectPlacement.Bottom) host.sendToBottom(container)
         entry.container = WeakReference(container)
         return container

@@ -33,6 +33,8 @@ Fixed:
 
 - A fill or wrap injection no longer stays 1x1 at the vanilla panel's bottom left.
 - No layout warnings for a vanilla panel that has no size yet.
+- An injection without an anchor starts at the panel's top left once; placing it yourself afterwards sticks instead
+  of snapping back on every layout.
 
 Agent skills (starsector-starui, starsector-hotreload 2.1.0): RC6, terser docs, a gallery of 68 vanilla parts,
 console, campaign, find, click, wheel and dump commands for the hot game.

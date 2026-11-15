@@ -577,6 +577,15 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   API wins over compatibility: rename, remove and change return types without shims or deprecated copies. Combat AI
   Tweaks, Scy Nation and Refit Filters are compiled against StarUI; rebuild them (or note what they need) after a
   change that affects them. After the first release: add and deprecate, don't remove or change.
+- **Binary compatibility (open; must be solved before 1.0).** A mod compiled against one StarUI crashes with
+  `NoSuchMethodError` on a later one whenever a public function or class with default parameters gains a parameter:
+  Kotlin compiles a defaulted call to a synthetic `$default` method (or constructor) taking every parameter plus a
+  mask, so its signature changes. Seen 2026-11-15: Refit Filters built against 0.1.0 died on `StarUITheme.<init>`
+  under 1.0.0-alpha.2. Players can't recompile, so after 1.0 every StarUI update would break mods built on it.
+  Until 1.0: dependents must be rebuilt per StarUI release (say so in release notes). Before 1.0: a binary-API check
+  in `release.py` against the last release's jar; theme and config classes whose constructors don't shift (not data
+  classes with defaults, or a builder); a new parameter keeps the old signature as a
+  `@Deprecated(level = HIDDEN)` overload.
 - **The agent skill ships with StarUI.** A change to public behaviour or names also updates `skill/starsector-starui/`
   (`references/` name components, parameters and behaviour), and a new version updates its `SKILL.md` Version
   section. `python skill/build_skill.py` refuses to build when SKILL.md names another version than `mod_info.json`.

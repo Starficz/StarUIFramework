@@ -289,7 +289,9 @@ when vanilla builds the panel: a PatchLib `@After` on the building method or con
 hook is PatchLib's (`patchlib` skill); class and method from game sources, never memory.
 
 `size` is against the vanilla panel: `inject(key, Size.fillMaxSize())` covers it and follows later resizes. Without
-an anchor it sits top left (vanilla's default would be bottom left); anchor to a sibling or corner otherwise.
+an anchor it starts top left (vanilla's default would be bottom left), and placing it yourself afterwards sticks. An
+anchor (`Modifier.anchor(Anchor.below.sibling(row).matchingLeftEdge(1f))`) is applied on every layout, so it follows
+siblings that move: prefer it; chain several injections by anchoring each under the one before.
 
 ```kotlin
 // 0.98.5a-RC4: the refit's hullmod list widget, matched by its readable class name; it never clears its children
