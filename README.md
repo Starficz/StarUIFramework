@@ -35,7 +35,7 @@ Every public class and function has KDoc, and `jars/StarUILib.jar` carries the s
 If IntelliJ shows no KDoc, add the same jar as the library's sources (Project Structure > Libraries > the library >
 `+` > the jar): hover and Quick Documentation then show it, and navigation opens the sources.
 
-Ping @Starficz on the USC Discord for help.
+Forum thread: https://fractalsoftworks.com/forum/index.php?topic=36412. Ping @Starficz on the USC Discord for help.
 
 ## License
 
