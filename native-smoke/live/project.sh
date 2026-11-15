@@ -2,7 +2,7 @@
 # The runner sources this file in bash: plain assignments and the two functions, nothing else.
 
 # slot owner, shown in smoke.sh status: letters, digits, '.', '_' and '-'
-OWNER=staruiframework
+OWNER=staruilib
 
 # ids (mod_info.json "id") of mods to enable besides this one. Dependencies named in mod_info.json files are added
 # by the runner, so list only extra mods the checks want, such as lw_console
@@ -21,7 +21,7 @@ CHECK_DIR="$PROJECT/native-smoke/live/check-mod"
 # StarUI has no compile gate (it is built from IntelliJ): build-jar.ps1 compiles src/ plus the Java-friendly helpers in
 # native-smoke/live/kotlin/ into a test-only jar next to the stage, never into the checkout.
 stage_mod() {
-    local jar="${STAGE%/}-build/StarUIFramework.jar"
+    local jar="${STAGE%/}-build/StarUILib.jar"
     mkdir -p "${STAGE%/}-build" || return 1
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$PROJECT/native-smoke/live/build-jar.ps1")"         -OutJar "$(cygpath -w "$jar")" || return 1
     bash "$LIVE_SCRIPTS/stage-mod.sh" "$PROJECT" "$STAGE" "$jar"

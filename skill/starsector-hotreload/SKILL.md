@@ -80,7 +80,7 @@ Dependencies must be installed in the game's `mods` (`MISSING_MOD:` names them).
 
 | Command | Does |
 |---|---|
-| `hot.sh find TEXT [--kind K] [--contains]` | Every on-screen component (vanilla's and StarUI's) whose text or StarUI key is TEXT: kind, size, position, `shown` / `hidden`, click pixel, path. Reaches holo and dialog content and panel-drawn buttons. Needs StarUI loaded (`--with staruiframework`) |
+| `hot.sh find TEXT [--kind K] [--contains]` | Every on-screen component (vanilla's and StarUI's) whose text or StarUI key is TEXT: kind, size, position, `shown` / `hidden`, click pixel, path. Reaches holo and dialog content and panel-drawn buttons. Needs StarUI loaded (`--with staruilib`) |
 | `hot.sh click TEXT [--kind K] [--contains] [--right]` | `find`, then a real background click on the one shown match; `NOT_FOUND`, `NOT_SHOWN` or `AMBIGUOUS` instead of guessing |
 | `hot.sh wheel TEXT NOTCHES [--kind K] [--contains]` | `find`, then the wheel over it (> 0 down, < 0 up) |
 | `hot.sh ctl CMD ARGS` | Background input by coordinates: `bmove X Y`, `bclick X Y`, `brclick X Y`, `bwheel X Y N`, `bkey NAME [N]`, `btype TEXT`, `bcombo MOD... KEY` (chords: [driving.md](references/driving.md#input)) |

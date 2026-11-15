@@ -38,7 +38,7 @@ import patchlib.api.query.MethodQuery
     )
 )
 internal object ClipInputPatch {
-    private const val MOVED = "staruiframework.clipMovedEvents"
+    private const val MOVED = "staruilib.clipMovedEvents"
     private const val OFF_SCREEN = Int.MAX_VALUE
     private val SET_X = MethodQuery.create().methodName("setX").parameterTypes(Int::class.javaPrimitiveType).build()
     private val SET_Y = MethodQuery.create().methodName("setY").parameterTypes(Int::class.javaPrimitiveType).build()

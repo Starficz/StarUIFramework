@@ -1,4 +1,4 @@
-# StarUIFramework changelog
+# StarUILib changelog
 
 ## 1.0.0-alpha.2
 
@@ -6,6 +6,8 @@ Second alpha: the API may still change before 1.0.0.
 
 Breaking:
 
+- Renamed from StarUIFramework to StarUILib: mod id `staruilib` (was `staruiframework`), jars/StarUILib.jar,
+  staruilib.version. Update the dependency in your mod_info.json. Packages stay `org.starficz.starui`.
 - Requires LazyLib 3.1 (its Kotlin 2.4 runtime). Compile with Kotlin 2.3 or newer, `-api-version` 2.4 at most.
 - CustomPanel is the escape hatch again: it neither places nor sizes its children, and its size is exact or fill
   (fill by default); wrap no longer compiles. Anchored children in a panel that wraps around them: the new
@@ -26,7 +28,7 @@ Added:
   like the rest.
 - SkillIcon: vanilla's framed skill icon on its own (learned, elite, thin border, or a person's level live).
 - Modifier.hoverState(state): hover into a UIState<Boolean>.
-- The KDoc is inside jars/StarUIFramework.jar, next to the classes: no separate sources jar to attach.
+- The KDoc is inside jars/StarUILib.jar, next to the classes: no separate sources jar to attach.
 - The starui.dump system property logs every StarUI panel on screen as dumpLayout text.
 
 Fixed:

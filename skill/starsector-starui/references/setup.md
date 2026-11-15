@@ -9,7 +9,7 @@ Contents: [Dependencies](#dependencies) · [Compiling](#compiling) · [Imports](
 
 ```json
 "dependencies": [
-    {"id": "staruiframework", "name": "StarUIFramework"},
+    {"id": "staruilib", "name": "StarUILib"},
     {"id": "lw_lazylib", "name": "LazyLib"},
     {"id": "patchlib", "name": "! PatchLib !"}
 ]
@@ -19,7 +19,7 @@ StarUI needs LazyLib (the Kotlin runtime) and PatchLib (its hooks); the player i
 
 ## Compiling
 
-- Compile against `mods/StarUIFramework/jars/StarUIFramework.jar`, `starsector-core` jars (`starfarer.api.jar`;
+- Compile against `mods/StarUILib/jars/StarUILib.jar`, `starsector-core` jars (`starfarer.api.jar`;
   `lwjgl.jar`, `lwjgl_util.jar` for GL and `Keyboard`; `log4j-1.2.9.jar` for `Global.getLogger`; `json.jar`) and
   LazyLib's (runtime: `mods/LazyLib/jars/internal/Kotlin-Runtime.jar`; the folder may be `LazyLib-3.0.0` etc.: use
   the user's). `mods/PatchLib/jars/PatchLibAPI.jar` only for your own hooks (`inject`).
@@ -58,7 +58,7 @@ dependencies {
         "$core/starfarer.api.jar", "$core/lwjgl.jar", "$core/lwjgl_util.jar", "$core/log4j-1.2.9.jar", "$core/json.jar",
         "$mods/LazyLib/jars/LazyLib.jar", "$mods/LazyLib/jars/LazyLib-Kotlin.jar",
         "$mods/LazyLib/jars/internal/Kotlin-Runtime.jar",   // the Kotlin stdlib the game runs (LazyLib 3.1: 2.4.21)
-        "$mods/StarUIFramework/jars/StarUIFramework.jar",
+        "$mods/StarUILib/jars/StarUILib.jar",
         // "$mods/PatchLib/jars/PatchLibAPI.jar",           // only for your own PatchLib hooks (inject)
     ))
 }

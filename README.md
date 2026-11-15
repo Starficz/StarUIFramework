@@ -1,4 +1,4 @@
-# StarUIFramework
+# StarUILib
 
 A Compose-style Kotlin DSL for building Starsector UI out of the game's own UI elements.
 
@@ -31,7 +31,7 @@ Press **Ctrl + Shift + U** on the title screen, in the campaign or in combat to 
 feature, each with a live demo next to the code that makes it, ready to copy. The pages for campaign parts (fleets,
 cargo, the sector map) need a game loaded. Press the same keys again, or Close, to leave it.
 
-Every public class and function has KDoc, and `jars/StarUIFramework.jar` carries the sources next to its classes.
+Every public class and function has KDoc, and `jars/StarUILib.jar` carries the sources next to its classes.
 If IntelliJ shows no KDoc, add the same jar as the library's sources (Project Structure > Libraries > the library >
 `+` > the jar): hover and Quick Documentation then show it, and navigation opens the sources.
 

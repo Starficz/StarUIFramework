@@ -1,7 +1,7 @@
-StarUIFramework is licensed in two parts.
+StarUILib is licensed in two parts.
 
 The library: all code under org.starficz.starui (src/org/starficz/starui and the classes built from it in
-jars/StarUIFramework.jar) is licensed under the GNU Lesser General Public License, version 3 only
+jars/StarUILib.jar) is licensed under the GNU Lesser General Public License, version 3 only
 (LGPL-3.0-only). The full text is in licenses/LGPL-3.0.txt; it builds on the GNU General Public License, version 3,
 in licenses/GPL-3.0.txt.
 

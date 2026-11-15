@@ -1,6 +1,6 @@
 // Test-only. Default package on purpose: Kotlin in a named package cannot see the default-package harness classes
 // (NativeSmokeSupport, StarUITestSupport) that the native-smoke runner puts on the game's classpath.
-// Compiled by run-test-suite.ps1 into a test-only copy of StarUIFramework.jar; never part of the shipped jar.
+// Compiled by run-test-suite.ps1 into a test-only copy of StarUILib.jar; never part of the shipped jar.
 
 import com.fs.starfarer.api.Global
 import com.fs.starfarer.api.input.InputEventAPI

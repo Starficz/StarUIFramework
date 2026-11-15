@@ -1,6 +1,6 @@
-# AGENTS.md - StarUIFramework
+# AGENTS.md - StarUILib
 
-StarUI is a Kotlin UI library for Starsector mods (mod id `staruiframework`, package `org.starficz.starui`). It has
+StarUI is a Kotlin UI library for Starsector mods (mod id `staruilib`, package `org.starficz.starui`). It has
 a Compose-style DSL, but every call creates a **real Starsector UI object** (a label, a button, a `CustomPanelAPI`)
 directly in the panel you call it on. There is no virtual tree and no wrapper node. Layout, input, rendering and
 reactive updates are added to the native objects through PatchLib hooks.
@@ -13,8 +13,8 @@ Part 1 is for building UI with StarUI. Part 2 is for working on StarUI itself.
 
 ## Setup
 
-- `mod_info.json` dependencies: `staruiframework`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
-- Compile against `jars/StarUIFramework.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
+- `mod_info.json` dependencies: `staruilib`, `lw_lazylib` (runtime Kotlin stdlib) and `patchlib`.
+- Compile against `jars/StarUILib.jar`, the game's API jars and LazyLib. The runtime Kotlin stdlib is LazyLib's
   (LazyLib 3.1: **2.4.21**), so compile with Kotlin 2.3 or newer and `-api-version` 2.4 at most. The release's
   jar carries the library's sources (the KDoc) next to its classes.
 - Imports live in five packages: `org.starficz.starui` (`Size`, `Axis`, `Alignment`, `TextAlign`, `TextOverflow`,
@@ -438,7 +438,7 @@ Column {
   `hot.sh find`, `click` and `wheel` drive the game by name with it. Tests: `find-*`.
 - **Testing switches** (`Testing.kt`): `StarUITesting.instantAnimations` (layer and dialog fades, dialog folds,
   toast slides at once; `Layers.fadeScale`) and `windowHost` (`Layers.testHost`), `reset()`.
-- **Preview** a piece of UI in the real game renderer, without playing. From `StarUIFramework/`:
+- **Preview** a piece of UI in the real game renderer, without playing. From `StarUILib/`:
   ```powershell
   powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\run-test-suite.ps1 -Preview example -OutDir <new empty dir>
   ```
@@ -539,7 +539,7 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   content is not a child in the UI tree. It is a layout root of its own (its exact size is set from the holo's) and
   its scope flushes itself; the holo's plugin owns it (`ownedOutsideTree`) and disposes it with itself.
 - **Screens.** `StarUIManager` injects one screen panel per vanilla screen (`inject` with key
-  `staruiframework:screen`, or `-below` under the combat ship info) holding a panel per registered plugin with a
+  `staruilib:screen`, or `-below` under the combat ship info) holding a panel per registered plugin with a
   builder for it; none when no plugin has one. The moment comes from the API's `CoreUITabListener` for core tabs
   (guarded: vanilla can announce a tab it put off, with the old tab still showing) and from four PatchLib hooks
   for the rest. Its getters compute from `AppDriver`'s current state on every read; nothing is cached per frame.
@@ -559,7 +559,7 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   test-only jar and runs every group in an isolated game process (about 45 s; `-Filter name,name` runs only some).
   It ends with `SUITE SUMMARY checks=N failures=0`. Look at the PNGs too. It cannot run under Fast Rendering.
   With starsector-native-smoke 2.0 every game holds a slot: from Git Bash, run it as
-  `bash "<skill>/scripts/live/smoke-slot.sh" run staruiframework.tests -- powershell.exe -NoProfile -ExecutionPolicy
+  `bash "<skill>/scripts/live/smoke-slot.sh" run staruilib.tests -- powershell.exe -NoProfile -ExecutionPolicy
   Bypass -File "<Windows path to run-test-suite.ps1>" -OutDir "<Windows path, new folder>"` (`NO_SLOT` otherwise).
   Write the test first and see it fail when practical. Tests are Kotlin in the default package, registered in
   `native-smoke/kotlin/TestFramework.kt`.
@@ -582,7 +582,8 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
   Kotlin compiles a defaulted call to a synthetic `$default` method (or constructor) taking every parameter plus a
   mask, so its signature changes. Seen 2026-11-15: Refit Filters built against 0.1.0 died on `StarUITheme.<init>`
   under 1.0.0-alpha.2. Players can't recompile, so after 1.0 every StarUI update would break mods built on it.
-  Until 1.0: dependents must be rebuilt per StarUI release (say so in release notes). Before 1.0: a binary-API check
+  Until 1.0: dependents must be rebuilt per StarUI release (say so in release notes), with a full Rebuild Project:
+  IntelliJ's incremental build doesn't recompile unchanged callers when a library jar changes, so stale calls stay. Before 1.0: a binary-API check
   in `release.py` against the last release's jar; theme and config classes whose constructors don't shift (not data
   classes with defaults, or a builder); a new parameter keeps the old signature as a
   `@Deprecated(level = HIDDEN)` overload.
@@ -595,5 +596,5 @@ docs/                   design notes: reactive-scopes-plan.md, scrolling-plan.md
 - Imports: five or more names from one package become a wildcard (`org.starficz.starui.components.*`); never for
   `java.*` (`java.util.*` and `java.awt.*` would shadow Kotlin's `List`) or object members. Sorted in IntelliJ's
   order: others, then `java`, `javax`, `kotlin`.
-- `jars/StarUIFramework.jar` is committed and built from IntelliJ; the test runner never touches it. `python release.py`
+- `jars/StarUILib.jar` is committed and built from IntelliJ; the test runner never touches it. `python release.py`
   adds the library's sources (the KDoc for users' IDEs) to the zip's copy of it; the committed jar stays as built.

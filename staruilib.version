@@ -1,0 +1,13 @@
+{
+    "directDownloadURL": "https://github.com/Starficz/StarUILib/releases/latest/download/StarUILib.zip",
+    "changelogURL": "https://raw.githubusercontent.com/Starficz/StarUILib/master/CHANGELOG.md",
+    "masterVersionFile": "https://raw.githubusercontent.com/Starficz/StarUILib/master/staruilib.version",
+    "modName": "StarUILib",
+    "modVersion":
+        {
+            "major": "1",
+            "minor": "0",
+            "patch": "0-alpha.2"
+        },
+    "modThreadId": 0
+}

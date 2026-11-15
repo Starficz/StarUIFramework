@@ -70,7 +70,7 @@ installed (its own `SKILL.md`).
 ```bash
 HOT=<starsector-hotreload>/scripts/hot.sh
 bash "$HOT" setup "<Starsector folder>"    # once per machine
-bash "$HOT" start "<mod project folder>"   # StarUIFramework, LazyLib and PatchLib come in as dependencies
+bash "$HOT" start "<mod project folder>"   # StarUILib, LazyLib and PatchLib come in as dependencies
 bash "$HOT" continue || bash "$HOT" newgame
 bash "$HOT" ctl bkey R; bash "$HOT" ctl bmove 5 5; bash "$HOT" shot refit
 ```
@@ -80,7 +80,7 @@ bash "$HOT" ctl bkey R; bash "$HOT" ctl bmove 5 5; bash "$HOT" shot refit
 - Restart for a new `UIState` in an existing `object` (reload prints `WARN`). Code outside builders (`showDialog`, a
   plugin's `init`) ran once: reopen it.
 - A layout exception shows a "Fatal" box: `hot.sh stop`, fix, `start`, `continue`.
-- StarUI changes next to the mod: `start ... --dep "<StarUIFramework folder>" --dep-jar <fresh build>`.
+- StarUI changes next to the mod: `start ... --dep "<StarUILib folder>" --dep-jar <fresh build>`.
 - Your checks run behind the user's windows: drive with `hot.sh click` / `wheel` and `ctl`'s `bclick`, `bmove`,
   `bwheel`, `bkey`, `btype` (never focus or mouse). Chords (Ctrl, Shift, Alt) cannot reach an inactive window.
   `hot.sh stop` after reading captures; `--front` only for live reviews; leave it open only when handing it over.

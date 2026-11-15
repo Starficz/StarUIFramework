@@ -1,7 +1,7 @@
-# StarUIFramework in-game test suite.
-# Builds a TEST-ONLY copy of StarUIFramework.jar (src/ + native-smoke/kotlin/ compiled together with kotlinc), then
+# StarUILib in-game test suite.
+# Builds a TEST-ONLY copy of StarUILib.jar (src/ + native-smoke/kotlin/ compiled together with kotlinc), then
 # runs it in an isolated Starsector through the starsector-native-smoke skill's runner, with StarUITestSupport.java
-# (real engine input events) on the game classpath outside the security gate. The committed jars/StarUIFramework.jar
+# (real engine input events) on the game classpath outside the security gate. The committed jars/StarUILib.jar
 # is never touched.
 #
 # Usage (from anywhere):
@@ -79,7 +79,7 @@ Write-Host "[1/3] javac support helpers (compile-time view of the game-classpath
 & $Javac --release 17 -nowarn -encoding UTF-8 -cp ($GameJars -join ';') -d "$Work\support" @SupportSrc
 if ($LASTEXITCODE) { Fail 'javac failed for support helpers' }
 
-Write-Host "[2/3] kotlinc src + native-smoke/kotlin -> test-only StarUIFramework.jar"
+Write-Host "[2/3] kotlinc src + native-smoke/kotlin -> test-only StarUILib.jar"
 $ktSources = @(Get-ChildItem -LiteralPath (Join-Path $Project 'src'), (Join-Path $Here 'kotlin') -Recurse -Filter *.kt -File | ForEach-Object { $_.FullName })
 if ($PreviewSource) {
     if (-not (Test-Path -LiteralPath $PreviewSource -PathType Leaf)) { Fail "Preview source not found: $PreviewSource" }
@@ -95,12 +95,12 @@ foreach ($extra in ($ExtraSources -split ',' | ForEach-Object { $_.Trim() } | Wh
 $argFile = Join-Path $Work 'kotlinc.args'
 $cp = (@("$Work\support") + $GameJars + $LibJars) -join ';'
 $ktArgs = @('-no-stdlib', '-no-reflect', '-jvm-target', '1.8', '-api-version', '2.1', '-language-version', '2.2',
-    '-module-name', 'StarUIFramework', '-nowarn', '-cp', $cp, '-d', "$Work\classes") + $ktSources
+    '-module-name', 'StarUILib', '-nowarn', '-cp', $cp, '-d', "$Work\classes") + $ktSources
 ($ktArgs | ForEach-Object { '"' + ($_ -replace '\\', '/') + '"' }) | Set-Content -Encoding ASCII -LiteralPath $argFile
 & $Java -Xmx2g "-Dkotlin.home=$KotlinHome" -cp (Join-Path $KLib 'kotlin-preloader.jar') org.jetbrains.kotlin.preloading.Preloader `
     -cp (Join-Path $KLib 'kotlin-compiler.jar') org.jetbrains.kotlin.cli.jvm.K2JVMCompiler "@$argFile"
 if ($LASTEXITCODE) { Fail 'kotlinc failed' }
-$TestJar = Join-Path $Work 'StarUIFramework.jar'
+$TestJar = Join-Path $Work 'StarUILib.jar'
 & $JarExe --create --file $TestJar -C "$Work\classes" .
 if ($LASTEXITCODE) { Fail 'jar failed' }
 

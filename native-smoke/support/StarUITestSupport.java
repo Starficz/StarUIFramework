@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Test-only helper for the StarUIFramework suite. The runner compiles it with NativeSmokeSupport onto the game's
+ * Test-only helper for the StarUILib suite. The runner compiles it with NativeSmokeSupport onto the game's
  * classpath (SMOKE_SUPPORT_SOURCES), outside the script classloader's security gate, so it may use reflection.
  * Public signatures use only gate-allowed types.
  *

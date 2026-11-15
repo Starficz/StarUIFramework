@@ -40,7 +40,7 @@ import patchlib.api.patch.Patch
 )
 internal object UIComponentLifecyclePatch {
     /** Set by the render @Before on a call it culled, so the @After skips the plugin's render too. */
-    private const val CULLED = "staruiframework.culled"
+    private const val CULLED = "staruilib.culled"
 
     @JvmStatic
     @Before(

@@ -16,7 +16,7 @@ Contents: [How this was counted](#how-this-was-counted) Â· [Buttons](#buttons) Â
 - Reachable is not used: counts are evidence; a single use is weak.
 - API code calls `TooltipMakerAPI`; the engine uses an internal button factory, counted by `CutStyle`, font and
   colours.
-- Call sites, not buttons on screen. Re-count after updates with `skill/vanilla-crawl/` in the StarUIFramework repo.
+- Call sites, not buttons on screen. Re-count after updates with `skill/vanilla-crawl/` in the StarUILib repo.
 
 ## Buttons
 

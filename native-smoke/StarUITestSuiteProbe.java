@@ -1,8 +1,8 @@
 import com.fs.starfarer.api.BaseModPlugin;
 
 /**
- * Companion-mod plugin for the StarUIFramework test suite. Runs after every other mod's onApplicationLoad
- * (StarUIFramework's included), then hands over to the Kotlin suite compiled into the test-only mod jar.
+ * Companion-mod plugin for the StarUILib test suite. Runs after every other mod's onApplicationLoad
+ * (StarUILib's included), then hands over to the Kotlin suite compiled into the test-only mod jar.
  * Test-only: lives in native-smoke/, never in the shipped jar.
  */
 public final class StarUITestSuiteProbe extends BaseModPlugin {

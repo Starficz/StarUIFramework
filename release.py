@@ -1,5 +1,5 @@
-"""Packs the mod for release: release/StarUIFramework.zip, with a StarUIFramework/ folder at its root. The name has
-no version: the version file's download link is releases/latest/download/StarUIFramework.zip, so every release
+"""Packs the mod for release: release/StarUILib.zip, with a StarUILib/ folder at its root. The name has
+no version: the version file's download link is releases/latest/download/StarUILib.zip, so every release
 uploads an asset of that name (and is not marked as a GitHub prerelease, which "latest" skips).
 
     python release.py
@@ -8,11 +8,11 @@ What goes in is the mod a player installs, nothing else: mod_info.json, the vers
 CHANGELOG.md, icon.ico (the mod managers' icon), data/, jars/, licenses/ (the LGPL, GPL and CC0 texts) and src/.
 Left out: .idea, out/, docs/, skill/, native-smoke/, AGENTS.md and the build scripts.
 
-The zip's jars/StarUIFramework.jar is the IntelliJ-built jar with the library's sources (src/org/starficz/starui,
+The zip's jars/StarUILib.jar is the IntelliJ-built jar with the library's sources (src/org/starficz/starui,
 the KDoc) added next to its classes, so IDEs find the KDoc in the jar users already depend on. The committed jar is
 left as IntelliJ built it. The samples' sources stay out of the jar (they are in src/).
 
-Stops when a source file is newer than jars/StarUIFramework.jar: rebuild the jar in IntelliJ first.
+Stops when a source file is newer than jars/StarUILib.jar: rebuild the jar in IntelliJ first.
 """
 import io
 import json
@@ -21,12 +21,12 @@ import sys
 import zipfile
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-MOD_FOLDER = "StarUIFramework"
-FILES = ["mod_info.json", "staruiframework.version", "LICENSE", "README.md", "CHANGELOG.md", "icon.ico"]
+MOD_FOLDER = "StarUILib"
+FILES = ["mod_info.json", "staruilib.version", "LICENSE", "README.md", "CHANGELOG.md", "icon.ico"]
 FOLDERS = ["data", "jars", "licenses", "src"]
 SKIP_DIRS = {"__pycache__", ".idea"}
 SKIP_SUFFIXES = (".tmp", ".pyc", ".iml")
-JAR = os.path.join(ROOT, "jars", "StarUIFramework.jar")
+JAR = os.path.join(ROOT, "jars", "StarUILib.jar")
 SRC = os.path.join(ROOT, "src")
 LIBRARY_PACKAGE = os.path.join("org", "starficz", "starui")
 
@@ -52,11 +52,11 @@ def walk(folder):
 
 def check_jar_fresh():
     if not os.path.isfile(JAR):
-        fail("jars/StarUIFramework.jar is missing: build it in IntelliJ")
+        fail("jars/StarUILib.jar is missing: build it in IntelliJ")
     built = os.path.getmtime(JAR)
     newer = [p for p in walk("src") if p.endswith((".kt", ".java")) and os.path.getmtime(p) > built]
     if newer:
-        fail("%d source file(s) changed after jars/StarUIFramework.jar was built, e.g. %s: rebuild it in IntelliJ"
+        fail("%d source file(s) changed after jars/StarUILib.jar was built, e.g. %s: rebuild it in IntelliJ"
              % (len(newer), os.path.relpath(newer[0], ROOT)))
 
 
@@ -77,7 +77,7 @@ def jar_with_sources():
                 path = os.path.join(dirpath, name)
                 entry = os.path.relpath(path, SRC).replace(os.sep, "/")
                 if entry in names:
-                    fail("jars/StarUIFramework.jar already has " + entry)
+                    fail("jars/StarUILib.jar already has " + entry)
                 out.write(path, entry)
                 count += 1
     return buf.getvalue(), count

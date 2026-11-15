@@ -55,7 +55,7 @@ reload; absent in normal games; readable by mods).
 4. **Restart** after a `WARN` (new static fields, changed static initializers): a new `val` in an existing `object` or
    file (a new `UIState`) stays `null`. New `object`s or classes are fine. New sprites and data need a restart.
 5. Size changes: read `panel.dumpLayout()` (debug key, `logs/starsector.log`) or `hot.sh dump`.
-6. StarUI itself next to a mod: `start ... --dep "<StarUIFramework folder>" --dep-jar <fresh build>`.
+6. StarUI itself next to a mod: `start ... --dep "<StarUILib folder>" --dep-jar <fresh build>`.
 
 ## Reaching a screen
 
@@ -108,7 +108,7 @@ bash "$HOT" wheel "Personal Bounty - Ra Han" 5    # turn the wheel 5 notches dow
   menu and dialogs too), panel-drawn buttons' content.
 - `hidden`: scrolled away, clipped, off screen or transparent; not what is drawn over it. The click is real input
   (a modal over it takes it); capture to check.
-- Needs StarUI loaded (`--with staruiframework` for other mods); `NO_ANSWER`: no StarUI panel rendered yet.
+- Needs StarUI loaded (`--with staruilib` for other mods); `NO_ANSWER`: no StarUI panel rendered yet.
 - Listed positions: screen units, top left, y down; `click=(x, y)`: capture pixels.
 
 `ctl` posts window messages to the game window, by coordinates:

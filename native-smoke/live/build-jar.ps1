@@ -1,8 +1,8 @@
-# Builds a TEST-ONLY StarUIFramework.jar for the scripted campaign checks (smoke.sh checks, see project.sh):
+# Builds a TEST-ONLY StarUILib.jar for the scripted campaign checks (smoke.sh checks, see project.sh):
 # src/ and native-smoke/live/kotlin/ (small Java-friendly helpers the check mod calls) compiled together with kotlinc.
-# The committed jars/StarUIFramework.jar is never touched.
+# The committed jars/StarUILib.jar is never touched.
 #
-# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\live\build-jar.ps1 -OutJar D:\x\StarUIFramework.jar
+# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File native-smoke\live\build-jar.ps1 -OutJar D:\x\StarUILib.jar
 param(
     [Parameter(Mandatory)][string]$OutJar,
     [string]$GameRoot = '',
@@ -53,9 +53,9 @@ $sources = @((Join-Path $Project 'src'), (Join-Path $Here 'kotlin') | ForEach-Ob
     Get-ChildItem -LiteralPath $_ -Recurse -Filter *.kt -File } | ForEach-Object { $_.FullName })
 $argFile = Join-Path $Work 'kotlinc.args'
 $ktArgs = @('-no-stdlib', '-no-reflect', '-jvm-target', '1.8', '-api-version', '2.1', '-language-version', '2.2',
-    '-module-name', 'StarUIFramework', '-nowarn', '-cp', (($GameJars + $LibJars) -join ';'), '-d', "$Work\classes") + $sources
+    '-module-name', 'StarUILib', '-nowarn', '-cp', (($GameJars + $LibJars) -join ';'), '-d', "$Work\classes") + $sources
 ($ktArgs | ForEach-Object { '"' + ($_ -replace '\\', '/') + '"' }) | Set-Content -Encoding ASCII -LiteralPath $argFile
-Write-Host "kotlinc StarUIFramework + live helpers ($($sources.Count) files)"
+Write-Host "kotlinc StarUILib + live helpers ($($sources.Count) files)"
 & $Java -Xmx2g "-Dkotlin.home=$KotlinHome" -cp (Join-Path $KLib 'kotlin-preloader.jar') org.jetbrains.kotlin.preloading.Preloader `
     -cp (Join-Path $KLib 'kotlin-compiler.jar') org.jetbrains.kotlin.cli.jvm.K2JVMCompiler "@$argFile"
 if ($LASTEXITCODE) { Fail 'kotlinc failed' }

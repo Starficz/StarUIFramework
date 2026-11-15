@@ -1,6 +1,6 @@
 ---
 name: starsector-starui
-description: Design and build Starsector mod UI that looks like the game made it, in Kotlin with StarUI (StarUIFramework), a Compose-style DSL where every call makes a real vanilla UI object - Column, Row, Box, Text, Button, Table, LazyColumn, Section, Holo, sliders, ship displays - with reactive UIState, typed sizes, per-axis scrolling, StarUIPlugin screens and inject() into any vanilla panel. Holds the design guide (look, colour roles, parts, button placement and colour, density, the tooltip rule), a mockup generator for boards at game pixel size, every part built in StarUI, tested recipes, traps, and a verify loop with the bundled starsector-hotreload skill. Use it whenever a mod depends on staruiframework or imports org.starficz.starui, the user mentions StarUI, or designs, mocks up, builds, changes or reviews Starsector mod UI in Kotlin (panel, screen, dialog, overlay, list, table, button, tooltip, "make it look vanilla", screenshots with alignment, overlap, density or colour complaints).
+description: Design and build Starsector mod UI that looks like the game made it, in Kotlin with StarUI (StarUILib), a Compose-style DSL where every call makes a real vanilla UI object - Column, Row, Box, Text, Button, Table, LazyColumn, Section, Holo, sliders, ship displays - with reactive UIState, typed sizes, per-axis scrolling, StarUIPlugin screens and inject() into any vanilla panel. Holds the design guide (look, colour roles, parts, button placement and colour, density, the tooltip rule), a mockup generator for boards at game pixel size, every part built in StarUI, tested recipes, traps, and a verify loop with the bundled starsector-hotreload skill. Use it whenever a mod depends on staruilib or imports org.starficz.starui, the user mentions StarUI, or designs, mocks up, builds, changes or reviews Starsector mod UI in Kotlin (panel, screen, dialog, overlay, list, table, button, tooltip, "make it look vanilla", screenshots with alignment, overlap, density or colour complaints).
 ---
 
 # StarUI
@@ -12,7 +12,7 @@ no virtual tree. Layout, input, rendering and updates are added through PatchLib
 ## Version
 
 **StarUI 1.0.0-alpha.2** (API may change) for **Starsector 0.98.5a-RC6**. Name both versions in your first reply.
-Check `version` in `mods/StarUIFramework/mod_info.json` (ask for the game folder; never search the disk); if it
+Check `version` in `mods/StarUILib/mod_info.json` (ask for the game folder; never search the disk); if it
 differs, the install wins: read signatures from its jar or sources. Numbers marked "(engine)" were measured on
 0.98a-RC8: check with one capture.
 

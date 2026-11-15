@@ -32,8 +32,8 @@ object StarUIManager {
     private val anchorTL = Anchor.inside.topLeft.ofParent()
 
     /** The [inject] keys of the screen panels: over the screen, and (ship info only) under it. */
-    internal const val SCREEN_KEY = "staruiframework:screen"
-    internal const val SCREEN_BELOW_KEY = "staruiframework:screen-below"
+    internal const val SCREEN_KEY = "staruilib:screen"
+    internal const val SCREEN_BELOW_KEY = "staruilib:screen-below"
 
     /**
      * The core UI on screen: in the campaign, the open interaction dialog's or else the campaign's
