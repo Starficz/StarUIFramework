@@ -39,4 +39,6 @@ Ping @Starficz on the USC Discord for help.
 
 ## License
 
-LGPL-3.0-only. See [LICENSE](LICENSE).
+The library (`org.starficz.starui`) is LGPL-3.0-only. The samples and the showcase (`org.starficz.staruisamples`)
+are CC0 1.0: copy them into your own mod freely. See [LICENSE](LICENSE); the full texts are in
+[licenses/](licenses).

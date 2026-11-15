@@ -24,3 +24,4 @@ First release, an alpha: the API may still change before 1.0.0.
 - A showcase in game: Ctrl + Shift + U on the title screen, in the campaign or in combat opens a page for every
   feature, each demo next to its code.
 - Built for Starsector 0.98.5a-RC6. Requires LazyLib and PatchLib.
+- Licences: the library is LGPL-3.0-only, the samples and showcase are CC0 1.0 (full texts in licenses/).
