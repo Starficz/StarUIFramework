@@ -107,8 +107,11 @@ fixed per project (`hot.sh dir`): game log in `logs/`, captures in `captures/`, 
 | `hot.sh shot [NAME]` | Capture the game window to `captures/NAME.png` and print the path |
 | `hot.sh wait [PATTERN] [S]` | Wait until the game log matches a pattern, or goes quiet |
 | `hot.sh newgame` | From the title screen: a new small-sector game (mercenary start, no tutorial); ends `IN_CAMPAIGN` once saved |
-| `hot.sh continue` | From the title screen: load the newest save of this work folder, paused |
-| `hot.sh status` / `log [N]` / `dir` / `stop` | State, reload log, work folder, close the game |
+| `hot.sh continue` | From the title screen: load the newest save of this work folder, paused; `NO_SAVE` at once when it has none |
+| `hot.sh campaign` | `continue` when the work folder has a save, else `newgame`: the one command to get into a campaign |
+| `hot.sh console "COMMAND"` | Run a Console Commands command in the campaign or a battle and print its output: test state without touching the project (`addcredits 50000`, `addstorypoints 5`, `runcode ...` for anything else). Needs Console Commands installed and the game started `--with lw_console`. The text goes through a file, so capitals, brackets and quotes all work |
+| `hot.sh dump` | Print every StarUI panel on screen as `dumpLayout` text (dialog content included): StarUI writes it to the game log on request (StarUI 1.0.0-alpha after its first release) |
+| `hot.sh status` / `log [N]` / `dir` / `stop` | Setup state (`NO_SETUP`, `NO_JBR`) then game state, reload log, work folder, close the game |
 
 Commands without a project folder act on the one open hot game; with several open, name the project folder first.
 
@@ -162,7 +165,7 @@ absent.
 
 | Path | Purpose |
 |---|---|
-| `scripts/hot.sh` | Entry point: `setup`, `start`, `reload`, `ctl`, `shot`, `wait`, `newgame`, `continue`, `status`, `log`, `dir`, `stop` |
+| `scripts/hot.sh` | Entry point: `setup`, `start`, `reload`, `ctl`, `shot`, `wait`, `newgame`, `continue`, `campaign`, `console`, `dump`, `status`, `log`, `dir`, `stop` |
 | `scripts/hot-game.sh` | The session `start` runs: stages the mods, builds the mod set, launches, waits for the game to exit |
 | `scripts/launch-game.sh` | Starts the game against the work folder: classpath, Fast Rendering, prefs from memory, cursor guard |
 | `scripts/stage-mod.sh`, `make-modset.sh`, `find-mod.sh` | Copies of the mod's jars (the game never locks a build), the isolated mods folder, installed mods by id |

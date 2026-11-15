@@ -1,14 +1,30 @@
 // screenshots every .board of <dir>/mock.html at 1x and 2x and reports layout problems
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
+
+// Playwright's own Chromium when it is downloaded (npx playwright install chromium), else the installed Edge or
+// Chrome: npm i playwright alone is then enough. File access lets the page load the fonts next to it.
+async function launch() {
+  const args = ['--allow-file-access-from-files'];
+  const errors = [];
+  for (const channel of [undefined, 'msedge', 'chrome']) {
+    try {
+      return await chromium.launch(channel ? { channel, args } : { args });
+    } catch (e) {
+      errors.push((channel || 'playwright chromium') + ': ' + String(e).split('\n')[0]);
+    }
+  }
+  throw new Error('no browser to screenshot with. Install one: npx playwright install chromium\n  ' + errors.join('\n  '));
+}
 
 (async () => {
   const dir = path.resolve(process.argv[2] || '.');
-  const browser = await chromium.launch();
+  const browser = await launch();
   let warnings = 0;
   for (const scale of [1, 2]) {
     const page = await browser.newPage({ deviceScaleFactor: scale, viewport: { width: 2200, height: 1200 } });
-    await page.goto('file://' + path.join(dir, 'mock.html'));
+    await page.goto(pathToFileURL(path.join(dir, 'mock.html')).href);
     await page.evaluate(() => document.fonts.ready);
     await page.waitForTimeout(300);
 

@@ -154,6 +154,33 @@ if (( ! play )); then
     # keeps the main loop running behind other windows, so gamectl input and captures work
     rm -rf -- "$WORK/hot_helper"
     cp -r -- "$SKILL/templates/hot-helper" "$WORK/hot_helper"
+    # with Console Commands installed, the helper also runs hot.sh console commands (tools/HotHelper*.java)
+    helper_tools=$(bash "$LIVE/build-tools.sh" 2>> "$WORK/stage.log" | tail -n 1)
+    if [[ -f $helper_tools/hot-helper.jar ]]; then
+        mkdir -p "$WORK/hot_helper/jars"
+        cp -- "$helper_tools/hot-helper.jar" "$WORK/hot_helper/jars/hot-helper.jar"
+        cat > "$WORK/hot_helper/mod_info.json" <<'HELPER'
+{
+  "id": "hotreload_helper",
+  "name": "ZZ Hot Reload Helper",
+  "author": "Local testing",
+  "version": "1.1.0",
+  "description": "Test-only helper for a hot-reload game: keeps the main loop running behind other windows and runs hot.sh console commands. Never ship or enable it in a real mod list.",
+  "gameVersion": "0.98a",
+  "utility": "true",
+  "jars": ["jars/hot-helper.jar"],
+  "modPlugin": "hotreloadhelper.HotHelperModPlugin"
+}
+HELPER
+        cat > "$WORK/hot_helper/data/config/settings.json" <<'HELPER'
+{
+	"idleWhileWindowNotVisible":false,
+	"plugins":{
+		"hotReloadHelperConsole":"hotreloadhelper.HotHelperCombat",
+	},
+}
+HELPER
+    fi
     mods+=("$WORK/hot_helper")
 fi
 bash "$LIVE/make-modset.sh" "$WORK" "${mods[@]}" > "$WORK/modset.log" 2>&1 ||

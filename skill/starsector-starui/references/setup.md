@@ -25,11 +25,70 @@ three mods.
 - Compile against `mods/StarUIFramework/jars/StarUIFramework.jar`, the game's jars in `starsector-core`
   (`starfarer.api.jar`; `lwjgl.jar` and `lwjgl_util.jar` for GL calls in render code and `Keyboard`;
   `log4j-1.2.9.jar` for `Global.getLogger`; `json.jar` for `JSONObject`) and LazyLib's jars (the Kotlin runtime is
-  `mods/LazyLib/jars/internal/Kotlin-Runtime.jar`). Add `mods/PatchLib/jars/PatchLibAPI.jar` only when the mod
+  `mods/LazyLib/jars/internal/Kotlin-Runtime.jar`; the folder name varies with how LazyLib was installed, such as
+  `mods/LazyLib-3.0.0`: use the one in the user's mods folder). Add `mods/PatchLib/jars/PatchLibAPI.jar` only when the mod
   writes its own PatchLib hooks (for `inject`).
-- **Kotlin**. The runtime Kotlin stdlib is LazyLib's (2.1.x). Compile with `-api-version 2.1` (IntelliJ: Kotlin
-  compiler settings, API version 2.1), so the compiler rejects stdlib calls the game cannot run.
+- **Kotlin**. The runtime Kotlin stdlib is LazyLib's: LazyLib 3.1 ships Kotlin 2.4.21. Compile with a Kotlin compiler
+  **2.3 or newer** (2.4 matches LazyLib): StarUI's and LazyLib's jars carry Kotlin 2.4 metadata, and an older compiler
+  stops with "metadata version 2.4.0, can read up to 2.3.0". Keep `-api-version` at 2.4 or lower (IntelliJ: Kotlin
+  compiler settings, API version), so the compiler rejects stdlib calls the game cannot run.
 - Do not bundle StarUI's classes or the Kotlin stdlib into the mod's jar.
+
+### With Gradle
+
+A working setup (Gradle 8.13, Kotlin plugin 2.4.21; it builds a StarUI screen into a jar holding only the mod's own
+classes). `gradle.properties`:
+
+```properties
+# the game runs LazyLib's Kotlin stdlib: compile against it, never bundle one
+kotlin.stdlib.default.dependency=false
+```
+
+`build.gradle.kts`:
+
+```kotlin
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
+plugins {
+    kotlin("jvm") version "2.4.21"   // 2.3 or newer reads StarUI's and LazyLib's Kotlin 2.4 metadata
+}
+
+repositories { mavenCentral() }
+
+val starsector = "C:/Program Files (x86)/Fractal Softworks/Starsector"   // your game folder
+val core = "$starsector/starsector-core"
+val mods = "$starsector/mods"
+
+dependencies {
+    // the game and the mods yours depends on provide all of these at runtime: compile-only, never bundled
+    compileOnly(files(
+        "$core/starfarer.api.jar", "$core/lwjgl.jar", "$core/lwjgl_util.jar", "$core/log4j-1.2.9.jar", "$core/json.jar",
+        "$mods/LazyLib/jars/LazyLib.jar", "$mods/LazyLib/jars/LazyLib-Kotlin.jar",
+        "$mods/LazyLib/jars/internal/Kotlin-Runtime.jar",   // the Kotlin stdlib the game runs (LazyLib 3.1: 2.4.21)
+        "$mods/StarUIFramework/jars/StarUIFramework.jar",
+        // "$mods/PatchLib/jars/PatchLibAPI.jar",           // only for your own PatchLib hooks (inject)
+    ))
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+        apiVersion.set(KotlinVersion.KOTLIN_2_4)        // no stdlib calls newer than LazyLib's runtime
+        languageVersion.set(KotlinVersion.KOTLIN_2_4)
+    }
+}
+java { targetCompatibility = JavaVersion.VERSION_17; sourceCompatibility = JavaVersion.VERSION_17 }
+
+tasks.jar {
+    archiveFileName.set("MyMod.jar")                    // the name mod_info.json lists under "jars"
+    destinationDirectory.set(layout.projectDirectory.dir("jars"))
+}
+```
+
+`gradle jar` writes `jars/MyMod.jar`. Name `lw_lazylib` with version 3.1 in `mod_info.json`'s dependencies
+(`"version": {"major": "3", "minor": "1", "patch": "0"}`), so a player on an older LazyLib, with an older Kotlin runtime, is told to
+update.
 
 ## Imports
 
@@ -190,8 +249,9 @@ Button("Survey office", Size.exact(140f, 20f), cutStyle = CutStyle.ALL) {
   (buttons too) behind vanilla's static transition, for pages.
 - F2 opens the codex (at `codexEntryId`, or as last left), as vanilla's dialogs do. A click outside the window
   flickers it.
-- `background`: vanilla's custom dialog keeps the holo's see-through default (`HoloBackground.Default`; a busy panel
-  under it shows faintly); `HoloBackground.Dialog` is the opaque one of vanilla's market pickers.
+- `background`: `HoloBackground.Dialog` (the default) is the opaque one of vanilla's market pickers; a busy panel
+  under the window (a core tab) stays hidden. `HoloBackground.Default` is the see-through one vanilla's custom
+  dialog keeps, for a window over a calm screen that should match it exactly.
 
 ### A toast
 

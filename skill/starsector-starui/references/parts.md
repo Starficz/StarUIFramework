@@ -139,6 +139,9 @@ Contents: [Title line](#title-line) · [Tabs](#tabs) · [Section heading](#secti
   with vanilla's tooltip. `oneColumn = true` stacks them. There is no API call for a compact row of framed icons
   without names (the mockup kit's `skill` helper draws one): use `SkillPanel`, and say so when a board shows a
   compact row. A person for it: `Global.getFactory().createPerson()` and `stats.setSkillLevel(id, 1f)` (2 for elite).
+  It is big: plan its room before choosing it (a strip of learned skills next to other content will not fit), and
+  a user who asked for a compact strip will reject it on sight. For a compact strip, draw the frame yourself
+  ([design-rules.md](design-rules.md): skills keep the vanilla frame).
 - **Storages:** a submarket's icon is its `icon` column in `data/campaign/submarkets.csv` (`graphics/factions/storage.png`
   for storage); the settings have no getter for it.
 - **Trap:** weapon icons have no single sprite (turret and barrel are separate files).

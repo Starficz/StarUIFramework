@@ -20,6 +20,14 @@ Column 150x80 at (40, 40) size=(wrap, wrap) [onRenderBelow] scope(builds=2, read
 
 Sizes and positions are the current ones, so dump after a frame has rendered (from `Modifier.onFirstLayout { }`, a
 debug key handler, or after a click), and log it (`Global.getLogger(MyClass::class.java).info(panel.dumpLayout())`).
+A Holo's content, and so a `Dialog`'s, is listed under its holo, though it is not one of the holo's children.
+
+Without code of your own: **`hot.sh dump`** (starsector-hotreload) prints every StarUI panel on screen, dialogs and
+layers included. It sets the system property `starui.dump` to a new id; StarUI's next frame writes the dump to the
+game log between `StarUI dump <id>: N StarUI panels on screen` and `StarUI dump <id> end`. A test running inside the
+game (a native smoke probe) can do the same with `System.setProperty("starui.dump", "<new id>")` and read the log, or
+call `dumpLayout()` on a panel it holds.
+
 Read it for:
 
 - components 0 wide or 0 tall, or at the same position as a sibling;

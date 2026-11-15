@@ -45,7 +45,8 @@ Contents: [Reactive](#reactive) · [Layout and sizes](#layout-and-sizes) · [Tex
 |---|---|---|
 | A long name runs into the next column | A `Text` wraps by default, and a wrap-size one is as wide as its text | `Text(name, Size.fillMaxWidth(), overflow = TextOverflow.Ellipsis)` (or an exact width): one line cut with `...`, the full name in a tooltip |
 | A paragraph is one very long line | A wrap-size `Text` is as wide as its text | Give it an exact or fill width; it then wraps and grows in height |
-| A `%` vanishes in a tooltip | `Modifier.tooltip(text)` and `addPara` format their text | `%%` |
+| The UI under a tooltip shows faintly through it (bright text most) | Vanilla's tooltips draw their background at 85% (`bgAlpha` 0.85); StarUI's are vanilla's | `Modifier.tooltip { setBgAlpha(1f); addPara(...) }` for a fully opaque one; vanilla's own stay at 0.85 |
+| A `%` vanishes in a tooltip, or shows as `%%` | Only `addPara` with highlight arguments formats its text (`String.format`, even with no highlights passed); `Modifier.tooltip(text)` and plain `addPara(text, pad)` show it as written | `%%` in a highlighted `addPara` only; a plain `%` everywhere else |
 | A centred text that wraps has its second line flush left | Vanilla's label centres the block of lines, not each line | Keep centred text (a tagline) to one line: shorten the words or `overflow = TextOverflow.Ellipsis`; or align it left |
 
 ## Controls and input
@@ -119,7 +120,8 @@ For `Modifier.onRender` / `onRenderBelow` code.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `NoSuchMethodError` from `kotlin.*` at runtime | Compiled against a newer Kotlin stdlib than LazyLib's 2.1.x | `-api-version 2.1` |
+| `NoSuchMethodError` from `kotlin.*` at runtime | Compiled against a newer Kotlin stdlib than the player's LazyLib has (LazyLib 3.1: 2.4.21) | `-api-version 2.4` or lower |
+| "metadata version 2.4.0, can read up to 2.3.0" when compiling | The Kotlin compiler is older than 2.3 | Kotlin 2.3 or newer (2.4 matches LazyLib 3.1) |
 | "unresolved reference 'lwjgl'" or "cannot access class 'Logger'" when compiling | The game's other jars are not on the classpath | Add `starsector-core/lwjgl.jar`, `lwjgl_util.jar` (GL11 in render code) and `log4j-1.2.9.jar` (`Global.getLogger`) ([setup.md](setup.md#compiling)) |
 | `SecurityException` on reflection | The game's script class loader refuses `java.lang.reflect` | Use the API or StarUI's toolkit; for anything else, the reflection route the game allows (`starsector-knowledge`, `docs/ui/attach-reflection.md`, when installed) |
 | `column(...) { }.sortBy { it.x }` does not compile with `sortBy` as a lambda argument | `sortBy` is a fluent call on the returned column, not a parameter | `column("Cost") { "${it.cost}" }.sortBy { it.cost }` |

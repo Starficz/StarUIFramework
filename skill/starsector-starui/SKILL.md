@@ -149,7 +149,8 @@ StarUI:
 18. **No obfuscated names** in mod code: not in imports, casts, reflection strings or PatchLib matchers.
 19. **No TooltipMakerAPI content in the DSL.** StarUI wraps the vanilla pieces it supports as components;
     `TooltipMakerAPI` belongs inside `Modifier.tooltip { }` (and the confirm popup's text) only.
-20. **Kotlin against LazyLib's Kotlin runtime** (2.1.x): compile with `-api-version 2.1`.
+20. **Kotlin against LazyLib's Kotlin runtime** (LazyLib 3.1: Kotlin 2.4.21): a Kotlin compiler 2.3 or newer, and
+    `-api-version` no higher than 2.4.
 21. **Seen in game, or not done.** Never write "tested" for code that only compiled.
 
 ## Where to look

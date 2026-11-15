@@ -12,8 +12,16 @@
 #   hot.sh shot [PROJECT_DIR] [NAME]            capture the game window to WORK/captures/NAME.png, print the path
 #   hot.sh wait [PROJECT_DIR] [PATTERN] [S]     wait until the game log matches PATTERN, or goes quiet without one
 #   hot.sh newgame [PROJECT_DIR]                from the title screen, start a new game (1600x900 test window)
-#   hot.sh continue [PROJECT_DIR]               from the title screen, load the newest save (1600x900 test window)
-#   hot.sh status [PROJECT_DIR]     is the game open, its PID, the last reload
+#   hot.sh continue [PROJECT_DIR]               from the title screen, load the newest save (1600x900 test window);
+#                                   NO_SAVE at once when the work folder has none
+#   hot.sh campaign [PROJECT_DIR]               continue when there is a save, else newgame
+#   hot.sh dump [PROJECT_DIR] [--timeout S]     print every StarUI panel on screen (StarUI's dumpLayout text, dialog
+#                                   content included): StarUI writes it to the game log on request, this prints it
+#   hot.sh console [PROJECT_DIR] "COMMAND" [--timeout S]  run a Console Commands command in the campaign or a battle
+#                                   (needs Console Commands installed and the game started --with lw_console); prints
+#                                   its output. Any text works: it goes through a file, not typed keys
+#   hot.sh status [PROJECT_DIR]     the machine setup first (NO_SETUP, NO_JBR), then is the game open, its PID, the
+#                                   last reload
 #   hot.sh log [PROJECT_DIR] [N]    the last N lines of the reload log (default 40)
 #   hot.sh dir [PROJECT_DIR]        print the work folder (game log in logs/, captures/, saves/, game.pid)
 #   hot.sh stop [PROJECT_DIR]       close the game
@@ -32,7 +40,7 @@ HERE=$(cd -- "$(dirname -- "$0")" && pwd)
 SKILL=${HERE%/scripts}
 . "$HERE/lib.sh"
 hot_root || exit 2
-usage() { sed -n '2,28p' "$0" >&2; exit 2; }
+usage() { sed -n '2,37p' "$0" >&2; exit 2; }
 (( HOT_WIN )) || { echo "NOT_WINDOWS: this skill is written for Git Bash on Windows" >&2; exit 2; }
 hot_real_dir "$HOT_ROOT_DIR/work"; WORK_ROOT=$REPLY
 mkdir -p "$WORK_ROOT"
@@ -280,6 +288,11 @@ cmd_continue() {
     pick "${1:-}"
     need_game
     local res
+    # no save: the Continue button does nothing, and waiting for a load would take the whole timeout
+    if ! ls -d "$WORK"/saves/save_* >/dev/null 2>&1; then
+        echo "NO_SAVE: this work folder has no save yet. hot.sh newgame makes one (hot.sh campaign does whichever applies)" >&2
+        exit 1
+    fi
     : > "$WORK/logs/starsector.log"
     # the title screen's Continue button in the 1600x900 test window; move first so the click is not only a hover
     gamectl bmove 1225 287 >/dev/null; sleep 0.5; gamectl bclick 1233 283 >/dev/null
@@ -289,11 +302,82 @@ cmd_continue() {
     echo "IN_CAMPAIGN: the newest save is loaded, paused"
 }
 
+cmd_campaign() {
+    local arg=${1:-}
+    pick "$arg"
+    need_game
+    if ls -d "$WORK"/saves/save_* >/dev/null 2>&1; then cmd_continue "$arg"; else cmd_newgame "$arg"; fi
+}
+
 cmd_status() {
+    # the setup first: without it no game can start, and "no game" alone hides why
+    hot_cfg game_root
+    [[ -n $REPLY ]] || { echo "NO_SETUP: this machine is not set up. Run once: bash \"$0\" setup \"<Starsector folder>\""; return 1; }
+    hot_jbr || { echo "NO_JBR: the JetBrains Runtime is missing. Run once: bash \"$0\" setup"; return 1; }
     pick "${1:-}"
     if alive "$WORK"; then echo "OPEN: hot game of $OWNER, PID $(cat "$WORK/game.pid"), work $WORK"; else echo "CLOSED: no game in $WORK"; fi
     [[ -r $WORK/hot/last.txt ]] && { echo "Last reload:"; sed 's/^/  /' "$WORK/hot/last.txt"; }
     return 0
+}
+
+cmd_dump() {
+    local project= timeout=15
+    while (( $# )); do
+        case $1 in
+            --timeout) timeout=${2:-15}; shift 2 || shift ;;
+            *) project=$1; shift ;;
+        esac
+    done
+    pick "$project"; need_game
+    local id="d$(date +%s)-$$" hot="$WORK/hot" log="$WORK/logs/starsector.log"
+    # the agent sets the system property starui.dump to the id; StarUI's next render logs the dump with it
+    printf '%s' "$id" > "$hot/dump.tmp" && mv -f -- "$hot/dump.tmp" "$hot/dump"
+    local t0=$SECONDS
+    until grep -q -F "StarUI dump $id end" "$log" 2>/dev/null; do
+        alive "$WORK" || { echo "NO_GAME: the game exited before the dump" >&2; exit 1; }
+        if (( SECONDS - t0 > timeout )); then
+            [[ -e $hot/dump ]] && { echo "TIMEOUT: the agent did not take the request in ${timeout}s (read $WORK/launch.log)" >&2; exit 1; }
+            echo "NO_DUMP: no StarUI panel rendered in ${timeout}s: no StarUI UI is on screen, or the StarUI jar is older than the dump (1.0.0-alpha after its first release)" >&2
+            exit 1
+        fi
+        sleep 0.3
+    done
+    # from the line that starts the dump to its end line, without the log4j prefix of the first one
+    awk -v id="$id" 'index($0, "StarUI dump " id ":") { on = 1; sub(/^.*StarUI dump /, "StarUI dump ") }
+        on { print } index($0, "StarUI dump " id " end") { exit }' "$log"
+}
+
+cmd_console() {
+    local project= timeout=30 command=
+    while (( $# )); do
+        case $1 in
+            --timeout) timeout=${2:-30}; shift 2 || shift ;;
+            *) if [[ -z $project && -z $command && -d $1 && -r $1/mod_info.json ]]; then project=$1; else command=${command:+$command }$1; fi; shift ;;
+        esac
+    done
+    [[ -n $command ]] || { echo "Usage: hot.sh console [PROJECT_DIR] \"COMMAND\"" >&2; exit 2; }
+    pick "$project"; need_game
+    [[ -f $WORK/hot_helper/jars/hot-helper.jar ]] ||
+        { echo "NO_CONSOLE: the helper has no console runner: install Console Commands (lw_console) in the game's mods folder, then restart the hot game" >&2; exit 1; }
+    grep -q -i '"lw_console"' "$WORK/mods/enabled_mods.json" 2>/dev/null ||
+        { echo "NO_CONSOLE: Console Commands is not in this game: restart it with --with lw_console" >&2; exit 1; }
+    local id="c$(date +%s)-$$" hot="$WORK/hot" log="$WORK/logs/starsector.log"
+    printf '%s\n%s' "$id" "$command" > "$hot/console.tmp" && mv -f -- "$hot/console.tmp" "$hot/console"
+    local t0=$SECONDS
+    until grep -q -F "HOTCONSOLE $id end" "$log" 2>/dev/null; do
+        alive "$WORK" || { echo "NO_GAME: the game exited before the command ran" >&2; exit 1; }
+        if (( SECONDS - t0 > timeout )); then
+            [[ -e $hot/console ]] && { echo "TIMEOUT: the agent did not take the command in ${timeout}s (read $WORK/launch.log)" >&2; exit 1; }
+            echo "NOT_RUN: nothing ran it in ${timeout}s: commands run in the campaign or a battle, not on the title screen (hot.sh campaign gets there)" >&2
+            exit 1
+        fi
+        sleep 0.3
+    done
+    # the console's own output between the markers, without log4j's prefix (time, thread, level, logger)
+    awk -v id="$id" 'index($0, "HOTCONSOLE " id " start") { on = 1; next }
+        index($0, "HOTCONSOLE " id " end") { exit }
+        on { line = $0; if (match(line, / - /)) line = substr(line, RSTART + 3); print line }' "$log"
+    echo "CONSOLE_DONE: $command"
 }
 
 cmd_log() {
@@ -320,6 +404,9 @@ case $cmd in
     wait) cmd_wait "$@" ;;
     newgame) cmd_newgame "$@" ;;
     continue) cmd_continue "$@" ;;
+    campaign) cmd_campaign "$@" ;;
+    dump) cmd_dump "$@" ;;
+    console) cmd_console "$@" ;;
     status) cmd_status "$@" ;;
     log) cmd_log "$@" ;;
     dir) pick "${1:-}"; echo "$WORK" ;;

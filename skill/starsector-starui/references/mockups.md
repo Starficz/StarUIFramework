@@ -39,8 +39,10 @@ Output in `--out`:
 - `<board id>.png` and `<board id>@2x.png` per board.
 - On the console: `MISSING IMAGE` lines, layout warnings, and `no layout warnings` when clean.
 
-Needs Python 3. The PNGs and the layout check need `node` with Playwright and Chromium; without them the build
-says so and you open `mock.html` in a browser (`--no-shots` skips the attempt). The tinted `?` icon needs
+Needs Python 3. The PNGs and the layout check need `node` with Playwright: `npm i playwright` in the work folder
+(or globally). `shot.js` uses Playwright's own Chromium when it is downloaded (`npx playwright install chromium`),
+else the installed Edge or Chrome. Without any of them the build says so and you open `mock.html` in a browser
+(`--no-shots` skips the attempt). The tinted `?` icon needs
 Pillow and is drawn untinted without it.
 
 Build the bundled example once to see what the helpers draw: `python3 <skill>/scripts/mockup/build.py
@@ -110,7 +112,8 @@ All in `scripts/mockup/kit.py`; each has a docstring. `example_board.py` uses ev
 | Containers | `row(x, y, w, h, inner, selected, enabled, strip)`, `card(x, y, w, h, inner)`, `strip(x, y, w, h, inner, buttons)` a thing and its buttons, `tile(x, y, src, name, mark, level, icon, selected)` picture tile, `dashbox`, `box` (raw) |
 | Card top | `namebar(x, y, w, name, fav, can_fav)` name field with the star, `star`, `tagline(x, y, w, s)` |
 | Text | `text(x, y, w, s, font, color, align, wrap)`; fonts `ins15`, `ins21`, `orb12`, `orb20`, `vic10`; spans `<span class="hl">30</span>` with classes `hl`, `pos`, `neg`, `gr`, `bs`, `br`, `st`, `tx`; `fit(s, w, font)` shortens a plain string with `...` the way mod code must; `namelines(x, y, w, name, second)` draws a name with its gray second line, wrapping a long name to two lines first; `textwidth(s, font)` |
-| Buttons | `button(x, y, w, h, label, kind, cut, icon, sub)` kinds `std green red amber story hot off`, cuts `all tlbr top bottom`; `costbutton(x, y, w, h, label, icon, amount, kind, ok)` price on the face; `bank(x, y, buttons, align=...)` a line of buttons, each `(label, kind, width)` or with `icon, amount`; `guarded(x, y, w, h, label, kind, reason)`; `tab`; `area(x, y, w, h, label, on, enabled, strip=...)`; `check(x, y, label, on)`; `stepper(x, y, value)` |
+| Buttons | `button(x, y, w, h, label, kind, cut, icon, sub)` kinds `std green red amber story hot off`, cuts `all` (a single button), `tlbr` (a commit and cancel row), `bltr` (a bank of actions on the thing on screen),
+`top`, `bottom`; `costbutton(x, y, w, h, label, icon, amount, kind, ok)` price on the face; `bank(x, y, buttons, align=...)` a line of buttons, each `(label, kind, width)` or with `icon, amount`; `guarded(x, y, w, h, label, kind, reason)`; `tab`; `area(x, y, w, h, label, on, enabled, strip=...)`; `check(x, y, label, on)`; `stepper(x, y, value)` |
 | Data | `grid(x, y, w, rows)`, `change(x, y, w, label, old, new)`, `costrow(x, y, w, label, icon, amount, stock, ok)`, `bar(x, y, w, h, frac, color, label)`, `thinbar`, `pips`, `mark`, `checkrow` |
 | Pictures | `img`, `tint`, `portrait(x, y, size, src)`, `ship(x, y, size, src)`, `stack(x, y, size, src, count)`, `morecell`, `iconrow(x, y, w, items, cw, ch, render)` returns `(html, used height)`; `marker(x, y, src)` outlined status icon; `lumtint(src, color)` placeholder glyph from a game icon; `skill(x, y, size, src, aptitude, elite, known)` vanilla skill cell |
 | Overlays | `tooltip(x, y, w, h, inner)`, `scrollbar(x, y, h, frac, off)` |

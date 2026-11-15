@@ -8,6 +8,9 @@
 #                        game never writes them
 #   CursorGuard.jar      stops the game moving the real cursor while it runs behind other windows
 #   gamectl.exe          background input and captures for the game window
+#   hot-helper.jar       the test helper mod's code: runs hot.sh console commands through Console Commands. Built
+#                        only when Console Commands (lw_console) is in the game's mods folder; without it the
+#                        helper mod stays data-only
 # Exit 1 names the part that failed. Adapted from starsector-native-smoke 2.0.2 (see NOTICE.md).
 set -uo pipefail
 HERE=$(cd -- "$(dirname -- "$0")" && pwd)
@@ -53,6 +56,31 @@ if [[ ! -f $TOOLS/CursorGuard.jar ]]; then
         echo 'TOOLS_FAILED guard: javac or jar reported errors' >&2; failed=1
     fi
     rm -rf -- "$tmp"
+fi
+
+# the helper's code compiles against the game's API and Console Commands' jar, found by its mod id
+if [[ ! -f $TOOLS/hot-helper.jar ]]; then
+    hot_cfg game_root; hot_posix_path "$REPLY"; game=${REPLY%/}
+    console_jar=
+    for info in "$game"/mods/*/mod_info.json; do
+        if grep -q -E '"id"[[:space:]]*:[[:space:]]*"lw_console"' "$info" 2>/dev/null; then
+            [[ -f ${info%/mod_info.json}/jars/lw_Console.jar ]] && console_jar=${info%/mod_info.json}/jars/lw_Console.jar
+            break
+        fi
+    done
+    if [[ -n $console_jar && -f $game/starsector-core/starfarer.api.jar ]]; then
+        tmp="$TOOLS/helper.$$"; rm -rf -- "$tmp"; mkdir -p "$tmp/classes"
+        cp="$(w "$game/starsector-core/starfarer.api.jar");$(w "$game/starsector-core/log4j-1.2.9.jar");$(w "$console_jar")"
+        if "$BIN/javac.exe" --release 17 -nowarn -cp "$cp" -d "$(w "$tmp/classes")" \
+                "$(w "$SRC/HotHelperModPlugin.java")" "$(w "$SRC/HotHelperCombat.java")" "$(w "$SRC/HotHelperConsole.java")" >&2 &&
+            "$BIN/jar.exe" --create --file "$(w "$tmp/h.jar")" -C "$(w "$tmp/classes")" . >&2; then
+            mv -n -- "$tmp/h.jar" "$TOOLS/hot-helper.jar"; echo "Built $TOOLS/hot-helper.jar" >&2
+        else
+            # optional: the game still starts, hot.sh console then answers NO_CONSOLE
+            echo 'WARN helper: javac or jar reported errors; hot.sh console will not work' >&2
+        fi
+        rm -rf -- "$tmp"
+    fi
 fi
 
 if [[ ! -x $TOOLS/gamectl.exe ]]; then

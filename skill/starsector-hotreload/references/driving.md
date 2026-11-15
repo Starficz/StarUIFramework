@@ -71,12 +71,37 @@ For a panel you are working on:
 | Screen | How |
 |---|---|
 | Title screen | Where `start` ends. Continue (1233, 283), Missions (1235, 362), New Game (1222, 396), Codex (1248, 463), Settings (1237, 497) |
-| Campaign | `hot.sh continue` (the newest save of this work folder) or `hot.sh newgame` (about a minute; makes the save `continue` loads later). Both end paused |
+| Campaign | `hot.sh campaign`: `continue` (the newest save of this work folder) when there is one, else `newgame` (about a minute; makes the save `continue` loads later). Both end paused; `continue` alone answers `NO_SAVE` at once in a new work folder |
 | Core tabs | From the campaign, the tab bar at y 885: Character (75), Fleet (202), Refit (330), Crew/Cargo (458), Map (586), Intel (714), Command (842). `bkey R` opens refit. `bkey ESCAPE` closes a tab |
 | Pause | `bkey SPACE` toggles it. Keep the campaign paused while capturing: it logs and moves while running |
+| Refit simulator (a battle) | Refit tab, dismiss the refit notice the first time (Dismiss, 1075 511), Run simulation (682, 825); pick ships in the deploy dialog, Deploy, `bkey SPACE` to unpause |
+| Officer level-up | Fleet tab, an empty captain portrait (825, 300), then the officer's "Level up!" button. The officer needs a pending level: give it with `hot.sh console` ([Making test state](#making-test-state)), not from the project's code |
 
 A panel a mod builds when vanilla builds a screen shows new code the next time vanilla builds it
 ([Seeing a UI change](#seeing-a-ui-change)).
+
+## Making test state
+
+UI that needs a game state (credits, story points, an officer with a level to spend, a fleet, a market's condition)
+gets it from Console Commands, never from temporary code in the project:
+
+```bash
+bash "$HOT" start "<project>" --jar "<build>" --with lw_console   # once: Console Commands in the test game
+bash "$HOT" campaign                                              # a campaign: the newest save, else a new game
+bash "$HOT" console "addcredits 50000"
+bash "$HOT" console "addstorypoints 5"
+bash "$HOT" console 'runcode Console.showMessage("" + Global.getSector().getPlayerFleet().getFleetData().getOfficersCopy().size());'
+```
+
+- It prints the console's output, then `CONSOLE_DONE`. `help` lists the commands, `help <command>` explains one;
+  `runcode` takes any Java statement (the starsector-knowledge skill has a Console Commands runcode guide).
+- Commands run in the campaign or a battle (the title screen's background battle too, where campaign commands answer
+  "campaign-only"). `NOT_RUN` means nothing ran it: get into the campaign first.
+- `NO_CONSOLE`: Console Commands is not installed in the game's mods folder, or the game was not started `--with
+  lw_console`. How it works: the reload agent passes the request on (mods may not read files), and the test helper
+  mod runs it on the game's thread (`tools/HotHelper*.java`, built when Console Commands is installed).
+- Setup the panel needs every time (a fixed officer, a test fleet) can be a `--dep` test-only mod of your own with a
+  `ModPlugin`, kept outside the project.
 
 ## Input
 
@@ -102,8 +127,13 @@ A panel a mod builds when vanilla builds a screen shows new code the next time v
 
 - `hot.sh shot NAME` writes `captures/NAME.png` (the client area, 1600x900) and prints its path. Open it with the
   image tool and look; a command that ran proves nothing.
-- **Park the cursor first** (`ctl bmove 5 5`) or a tooltip may cover the shot. For a tooltip shot, hover on purpose:
-  `ctl bmove X Y`, wait a second, `shot`.
+- **Park the cursor first** (`ctl bmove 5 5`) or a tooltip may cover the shot. With a modal window open (a dialog, a
+  layer), park on an empty spot inside the window instead: a move outside it may not reach the component that owns
+  the tooltip (the modal takes the mouse), and the tooltip stays up. Check the shot for a leftover tooltip. For a
+  tooltip shot, hover on purpose: `ctl bmove X Y`, wait a second, `shot`.
+- **Read the UI as text**: `hot.sh dump` prints every StarUI panel on screen (`dumpLayout`: kind, text, size,
+  position, sizing), dialog content included, from the game log. Use it to check positions and texts without a
+  screenshot, and to find what to click.
 - The window must be behind other windows, not minimized. If a capture is black, ask the user not to minimize it.
 - Check 1 px alignment on a 2x crop, not by eye on the full frame: crop the panel's rectangle plus 2 px and scale it
   by 2 with nearest-neighbour (no smoothing), for example with Pillow

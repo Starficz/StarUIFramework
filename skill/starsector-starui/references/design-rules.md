@@ -245,6 +245,11 @@ manual: three short paragraphs at most.
   (`getSpriteName("intel", "important")`), not a colour.
 - **Skills keep the vanilla frame**: the aptitude coloured cut corner frame and the elite stars
   ([parts.md](parts.md#icons-portraits-ships-skills)). A skill icon in a plain box or a yellow frame reads as mod UI.
+  The engine draws that frame in code (no sprite), and the only call that shows it is StarUI's `SkillPanel`: a
+  person's whole skill panel, read-only, with no room for your buttons. For a skill cell of your own (a skill to
+  learn, with a button), draw the frame: `Image(spec.spriteName)` in a Box whose `Modifier.onRender` strokes the cut
+  corner outline in `spec.governingAptitudeColor` (`SkillSpecAPI`), and say elite in the cell's text or tooltip.
+  To show a person's learned skills only, use `SkillPanel`: the vanilla look for free.
 - When the mod has no art for a state yet, a mockup may tint a game icon as a placeholder. Say so in the notes:
   the mod needs its own icon before release.
 - Check that the sprite exists and is loaded: an unknown path gives a 0 x 0 sprite and an empty hole

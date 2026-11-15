@@ -10,6 +10,7 @@ only: mod code reads them through the API accessors, never as numbers.
 import hashlib
 import html as _html
 import os
+import pathlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SKILL = os.path.dirname(os.path.dirname(HERE))
@@ -66,7 +67,12 @@ def scale(c, f):
 
 
 def _url(path):
-    return 'file://' + path.replace(' ', '%20')
+    # a real file URL (file:///C:/...): 'file://' + a Windows path gave file://C:\..., which Chromium-based browsers
+    # read as a host name, so the fonts (stricter than images) fell back to a serif
+    try:
+        return pathlib.Path(path).resolve().as_uri()
+    except ValueError:
+        return 'file://' + path.replace(' ', '%20')
 
 
 def game(rel):

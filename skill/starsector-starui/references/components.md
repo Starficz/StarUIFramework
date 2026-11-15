@@ -47,7 +47,9 @@ space (pins what follows it to the far end).
   fill width, or what its Row has left) is cut and ends in `...`, with the full text in a tooltip unless the `Text`
   has a `Modifier.tooltip` of its own (a parent's tooltip, a tile's say, shows over it). `label.text` then reads the
   shortened text. Names wrap to two lines before they are cut ([design-rules.md](design-rules.md#wording)).
-  `highlightedText = listOf("1200" to VanillaColors.highlight)` colours parts of it.
+  `highlightedText = listOf("1200" to VanillaColors.highlight)` colours parts of it. Vanilla's label does the
+  matching: each string is found in order, the search for one starting after the last match, at word boundaries, so
+  "1" colours the word 1 in "Costs 1 point", not the 1 in "10". List the pieces in the order they appear.
 - `Image(spritePath, size, modifier, ...)`: a sprite. `ImageSize.native(scale, maxWidth, maxHeight)` and
   `ImageSize.aspectWrap()` keep its aspect.
 - `ShipDisplay(size, modifier, fleetMember, variant, ..., exactScale)`: vanilla's ship preview. Vanilla fits the ship
@@ -95,6 +97,8 @@ Table(ships, Size.fillMaxWidth(), rowTooltip = { ship -> addPara(ship.descriptio
 }
 ```
 
+- Text cells are in the table's `baseColor` (the faction's base colour, cyan for the player) unless `cell(text,
+  color = ...)` gives one: a name column that should read as plain text needs `color = VanillaColors.text`.
 - `column(title) { text }` for text, `{ cell(text, color = ...) }` for styled text, `{ custom { ... } }` for StarUI
   components in a cell (laid over the cell, reactive like any builder). A custom cell's content has a wrap or exact
   height, placed with `Modifier.align` (`CenterLeft`, `Center`): the table measures it to size the rows, and a child

@@ -45,6 +45,10 @@ import java.util.zip.ZipFile;
  * reloads every watched jar now (its text is the request id); the result goes to result-ID.txt and last.txt. Without
  * a file named no-auto, a source jar that changed and then stayed the same for half a second is reloaded by itself.
  * Every result is also appended to reload.log, printed to stdout and logged to the game log.
+ * A file named "dump" sets the system property starui.dump to its text (a request id): StarUI then logs every StarUI
+ * panel on screen (hot.sh dump). The agent only passes it on; a mod without StarUI ignores it.
+ * A file named "console" (a request id, a newline, a Console Commands command) sets hotreload.console to its text:
+ * the helper mod runs it on the game's thread (hot.sh console). Mods may not read files, so the agent passes it on.
  * Each reload that changed something raises the system property starsector.hotreload.generation by one, so a mod may
  * rebuild its open UI when it changes (System.getProperty is allowed to mods).
  */
@@ -133,6 +137,18 @@ public final class HotReloadAgent {
         while (true) {
             try {
                 Thread.sleep(POLL_MS);
+                Path dump = control.resolve("dump");
+                if (Files.exists(dump)) {
+                    String id = new String(Files.readAllBytes(dump), StandardCharsets.UTF_8).trim();
+                    Files.deleteIfExists(dump);
+                    System.setProperty("starui.dump", id.isEmpty() ? "d" + System.nanoTime() : id);
+                }
+                Path console = control.resolve("console");
+                if (Files.exists(console)) {
+                    String text = new String(Files.readAllBytes(console), StandardCharsets.UTF_8);
+                    Files.deleteIfExists(console);
+                    System.setProperty("hotreload.console", text);
+                }
                 Path request = control.resolve("request");
                 if (Files.exists(request)) {
                     String id = new String(Files.readAllBytes(request), StandardCharsets.UTF_8).trim();
